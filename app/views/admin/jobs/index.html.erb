@@ -1,0 +1,103 @@
+<div class="min-h-screen bg-slate-950 text-slate-100">
+  <header class="bg-slate-900/70 backdrop-blur sticky top-0 z-10 border-b border-slate-800">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-6 w-6">
+            <path d="M9 3a2 2 0 00-2 2v1H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-2V5a2 2 0 00-2-2H9zm0 3V5h6v1H9z" />
+          </svg>
+        </span>
+        <div>
+          <h1 class="text-xl font-semibold">Jobs</h1>
+          <p class="text-sm text-slate-400">Queue and sync diagnostics.</p>
+        </div>
+      </div>
+      <%= render "shared/top_nav", active: :jobs %>
+    </div>
+  </header>
+  <section class="mx-auto w-full max-w-6xl px-6 py-8 space-y-6">
+    <div class="grid grid-cols-3 gap-4">
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-center">
+        <p class="text-xs text-slate-400">Queued</p>
+        <p class="text-2xl font-semibold"><%= @queued %></p>
+      </div>
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-center">
+        <p class="text-xs text-slate-400">Running</p>
+        <p class="text-2xl font-semibold"><%= @running %></p>
+      </div>
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-center">
+        <p class="text-xs text-slate-400">Failed</p>
+        <p class="text-2xl font-semibold"><%= @failed %></p>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <h2 class="mb-2 text-lg font-semibold">Recent Sync Attempts</h2>
+      <div class="overflow-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-900/60 text-slate-400">
+            <tr>
+              <th class="px-3 py-2">Source</th>
+              <th class="px-3 py-2">Status</th>
+              <th class="px-3 py-2">Totals</th>
+              <th class="px-3 py-2">When</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800">
+            <% @recent_attempts.each do |a| %>
+              <tr>
+                <td class="px-3 py-2"><%= a.calendar_source.name %></td>
+                <td class="px-3 py-2"><%= a.status %></td>
+                <td class="px-3 py-2"><%= a.upserts %> upserts, <%= a.deletes %> deletes, <%= a.errors_count %> errors</td>
+                <td class="px-3 py-2"><%= time_ago_in_words(a.created_at) %> ago</td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <div class="mb-2 flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Recent Sync Metrics</h2>
+        <%= button_to "Clear Metrics",
+              clear_metrics_admin_jobs_path,
+              method: :post,
+              form: { data: { controller: "confirm", confirm_message_value: "Clear all cached sync metrics?" } },
+              class: "cursor-pointer rounded border border-slate-700 px-3 py-1 text-xs text-slate-200 hover:border-slate-500" %>
+      </div>
+      <% if @recent_metrics.any? %>
+        <div class="overflow-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-900/60 text-slate-400">
+              <tr>
+                <th class="px-3 py-2">When</th>
+                <th class="px-3 py-2">Source</th>
+                <th class="px-3 py-2">Fetched</th>
+                <th class="px-3 py-2">Upserts</th>
+                <th class="px-3 py-2">Deletes</th>
+                <th class="px-3 py-2">Canceled</th>
+                <th class="px-3 py-2">Duration</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800">
+              <% @recent_metrics.reverse_each do |m| %>
+                <tr>
+                  <td class="px-3 py-2"><%= time_ago_in_words(m[:at]) %> ago</td>
+                  <td class="px-3 py-2"><%= @source_names[m[:source_id]] || "##{m[:source_id]}" %></td>
+                  <td class="px-3 py-2"><%= m[:fetched] %></td>
+                  <td class="px-3 py-2"><%= m[:upserts] %></td>
+                  <td class="px-3 py-2"><%= m[:deletes] %></td>
+                  <td class="px-3 py-2"><%= m[:canceled] %></td>
+                  <td class="px-3 py-2"><%= m[:duration_ms] %> ms</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <p class="text-sm text-slate-400">No metrics captured yet.</p>
+      <% end %>
+    </div>
+  </section>
+</div>

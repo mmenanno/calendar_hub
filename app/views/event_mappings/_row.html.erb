@@ -1,0 +1,24 @@
+  <tr id="<%= dom_id(mapping, :row) %>" class="text-slate-300" draggable="true" data-id="<%= mapping.id %>" data-sortable-target="item">
+    <td class="px-3 py-2 drag-handle text-slate-400">≡</td>
+    <td class="px-3 py-2"><%= mapping.calendar_source&.name || "All" %></td>
+    <td class="px-3 py-2"><%= mapping.match_type.humanize %></td>
+    <td class="px-3 py-2 font-mono"><%= mapping.pattern %></td>
+    <td class="px-3 py-2 font-mono"><%= mapping.replacement %></td>
+    <td class="px-3 py-2"><%= mapping.case_sensitive ? "Aa" : "aa" %></td>
+    <td class="px-3 py-2">
+      <%= button_to toggle_event_mapping_path(mapping), method: :patch, class: "group inline-flex items-center" do %>
+        <% on = mapping.active? %>
+        <span class="relative inline-flex h-5 w-9 items-center rounded-full transition <%= on ? "bg-emerald-600/70" : "bg-slate-700" %>">
+          <span class="inline-block h-4 w-4 transform rounded-full bg-white transition <%= on ? "translate-x-4" : "translate-x-1" %>"></span>
+        </span>
+        <span class="ml-2 text-xs <%= on ? "text-emerald-300" : "text-slate-400" %>"><%= on ? "On" : "Off" %></span>
+      <% end %>
+    </td>
+    <td class="px-3 py-2 pr-6 text-right">
+      <div class="inline-flex items-center gap-2">
+        <%= link_to "Edit", edit_event_mapping_path(mapping), data: { turbo_frame: "modal" }, class: "cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:border-slate-500" %>
+        <%= button_to "Duplicate", duplicate_event_mapping_path(mapping), method: :post, form: { data: { turbo_stream: true } }, class: "cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:border-slate-500" %>
+        <%= button_to "Remove", event_mapping_path(mapping), method: :delete, form: { data: { turbo_stream: true } }, class: "cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:border-slate-500" %>
+      </div>
+    </td>
+  </tr>

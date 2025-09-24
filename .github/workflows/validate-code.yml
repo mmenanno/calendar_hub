@@ -1,0 +1,76 @@
+name: Code Validation Checks
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  code-quality:
+    name: Quality (${{ matrix.check }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [brakeman, importmap, rubocop, erb_lint]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Run Brakeman
+        if: matrix.check == 'brakeman'
+        run: bin/brakeman --no-pager
+
+      - name: Run Importmap Audit
+        if: matrix.check == 'importmap'
+        run: bin/importmap audit
+
+      - name: Run Rubocop
+        if: matrix.check == 'rubocop'
+        run: bin/rubocop -f github
+
+      - name: Run ERB Lint
+        if: matrix.check == 'erb_lint'
+        run: bin/erb_lint --lint-all
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install system packages
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y google-chrome-stable curl libjemalloc2 libvips sqlite3
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Setup test database
+        env:
+          RAILS_ENV: test
+        run: bin/rails db:test:prepare
+
+      - name: Run tests
+        env:
+          RAILS_ENV: test
+        run: bin/rails test test:system
+
+      - name: Upload screenshots from failed system tests
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: screenshots
+          path: tmp/screenshots
+          if-no-files-found: ignore
+

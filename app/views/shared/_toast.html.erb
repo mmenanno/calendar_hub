@@ -1,0 +1,17 @@
+<% variant = local_assigns[:variant] || :success %>
+<% badge_bg, badge_text, bar = if variant.to_sym == :error
+     ["bg-rose-500/20", "text-rose-300", "bg-rose-400/60"]
+   else
+     ["bg-emerald-500/20", "text-emerald-300", "bg-emerald-400/60"]
+   end %>
+<div class="pointer-events-auto rounded-lg border px-3 py-2 text-sm shadow-lg backdrop-blur"
+     data-controller="dismissable" data-dismissable-delay-value="2500"
+     style="background: rgba(15,23,42,.9); border-color: rgba(51,65,85,.7)">
+  <div class="flex items-center gap-2">
+    <span class="inline-flex h-4 w-4 items-center justify-center rounded-full <%= badge_bg %> <%= badge_text %>"><%= variant.to_sym == :error ? "!" : "✓" %></span>
+    <span class="text-slate-200"><%= message %></span>
+  </div>
+  <div class="pointer-events-none mt-1 h-0.5 w-full bg-transparent">
+    <div class="h-full w-0 <%= bar %>" data-dismissable-target="progress"></div>
+  </div>
+</div>

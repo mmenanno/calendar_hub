@@ -1,0 +1,83 @@
+<%= turbo_stream_from "calendar_events" %>
+
+<div class="min-h-screen bg-slate-950 text-slate-100">
+  <header class="bg-slate-900/70 backdrop-blur sticky top-0 z-10 border-b border-slate-800">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10m-11 8h12a2 2 0 002-2v-8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+        </span>
+        <div>
+          <h1 class="text-xl font-semibold">Calendar Hub</h1>
+          <p class="text-sm text-slate-400">Aggregate, normalize, and sync care calendars without exposing private data.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 text-sm">
+        <%= render "shared/top_nav", active: :events %>
+      </div>
+    </div>
+  </header>
+
+  <section class="mx-auto w-full max-w-6xl px-6 py-8">
+    <%= render "shared/flashes" %>
+
+    <div class="grid gap-8 lg:grid-cols-[2fr,1fr]">
+      <div>
+        <div class="mb-4 flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-semibold">Upcoming Events</h2>
+            <% if @selected_source %>
+              <p class="text-sm text-slate-400">Filtered to <%= @selected_source.name %></p>
+            <% end %>
+          </div>
+          <div class="text-right">
+            <div class="flex items-center justify-end gap-2">
+              <%= form_with url: calendar_events_path, method: :get, local: true, data: { controller: "auto-submit" }, class: "inline-flex items-center gap-2" do |form| %>
+                <div class="select-chevron wide-select-lg">
+                  <%= form.collection_select(:source_id, @calendar_sources, :id, :name, { include_blank: "All sources", selected: params[:source_id].presence || @selected_source&.id }, class: select_class, data: { action: "change->auto-submit#submit" }) %>
+                </div>
+                <%= form.text_field(:q, value: params[:q], placeholder: "Search title or location", class: input_class, data: { action: "input->auto-submit#submit" }) %>
+                <% if params[:source_id].present? %>
+                  <%= link_to "Clear", calendar_events_path, class: "text-sm text-slate-400 hover:text-slate-200" %>
+                <% end %>
+              <% end %>
+              <%= link_to "Sync All", sync_all_calendar_sources_path, class: "rounded-lg bg-indigo-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-indigo-400", data: { turbo_method: :post } %>
+            </div>
+            <p class="mt-1 text-xs text-slate-400">Show events from a specific source.</p>
+          </div>
+        </div>
+        <div id="calendar-events" class="space-y-4">
+          <% if @events.any? %>
+            <%= render partial: "calendar_events/calendar_event", collection: @events, as: :calendar_event %>
+          <% else %>
+            <div class="rounded-xl border border-dashed border-slate-800 bg-slate-900/50 p-6 text-center text-sm text-slate-400">
+              <% if @selected_source %>
+                No events for <span class="text-slate-200 font-medium"><%= @selected_source.name %></span>. Try clearing the filter or syncing.
+              <% else %>
+                No events found. Connect a calendar source to get started.
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <aside class="space-y-4">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+          <div class="mb-4 flex items-center justify-between">
+            <h3 class="text-base font-semibold text-slate-100">Sources</h3>
+            <div class="flex items-center gap-3">
+              <%= link_to "Manage", calendar_sources_path, class: "text-sm text-indigo-300 hover:text-indigo-200" %>
+            </div>
+          </div>
+          <div class="space-y-3">
+            <% @calendar_sources.each do |source| %>
+              <%= render "calendar_sources/source", source: source %>
+            <% end %>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+</div>

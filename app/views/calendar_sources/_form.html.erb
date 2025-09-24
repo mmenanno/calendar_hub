@@ -1,0 +1,91 @@
+<%= form_with model: calendar_source, class: "space-y-5", html: { autocomplete: "off", "data-1p-ignore": true, "data-lpignore": true } do |form| %>
+  <% if calendar_source.errors.any? %>
+    <div class="rounded-lg border border-rose-700/40 bg-rose-950/40 p-4 text-sm text-rose-200">
+      <p class="font-semibold">There were issues with your submission:</p>
+      <ul class="list-disc pl-5">
+        <% calendar_source.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <fieldset class="space-y-4 rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+    <legend class="px-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Source Details</legend>
+    <div class="grid gap-3 md:grid-cols-2">
+      <div>
+        <%= form.label(:name, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+        <%= form.text_field(:name, required: true, placeholder: "e.g. KW Mental Health", class: input_class, data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply" }, autocomplete: "off", autocapitalize: "none", spellcheck: "false", "data-1p-ignore": true, "data-lpignore": true) %>
+        <% if calendar_source.errors[:name].any? %>
+          <p class="mt-1 text-xs text-rose-300"><%= calendar_source.errors[:name].to_sentence %></p>
+        <% end %>
+        <p class="mt-1 text-xs text-slate-500">Provider is fixed to ICS feed.</p>
+      </div>
+    </div>
+    <div>
+      <%= form.label(:ingestion_url, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+      <%= form.url_field(:ingestion_url, placeholder: "https://example.com/calendar.ics", class: input_class, data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply" }, autocomplete: "off", autocapitalize: "none", spellcheck: "false", "data-1p-ignore": true, "data-lpignore": true) %>
+      <% if calendar_source.errors[:ingestion_url].any? %>
+        <p class="mt-1 text-xs text-rose-300"><%= calendar_source.errors[:ingestion_url].to_sentence %></p>
+      <% end %>
+      <p class="mt-1 text-xs text-slate-400">Required ICS feed URL.</p>
+    </div>
+  </fieldset>
+
+  <fieldset class="space-y-4 rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+    <legend class="px-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Destination & Schedule</legend>
+    <div class="grid gap-3 md:grid-cols-2">
+      <div>
+        <%= form.label(:calendar_identifier, "Apple Calendar Identifier", class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+        <%= form.text_field(:calendar_identifier, required: true, value: calendar_source.calendar_identifier.presence || AppSetting.instance.default_calendar_identifier, class: input_class, data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply" }, autocomplete: "off", autocapitalize: "none", spellcheck: "false", "data-1p-ignore": true, "data-lpignore": true) %>
+        <% if calendar_source.errors[:calendar_identifier].any? %>
+          <p class="mt-1 text-xs text-rose-300"><%= calendar_source.errors[:calendar_identifier].to_sentence %></p>
+        <% end %>
+        <p class="mt-1 text-xs text-slate-400">Defaults to Settings if empty.</p>
+      </div>
+      <div>
+        <%= form.label(:time_zone, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+        <div class="select-chevron">
+          <%= form.time_zone_select(:time_zone, ActiveSupport::TimeZone.all, { default: AppSetting.instance.default_time_zone }, class: select_class) %>
+        </div>
+        <% if calendar_source.errors[:time_zone].any? %>
+          <p class="mt-1 text-xs text-rose-300"><%= calendar_source.errors[:time_zone].to_sentence %></p>
+        <% end %>
+        <p class="mt-1 text-xs text-slate-400">Used when the feed lacks a time zone.</p>
+      </div>
+    </div>
+    <div class="grid gap-3 md:grid-cols-2">
+      <div>
+        <%= form.label(:sync_window_start_hour, "Sync Window Start (hour)", class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+        <div class="select-chevron">
+          <%= form.select(:sync_window_start_hour, (0..23).map { |h| ["#{h}:00", h] }, { include_blank: "Any" }, class: select_class) %>
+        </div>
+      </div>
+      <div>
+        <%= form.label(:sync_window_end_hour, "Sync Window End (hour)", class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+        <div class="select-chevron">
+          <%= form.select(:sync_window_end_hour, (0..23).map { |h| ["#{h}:00", h] }, { include_blank: "Any" }, class: select_class) %>
+        </div>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset class="space-y-3 rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+    <legend class="px-2 text-xs font-semibold uppercase tracking-wide text-slate-400">HTTP Basic Credentials (optional)</legend>
+    <div>
+      <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400" for="credentials_http_basic_username">Username</label>
+      <%= form.text_field(:credentials_http_basic_username, value: calendar_source.credentials&.dig("http_basic_username"), name: "calendar_source[credentials][http_basic_username]", class: input_class, data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply" }, autocomplete: "off", autocapitalize: "none", spellcheck: "false", "data-1p-ignore": true, "data-lpignore": true) %>
+    </div>
+    <div>
+      <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400" for="credentials_http_basic_password">Password</label>
+      <%= form.password_field(:credentials_http_basic_password, placeholder: calendar_source.persisted? ? "••••••" : "", name: "calendar_source[credentials][http_basic_password]", class: input_class, autocomplete: "new-password", "data-1p-ignore": true, "data-lpignore": true, autocapitalize: "none", spellcheck: "false") %>
+    </div>
+  </fieldset>
+
+  <div class="flex justify-end gap-2">
+    <% if calendar_source.persisted? %>
+      <%= link_to "Delete", calendar_source_path(calendar_source), class: "rounded-lg border border-rose-700/40 px-3 py-2 text-sm text-rose-200 hover:border-rose-500", data: { turbo_method: :delete, controller: "confirm", confirm_message_value: "Remove #{calendar_source.name}?" } %>
+    <% end %>
+    <%= form.submit(calendar_source.persisted? ? "Update Calendar Source" : "Create Calendar Source", class: "cursor-pointer rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400") %>
+  </div>
+<% end %>

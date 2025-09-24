@@ -1,0 +1,41 @@
+en:
+  flashes:
+    calendar_sources:
+      created: "Calendar source created."
+      updated: "Calendar source updated."
+      removed: "Calendar source removed."
+      status_updated: "Source status updated."
+      sync_scheduled:
+        one: "Sync scheduled for %{count} source."
+        other: "Sync scheduled for %{count} sources."
+      sync_skipped: "No active sources were scheduled."
+      sync_inactive: "Source is paused or lacks a fetch adapter."
+      archived: "Source archived"
+      purge_scheduled: "Purge scheduled"
+    mappings:
+      added: "Mapping added"
+      saved: "Mapping saved"
+      duplicated: "Mapping duplicated"
+      removed: "Mapping removed"
+      enabled: "Mapping enabled"
+      disabled: "Mapping disabled"
+    realtime:
+      broadcast_sent: "Broadcast sent"
+    settings:
+      saved: "Settings saved."
+      review_errors: "Please review the errors below."
+      reset: "Settings reset to defaults."
+      apple_test_found: "Apple Calendar reachable. Destination found: %{path}"
+      apple_test_ok: "Apple Calendar reachable. Credentials accepted."
+      apple_test_failed: "Apple Calendar test failed: %{error}"
+    admin:
+      metrics_cleared: "Sync metrics cleared"
+    events:
+      excluded: "Event excluded from Apple Calendar"
+      included: "Event included for Apple Calendar"
+  realtime:
+    pong: "pong"
+  navigation:
+    events: "Events"
+    sources: "Sources"
+    sync_all: "Sync All"

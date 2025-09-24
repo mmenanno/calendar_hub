@@ -1,0 +1,53 @@
+<% if turbo_frame_request? %>
+  <turbo-frame id="modal">
+    <div class="modal-card">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Edit Mapping</h2>
+        <button onclick="document.getElementById('modal').innerHTML=''" class="cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500">Close</button>
+      </div>
+      <%= form_with model: @mapping, url: event_mapping_path(@mapping), method: :patch, class: "grid gap-4 md:grid-cols-2" do |f| %>
+        <div>
+          <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Source</label>
+          <div class="select-chevron">
+            <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: "All" }, class: select_class) %>
+          </div>
+        </div>
+        <div>
+          <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Match</label>
+          <div class="select-chevron wide-select">
+            <%= f.select(:match_type, EventMapping::MATCH_TYPES.values.map { |t| [t.humanize, t] }, {}, class: select_class) %>
+          </div>
+        </div>
+        <div class="md:col-span-2">
+          <%= f.label(:pattern, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+          <%= f.text_field(:pattern, class: input_class) %>
+        </div>
+        <div class="md:col-span-2">
+          <%= f.label(:replacement, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+          <%= f.text_field(:replacement, class: input_class) %>
+        </div>
+        <div class="md:col-span-2 flex items-center gap-4">
+          <label class="inline-flex items-center gap-2 text-xs text-slate-400">
+            <%= f.check_box(:case_sensitive) %>
+            Case sensitive
+          </label>
+          <label class="inline-flex items-center gap-2 text-xs text-slate-400">
+            <%= f.check_box(:active) %>
+            Active
+          </label>
+          <div class="ml-auto flex gap-2">
+            <%= f.submit("Save", class: "cursor-pointer rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-400") %>
+            <button type="button" onclick="document.getElementById('modal').innerHTML=''" class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:border-slate-500">Cancel</button>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </turbo-frame>
+<% else %>
+  <div class="min-h-screen bg-slate-950 text-slate-100">
+    <div class="mx-auto w-full max-w-3xl px-6 py-10">
+      <h1 class="mb-6 text-2xl font-semibold">Edit Mapping</h1>
+      <%= render partial: "event_mappings/form_row", locals: { mapping: @mapping } %>
+    </div>
+  </div>
+<% end %>
