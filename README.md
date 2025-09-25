@@ -1,6 +1,6 @@
 # Calendar Hub
 
-Calendar Hub consolidates subscribed calendars (e.g., JaneApp providers or generic ICS feeds), normalizes events, and syncs them into a single Apple Calendar via CalDAV. Built for self‑hosting with Docker; secrets are encrypted.
+Calendar Hub consolidates subscribed calendars (e.g., healthcare providers or generic ICS feeds), normalizes events, and syncs them into a single Apple Calendar via CalDAV. Built for self‑hosting with Docker; secrets are encrypted.
 
 ## Stack
 

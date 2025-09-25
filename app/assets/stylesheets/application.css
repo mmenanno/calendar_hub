@@ -51,5 +51,5 @@ dialog::backdrop {
 table turbo-frame { display: contents; }
 /* Modal frame overlay */
 turbo-frame#modal:empty { display: none; }
-turbo-frame#modal { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(2,6,23,0.65); backdrop-filter: blur(2px); z-index: 40; padding: 1rem; }
-.modal-card { max-width: 56rem; width: 100%; border: 1px solid rgb(51 65 85); background: rgba(2,6,23,0.92); border-radius: .75rem; padding: 1rem; }
+turbo-frame#modal { position: fixed; inset: 0; display: flex; align-items: flex-start; justify-content: center; background: rgba(2,6,23,0.65); backdrop-filter: blur(2px); z-index: 40; padding: 1rem; overflow-y: auto; }
+.modal-card { max-width: 56rem; width: 100%; border: 1px solid rgb(51 65 85); background: rgba(2,6,23,0.92); border-radius: .75rem; padding: 1rem; margin: auto 0; min-height: fit-content; }

@@ -25,6 +25,21 @@
           <dt class="font-medium text-slate-500"><%= t("ui.common.last_synced") %></dt>
           <dd><%= @calendar_source.last_synced_at ? time_ago_in_words(@calendar_source.last_synced_at) + " ago" : t("ui.common.never") %></dd>
         </div>
+        <% if @calendar_source.auto_sync_enabled? %>
+          <div>
+            <dt class="font-medium text-slate-500"><%= t("ui.sources.auto_sync_frequency") %></dt>
+            <dd><%= CalendarSourcePresenter.new(@calendar_source, self).sync_frequency_text %></dd>
+          </div>
+          <div>
+            <dt class="font-medium text-slate-500"><%= t("ui.sources.auto_sync_status") %></dt>
+            <dd><%= CalendarSourcePresenter.new(@calendar_source, self).auto_sync_status_text %></dd>
+          </div>
+        <% else %>
+          <div>
+            <dt class="font-medium text-slate-500"><%= t("ui.sources.auto_sync") %></dt>
+            <dd><%= t("ui.sources.auto_sync_disabled") %></dd>
+          </div>
+        <% end %>
       </dl>
     </div>
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class CalendarSourcesController < ApplicationController
-  before_action :set_calendar_source, only: [:show, :edit, :update, :destroy, :sync, :force_sync, :check_destination, :toggle_active, :purge, :unarchive]
+  before_action :set_calendar_source, only: [:show, :edit, :update, :destroy, :sync, :force_sync, :check_destination, :toggle_active, :toggle_auto_sync, :purge, :unarchive]
 
   def index
     @calendar_sources = CalendarSource.includes(:sync_attempts, :calendar_events).order(:name)
@@ -206,6 +206,27 @@ class CalendarSourcesController < ApplicationController
     end
   end
 
+  def toggle_auto_sync
+    @calendar_source.update!(auto_sync_enabled: !@calendar_source.auto_sync_enabled?)
+    respond_to do |format|
+      format.turbo_stream do
+        render(turbo_stream: [
+          turbo_stream.replace(
+            view_context.dom_id(@calendar_source, :card),
+            partial: "calendar_sources/source",
+            locals: { source: @calendar_source },
+          ),
+          turbo_stream.append(
+            "toast-anchor",
+            partial: "shared/toast",
+            locals: { message: t("flashes.calendar_sources.auto_sync_updated") },
+          ),
+        ])
+      end
+      format.html { redirect_back(fallback_location: calendar_events_path, notice: t("flashes.calendar_sources.auto_sync_updated")) }
+    end
+  end
+
   def unarchive
     @calendar_source.update!(deleted_at: nil, active: true)
     respond_to do |format|
@@ -249,7 +270,7 @@ class CalendarSourcesController < ApplicationController
   end
 
   def calendar_source_params
-    params.expect(calendar_source: [
+    permitted = params.expect(calendar_source: [
       :name,
       :ingestion_url,
       :calendar_identifier,
@@ -257,7 +278,14 @@ class CalendarSourcesController < ApplicationController
       :active,
       :sync_window_start_hour,
       :sync_window_end_hour,
+      :auto_sync_enabled,
+      :sync_frequency_minutes,
     ])
+
+    # Convert blank sync_frequency_minutes to nil so it uses the default
+    permitted[:sync_frequency_minutes] = nil if permitted[:sync_frequency_minutes].blank?
+
+    permitted
   end
 
   def apply_credentials(source)

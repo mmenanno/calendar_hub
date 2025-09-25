@@ -35,6 +35,14 @@
                 <%= f.text_field(:default_calendar_identifier, placeholder: t("ui.settings.apple_identifier_placeholder"), class: input_class, data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply" }, autocomplete: "off") %>
                 <p class="mt-1 text-xs text-slate-400"><%= t("ui.settings.default_calendar_hint") %></p>
               </div>
+              <div>
+                <%= f.label(:default_sync_frequency_minutes, t("ui.settings.default_sync_frequency"), class: "block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+                <div class="flex items-center gap-2">
+                  <%= f.number_field(:default_sync_frequency_minutes, min: 5, step: 5, class: "#{input_class} w-24") %>
+                  <span class="text-sm text-slate-400"><%= t("ui.common.minutes") %></span>
+                </div>
+                <p class="mt-1 text-xs text-slate-400"><%= t("ui.settings.default_sync_frequency_hint") %></p>
+              </div>
             </div>
           </div>
 

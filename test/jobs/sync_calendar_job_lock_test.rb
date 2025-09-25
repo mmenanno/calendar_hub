@@ -9,8 +9,8 @@ class SyncCalendarJobLockTest < ActiveSupport::TestCase
     CalendarHub::SyncService.any_instance.stubs(:call).returns([])
 
     assert_difference -> { SyncAttempt.where(calendar_source: source).count }, +2 do
-      SyncCalendarJob.perform_now(source.id)
-      SyncCalendarJob.perform_now(source.id)
+      SyncCalendarJob.perform_now(source.id, use_enhanced_sync: false)
+      SyncCalendarJob.perform_now(source.id, use_enhanced_sync: false)
     end
 
     last_two = SyncAttempt.where(calendar_source: source).order(created_at: :desc).limit(2)

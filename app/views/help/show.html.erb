@@ -16,17 +16,160 @@
     <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
       <h2 class="mb-2 text-lg font-semibold">How It Works</h2>
       <ol class="list-decimal space-y-2 pl-5 text-sm text-slate-300">
-        <li>Add a Source: provide an .ics feed URL.</li>
+        <li>Add a Source: provide an .ics feed URL and configure sync settings.</li>
         <li>Choose where events land: set an Apple Calendar identifier in Settings or per source.</li>
-        <li>Click Sync: events are normalized, mapped, and queued in the background.</li>
+        <li>Enable Auto-sync (optional): automatically sync at regular intervals.</li>
+        <li>Click Sync manually or let auto-sync handle it: events are normalized, mapped, and queued in the background.</li>
         <li>Review in Events: filter by source to verify imported items.</li>
       </ol>
       <p class="mt-3 text-xs text-slate-400">Tip: Event mappings can rename titles and are applied before syncing to Apple Calendar.</p>
     </div>
 
     <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+      <h2 class="mb-2 text-lg font-semibold">Auto-sync Features</h2>
+      <div class="space-y-3 text-sm text-slate-300">
+        <div>
+          <h3 class="font-medium text-slate-200">Automatic Syncing</h3>
+          <p>Enable auto-sync on sources to automatically fetch new events at regular intervals. Set custom frequencies per source or use the global default from Settings.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">Sync Windows</h3>
+          <p>Configure sync windows to restrict when automatic syncing can occur. Auto-sync respects these time boundaries and waits until the next allowed window.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">Change Detection</h3>
+          <p>Auto-sync uses HTTP caching headers to avoid unnecessary work. If the ICS feed hasn't changed, no Apple Calendar updates are performed.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">Domain Optimization</h3>
+          <p>Sources from the same domain (e.g., multiple *.example.com feeds) are grouped and synced together to reduce API overhead and improve efficiency.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
       <h2 class="mb-2 text-lg font-semibold">Finding Your Apple Calendar</h2>
       <p class="text-sm text-slate-300">Open Apple Calendar → left sidebar → right‑click a calendar → Get Info. Use the calendar name as the identifier. If you use multiple accounts, keep the name unique.</p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+      <h2 class="mb-2 text-lg font-semibold">Authentication Setup</h2>
+      <div class="space-y-3 text-sm text-slate-300">
+        <div>
+          <h3 class="font-medium text-slate-200">Apple ID App-Specific Password</h3>
+          <p>Calendar Hub requires an app-specific password to sync with Apple Calendar. Create one at <code class="rounded bg-slate-800 px-1 py-0.5 text-xs">appleid.apple.com</code> → Sign-In & Security → App-Specific Passwords.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">ICS Feed Authentication</h3>
+          <p>If your ICS feeds require authentication, add HTTP Basic credentials in the source configuration. Credentials are stored securely and used only for feed access.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+      <h2 class="mb-2 text-lg font-semibold">Status Indicators</h2>
+      <div class="space-y-3 text-sm text-slate-300">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-1 rounded-full px-2 py-1 bg-emerald-500/10 text-emerald-300 text-xs">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+            Active
+          </span>
+          <span>Source is active and can be synced</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-1 rounded-full px-2 py-1 bg-slate-800 text-slate-400 text-xs">
+            <span class="h-1.5 w-1.5 rounded-full bg-slate-600"></span>
+            Paused
+          </span>
+          <span>Source is paused and won't sync automatically or manually</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-1 rounded-full px-2 py-1 bg-indigo-500/10 text-indigo-300 text-xs">
+            <span class="h-1.5 w-1.5 rounded-full bg-indigo-400"></span>
+            Auto-sync
+          </span>
+          <span>Auto-sync is enabled and scheduled</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-1 rounded-full px-2 py-1 bg-yellow-500/10 text-yellow-300 text-xs">
+            <span class="h-1.5 w-1.5 rounded-full bg-yellow-400"></span>
+            Auto-sync
+          </span>
+          <span>Auto-sync is enabled and sync is due now</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-1 rounded-full px-2 py-1 bg-slate-800 text-slate-400 text-xs">
+            <span class="h-1.5 w-1.5 rounded-full bg-slate-600"></span>
+            Auto-sync disabled
+          </span>
+          <span>Auto-sync is turned off for this source</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+      <h2 class="mb-2 text-lg font-semibold">Troubleshooting</h2>
+      <div class="space-y-3 text-sm text-slate-300">
+        <div>
+          <h3 class="font-medium text-slate-200">Events Not Appearing</h3>
+          <ul class="list-disc pl-5 space-y-1">
+            <li>Check that the source is Active (not Paused)</li>
+            <li>Verify the ICS feed URL is accessible</li>
+            <li>Use "Check Destination" to verify Apple Calendar connectivity</li>
+            <li>Review sync errors in the source card or Jobs page</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">Auto-sync Not Working</h3>
+          <ul class="list-disc pl-5 space-y-1">
+            <li>Ensure auto-sync is enabled for the source</li>
+            <li>Check that the source is Active (auto-sync requires active sources)</li>
+            <li>Verify sync windows allow current time (if configured)</li>
+            <li>Check the Jobs page for auto-sync scheduler activity</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">Authentication Issues</h3>
+          <ul class="list-disc pl-5 space-y-1">
+            <li>Verify Apple ID credentials in Settings using "Test Connection"</li>
+            <li>Regenerate app-specific password if authentication fails</li>
+            <li>Check ICS feed credentials if the feed requires authentication</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+      <h2 class="mb-2 text-lg font-semibold">Best Practices</h2>
+      <div class="space-y-3 text-sm text-slate-300">
+        <div>
+          <h3 class="font-medium text-slate-200">Auto-sync Configuration</h3>
+          <ul class="list-disc pl-5 space-y-1">
+            <li>Start with longer intervals (60+ minutes) and adjust based on how frequently your feeds update</li>
+            <li>Use sync windows to avoid syncing during busy periods</li>
+            <li>Leave sync frequency blank to use the global default from Settings</li>
+            <li>Monitor the Jobs page to ensure auto-sync is working effectively</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">Event Mappings</h3>
+          <ul class="list-disc pl-5 space-y-1">
+            <li>Create mappings to standardize event titles across different sources</li>
+            <li>Use regular expressions for flexible pattern matching</li>
+            <li>Test mappings before saving to ensure they work as expected</li>
+            <li>Order matters: mappings are applied from top to bottom</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">Performance</h3>
+          <ul class="list-disc pl-5 space-y-1">
+            <li>Group sources from the same provider to benefit from domain optimization</li>
+            <li>Use "Force Sync" sparingly as it bypasses sync windows and caching</li>
+            <li>Monitor the Jobs page for failed syncs and address authentication issues promptly</li>
+            <li>Archive unused sources to keep the interface clean</li>
+          </ul>
+        </div>
+      </div>
     </div>
   </section>
 </div>

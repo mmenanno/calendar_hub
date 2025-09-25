@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_23_141000) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_25_184026) do
   create_table "app_settings", force: :cascade do |t|
     t.string "default_time_zone", default: "UTC", null: false
     t.string "default_calendar_identifier"
@@ -22,6 +22,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_141000) do
     t.integer "app_port"
     t.string "apple_username"
     t.string "apple_app_password"
+    t.integer "default_sync_frequency_minutes", default: 60, null: false
   end
 
   create_table "calendar_event_audits", force: :cascade do |t|
@@ -75,9 +76,16 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_141000) do
     t.integer "sync_window_start_hour"
     t.integer "sync_window_end_hour"
     t.datetime "deleted_at"
+    t.integer "sync_frequency_minutes"
+    t.boolean "auto_sync_enabled", default: true, null: false
+    t.string "ics_feed_etag"
+    t.string "ics_feed_last_modified"
+    t.string "last_change_hash"
     t.index ["active"], name: "index_calendar_sources_on_active"
+    t.index ["auto_sync_enabled"], name: "index_calendar_sources_on_auto_sync_enabled"
     t.index ["calendar_identifier"], name: "index_calendar_sources_on_calendar_identifier"
     t.index ["deleted_at"], name: "index_calendar_sources_on_deleted_at"
+    t.index ["sync_frequency_minutes"], name: "index_calendar_sources_on_sync_frequency_minutes"
   end
 
   create_table "event_mappings", force: :cascade do |t|

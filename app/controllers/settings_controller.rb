@@ -90,6 +90,6 @@ class SettingsController < ApplicationController
   end
 
   def settings_params
-    params.expect(app_setting: [:default_time_zone, :default_calendar_identifier, :notes, :app_host, :app_protocol, :app_port, :apple_username, :apple_app_password])
+    params.expect(app_setting: [:default_time_zone, :default_calendar_identifier, :notes, :app_host, :app_protocol, :app_port, :apple_username, :apple_app_password, :default_sync_frequency_minutes])
   end
 end

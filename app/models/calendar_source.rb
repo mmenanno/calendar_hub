@@ -3,8 +3,10 @@
 class CalendarSource < ApplicationRecord
   has_many :calendar_events, dependent: :destroy
   has_many :sync_attempts, dependent: :destroy
+  has_many :event_mappings, dependent: :destroy
 
   scope :active, -> { where(active: true) }
+  scope :auto_sync_enabled, -> { where(auto_sync_enabled: true) }
   default_scope -> { where(deleted_at: nil) }
 
   store_accessor :settings, :time_zone, :default_status
@@ -13,9 +15,14 @@ class CalendarSource < ApplicationRecord
   validates :calendar_identifier, presence: true
   validates :ingestion_url, presence: true, if: :requires_ingestion_url?
   validates :sync_window_start_hour, :sync_window_end_hour, allow_nil: true, inclusion: { in: 0..23 }
+  validates :sync_frequency_minutes, allow_nil: true, numericality: { greater_than: 0 }
 
   def time_zone
     super.presence || AppSetting.instance.default_time_zone || "UTC"
+  end
+
+  def sync_frequency_minutes
+    super.presence || AppSetting.instance.default_sync_frequency_minutes
   end
 
   def schedule_sync(force: false)
@@ -29,10 +36,6 @@ class CalendarSource < ApplicationRecord
     attempt
   end
 
-  def mark_synced!(token:, timestamp: Time.current)
-    update!(sync_token: token, last_synced_at: timestamp)
-  end
-
   def translator
     CalendarHub::Translators::EventTranslator.new(self)
   end
@@ -43,6 +46,41 @@ class CalendarSource < ApplicationRecord
 
   def syncable?
     active? && ingestion_adapter.present?
+  end
+
+  def auto_syncable?
+    auto_sync_enabled? && syncable?
+  end
+
+  def sync_due?(now: Time.current)
+    return false unless auto_syncable?
+    return true if last_synced_at.nil?
+
+    last_synced_at <= now - sync_frequency_minutes.minutes
+  end
+
+  def next_auto_sync_time(now: Time.current)
+    return unless auto_syncable?
+
+    base_time = last_synced_at&.+(sync_frequency_minutes.minutes) || now
+
+    return now if within_sync_window?(now: now) && base_time <= now
+
+    next_sync_time(now: [base_time, now].max)
+  end
+
+  def generate_change_hash
+    mappings_hash = event_mappings.active.order(:position).pluck(:pattern, :replacement, :match_type, :case_sensitive).hash
+    settings_hash = [sync_frequency_minutes, sync_window_start_hour, sync_window_end_hour, time_zone].hash
+    [mappings_hash, settings_hash].hash.to_s
+  end
+
+  def mark_synced!(token:, timestamp: Time.current)
+    update!(
+      sync_token: token,
+      last_synced_at: timestamp,
+      last_change_hash: generate_change_hash,
+    )
   end
 
   def soft_delete!

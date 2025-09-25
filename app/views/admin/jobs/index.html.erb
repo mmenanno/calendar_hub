@@ -16,18 +16,57 @@
     </div>
   </header>
   <section class="mx-auto w-full max-w-6xl px-6 py-8 space-y-6">
-    <div class="grid grid-cols-3 gap-4">
-      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-center">
-        <p class="text-xs text-slate-400"><%= t("ui.jobs.queued") %></p>
-        <p class="text-2xl font-semibold"><%= @queued %></p>
+    <!-- Job Queue Stats -->
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <h2 class="mb-4 text-lg font-semibold">Job Queue Status</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="rounded-lg border border-slate-800 bg-slate-950/40 p-4 text-center">
+          <p class="text-xs text-slate-400"><%= t("ui.jobs.queued") %></p>
+          <p class="text-2xl font-semibold"><%= @queued %></p>
+        </div>
+        <div class="rounded-lg border border-slate-800 bg-slate-950/40 p-4 text-center">
+          <p class="text-xs text-slate-400"><%= t("ui.jobs.completed_24h") %></p>
+          <p class="text-2xl font-semibold"><%= @completed %></p>
+        </div>
+        <div class="rounded-lg border border-slate-800 bg-slate-950/40 p-4 text-center">
+          <p class="text-xs text-slate-400"><%= t("ui.jobs.failed") %></p>
+          <p class="text-2xl font-semibold"><%= @failed %></p>
+        </div>
+        <div class="rounded-lg border border-slate-800 bg-slate-950/40 p-4 text-center">
+          <p class="text-xs text-slate-400"><%= t("ui.jobs.worker_processes") %></p>
+          <p class="text-2xl font-semibold"><%= @processes %></p>
+        </div>
       </div>
-      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-center">
-        <p class="text-xs text-slate-400"><%= t("ui.jobs.running") %></p>
-        <p class="text-2xl font-semibold"><%= @running %></p>
-      </div>
-      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-center">
-        <p class="text-xs text-slate-400"><%= t("ui.jobs.failed") %></p>
-        <p class="text-2xl font-semibold"><%= @failed %></p>
+    </div>
+
+    <!-- Auto-sync Stats -->
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <h2 class="mb-4 text-lg font-semibold">Auto-sync Statistics</h2>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="rounded-lg border border-indigo-800/50 bg-indigo-950/20 p-4 text-center">
+          <p class="text-xs text-indigo-300"><%= t("ui.jobs.auto_sync_sources") %></p>
+          <p class="text-2xl font-semibold text-indigo-200"><%= @auto_sync_sources_active %>/<%= @auto_sync_sources_total %></p>
+        </div>
+        <div class="rounded-lg border border-yellow-800/50 bg-yellow-950/20 p-4 text-center">
+          <p class="text-xs text-yellow-300"><%= t("ui.jobs.sync_due") %></p>
+          <p class="text-2xl font-semibold text-yellow-200"><%= @auto_sync_sources_due %></p>
+        </div>
+        <div class="rounded-lg border border-slate-800 bg-slate-950/40 p-4 text-center">
+          <p class="text-xs text-slate-400"><%= t("ui.jobs.auto_sync_jobs_24h") %></p>
+          <p class="text-2xl font-semibold"><%= @auto_sync_scheduler_jobs %></p>
+        </div>
+        <div class="rounded-lg border border-slate-800 bg-slate-950/40 p-4 text-center">
+          <p class="text-xs text-slate-400"><%= t("ui.jobs.sync_jobs_24h") %></p>
+          <p class="text-2xl font-semibold"><%= @sync_calendar_jobs %></p>
+        </div>
+        <div class="rounded-lg border border-emerald-800/50 bg-emerald-950/20 p-4 text-center">
+          <p class="text-xs text-emerald-300"><%= t("ui.jobs.auto_syncs_24h") %></p>
+          <p class="text-2xl font-semibold text-emerald-200"><%= @auto_sync_attempts %></p>
+        </div>
+        <div class="rounded-lg border border-slate-800 bg-slate-950/40 p-4 text-center">
+          <p class="text-xs text-slate-400"><%= t("ui.jobs.manual_syncs_24h") %></p>
+          <p class="text-2xl font-semibold"><%= @manual_sync_attempts %></p>
+        </div>
       </div>
     </div>
 
@@ -38,6 +77,7 @@
           <thead class="bg-slate-900/60 text-slate-400">
             <tr>
               <th class="px-3 py-2"><%= t("ui.jobs.source") %></th>
+              <th class="px-3 py-2"><%= t("ui.jobs.type") %></th>
               <th class="px-3 py-2"><%= t("ui.jobs.status") %></th>
               <th class="px-3 py-2"><%= t("ui.jobs.totals") %></th>
               <th class="px-3 py-2"><%= t("ui.jobs.when") %></th>
@@ -46,7 +86,20 @@
           <tbody class="divide-y divide-slate-800">
             <% @recent_attempts.each do |a| %>
               <tr>
-                <td class="px-3 py-2"><%= a.calendar_source.name %></td>
+                <td class="px-3 py-2"><%= a.calendar_source&.name || "Unknown" %></td>
+                <td class="px-3 py-2">
+                  <% if a.calendar_source&.auto_sync_enabled? %>
+                    <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 bg-indigo-500/10 text-indigo-300 text-xs">
+                      <span class="h-1.5 w-1.5 rounded-full bg-indigo-400"></span>
+                      Auto
+                    </span>
+                  <% else %>
+                    <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 bg-slate-800 text-slate-400 text-xs">
+                      <span class="h-1.5 w-1.5 rounded-full bg-slate-600"></span>
+                      Manual
+                    </span>
+                  <% end %>
+                </td>
                 <td class="px-3 py-2"><%= a.status %></td>
                 <td class="px-3 py-2"><%= t("ui.jobs.totals_row", upserts: a.upserts, deletes: a.deletes, errors: a.errors_count) %></td>
                 <td class="px-3 py-2"><%= time_ago_in_words(a.created_at) %> ago</td>

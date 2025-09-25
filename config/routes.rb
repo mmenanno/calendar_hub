@@ -9,6 +9,7 @@ Rails.application.routes.draw do
       post :force_sync
       get :check_destination
       patch :toggle_active
+      patch :toggle_auto_sync
       patch :unarchive
       delete :purge
     end
