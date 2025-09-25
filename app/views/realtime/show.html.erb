@@ -1,0 +1,52 @@
+<div class="min-h-screen bg-slate-950 text-slate-100">
+  <header class="bg-slate-900/70 backdrop-blur sticky top-0 z-10 border-b border-slate-800">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+          ⚡️
+        </span>
+        <div>
+          <h1 class="text-xl font-semibold"><%= t("ui.realtime.header") %></h1>
+          <p class="text-sm text-slate-400"><%= t("ui.realtime.subheader") %></p>
+        </div>
+      </div>
+      <%= render "shared/top_nav", active: nil %>
+    </div>
+  </header>
+
+  <section class="mx-auto w-full max-w-6xl px-6 py-8">
+    <%= turbo_stream_from @stream %>
+
+    <% if flash[:notice] %>
+      <div class="mb-4 rounded-lg border border-slate-800 bg-slate-900/70 px-4 py-3 text-sm">
+        <%= flash[:notice] %>
+      </div>
+    <% end %>
+
+    <div class="grid gap-6 md:grid-cols-2">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+        <h2 class="mb-2 text-lg font-semibold"><%= t("ui.realtime.connectivity") %></h2>
+        <dl class="space-y-2 text-sm text-slate-300">
+          <div class="flex justify-between">
+            <dt class="text-slate-500"><%= t("ui.realtime.stream") %></dt>
+            <dd class="font-mono"><%= @stream %></dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-slate-500"><%= t("ui.realtime.adapter") %></dt>
+            <dd><%= @adapter || t("ui.common.unknown") %></dd>
+          </div>
+        </dl>
+        <div class="mt-4">
+          <%= button_to t("ui.realtime.send_test"), realtime_ping_path(token: @token), method: :post, class: "cursor-pointer rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:border-slate-500" %>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+        <h2 class="mb-2 text-lg font-semibold"><%= t("ui.realtime.result") %></h2>
+        <div id="realtime_probe" class="rounded-lg border border-dashed border-slate-800 bg-slate-950/40 p-4 text-sm text-slate-400">
+          <%= t("ui.realtime.waiting") %>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

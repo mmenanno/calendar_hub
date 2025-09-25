@@ -1,0 +1,105 @@
+<div class="min-h-screen bg-slate-950 text-slate-100">
+  <header class="bg-slate-900/70 backdrop-blur sticky top-0 z-10 border-b border-slate-800">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">🔤</span>
+        <div>
+          <h1 class="text-xl font-semibold"><%= t("ui.mappings.header") %></h1>
+          <p class="text-sm text-slate-400"><%= t("ui.mappings.subheader") %></p>
+        </div>
+      </div>
+      <%= render "shared/top_nav", active: :mappings %>
+    </div>
+  </header>
+
+  <section class="mx-auto w-full max-w-6xl px-6 py-8">
+    <%= render "shared/flashes" %>
+
+    <div class="space-y-6">
+      <div id="new_mapping_form" class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5" data-controller="collapsible" data-collapsible-key-value="add-rule" data-collapsible-default-open-value="<%= (@mappings || EventMapping.all).blank? %>" data-collapsible-remember-value="false">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-lg font-semibold"><%= t("ui.mappings.add_rule") %></h2>
+          <button type="button" class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-200 hover:border-slate-500" data-action="collapsible#toggle">
+            <span data-collapsible-target="label"><%= t("ui.common.show") %></span>
+            <span data-collapsible-target="icon" class="ml-1 inline-block transition-transform">▾</span>
+          </button>
+        </div>
+        <div data-collapsible-target="content" class="hidden">
+          <%= form_with model: EventMapping.new, url: event_mappings_path, class: "grid gap-3", data: { controller: "mapping-form" } do |f| %>
+            <div>
+              <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.source") %></label>
+              <div class="select-chevron">
+                <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: t("ui.common.all") }, class: select_class) %>
+              </div>
+            </div>
+            <div>
+              <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.match") %></label>
+              <div class="select-chevron wide-select">
+                <%= f.select(:match_type, EventMapping::MATCH_TYPES.values.map { |t| [t.humanize, t] }, {}, class: select_class, data: { mapping_form_target: "match", action: "change->mapping-form#validate" }) %>
+              </div>
+            </div>
+            <div>
+              <%= f.label(:pattern, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+              <%= f.text_field(:pattern, required: true, placeholder: "e.g. In-Person Counselling", class: input_class, data: { mapping_form_target: "pattern", action: "input->mapping-form#validate" }) %>
+              <p data-mapping-form-target="error" class="mt-1 hidden text-xs text-rose-300"><%= t("ui.mappings.invalid_regex") %></p>
+            </div>
+            <div>
+              <%= f.label(:replacement, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+              <%= f.text_field(:replacement, required: true, placeholder: "Client Session - In Person", class: input_class) %>
+            </div>
+            <label class="inline-flex items-center gap-2 text-xs text-slate-400">
+              <%= f.check_box(:case_sensitive) %>
+              <%= t("ui.mappings.case") %> sensitive
+            </label>
+            <%= f.submit(t("ui.mappings.add_mapping"), class: "rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400", data: { mapping_form_target: "submit" }) %>
+          <% end %>
+        </div>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5" data-controller="mapping-test" data-mapping-test-url-value="<%= test_event_mappings_path %>">
+        <h2 class="mb-2 text-lg font-semibold"><%= t("ui.mappings.test_mapping") %></h2>
+      <%= form_with url: test_event_mappings_path, method: :post, data: { turbo_frame: "_top" }, class: "grid gap-3 md:grid-cols-6" do |f| %>
+          <div class="md:col-span-2">
+            <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.source") %></label>
+            <div class="select-chevron">
+              <%= select_tag :calendar_source_id, options_from_collection_for_select(CalendarSource.order(:name), :id, :name), include_blank: t("ui.common.all"), class: select_class, data: { mapping_test_target: "source", action: "change->mapping-test#queue" } %>
+            </div>
+          </div>
+          <div class="md:col-span-4">
+            <%= label_tag :sample_title, t("ui.mappings.sample_title"), class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" %>
+            <%= text_field_tag :sample_title, nil, placeholder: t("ui.mappings.sample_placeholder"), class: input_class, data: { mapping_test_target: "input", action: "input->mapping-test#queue" }, autocomplete: "off", autocapitalize: "none", spellcheck: "false" %>
+          </div>
+      <% end %>
+        <div class="mt-3">
+          <%= render "event_mappings/test_result", input: nil, output: nil %>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5" data-controller="sortable" data-sortable-url-value="<%= reorder_event_mappings_path %>">
+        <h2 class="mb-2 text-lg font-semibold"><%= t("ui.mappings.existing_rules") %></h2>
+        <div class="rounded-lg border border-slate-800 p-3">
+          <div class="overflow-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-slate-900/60 text-slate-400">
+                <tr>
+                  <th class="px-3 py-2 w-8"></th>
+                  <th class="px-3 py-2"><%= t("ui.mappings.source") %></th>
+                  <th class="px-3 py-2"><%= t("ui.mappings.match") %></th>
+                  <th class="px-3 py-2"><%= t("ui.mappings.pattern") %></th>
+                  <th class="px-3 py-2"><%= t("ui.mappings.replacement") %></th>
+                  <th class="px-3 py-2"><%= t("ui.mappings.case") %></th>
+                  <th class="px-3 py-2"><%= t("ui.mappings.active") %></th>
+                  <th class="px-3 py-2"></th>
+                </tr>
+              </thead>
+              <tbody id="mappings-rows" class="divide-y divide-slate-800" data-sortable-target="container">
+                <% EventMapping.order(:position, :created_at).each do |m| %>
+                  <%= render "event_mappings/row", mapping: m %>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,10 @@
+<% if archived_sources.any? %>
+  <section id="archived-sources" class="space-y-4">
+    <h2 class="mt-6 text-lg font-semibold"><%= t("ui.sources.archived_section") %></h2>
+    <div id="archived-sources-list" class="space-y-4">
+      <% archived_sources.each do |source| %>
+        <%= render "calendar_sources/source", source: source %>
+      <% end %>
+    </div>
+  </section>
+<% end %>

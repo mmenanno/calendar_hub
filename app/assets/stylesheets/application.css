@@ -1,0 +1,55 @@
+/*
+ * This is a manifest file that'll be compiled into application.css.
+ *
+ * With Propshaft, assets are served efficiently without preprocessing steps. You can still include
+ * application-wide styles in this file, but keep in mind that CSS precedence will follow the standard
+ * cascading order, meaning styles declared later in the document or manifest will override earlier ones,
+ * depending on specificity.
+ *
+ * Consider organizing styles into separate files for maintainability.
+ */
+
+/* Dialog/backdrop tweaks to ensure consistent centering and readability */
+dialog[open] {
+  inset: 0;
+  margin: auto;
+}
+
+dialog::backdrop {
+  background: rgba(2, 6, 23, 0.6); /* slate-950-ish */
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+/* Consistent dropdown chevron indicator */
+.select-chevron { position: relative; display: block; }
+.select-chevron select { padding-right: 2.25rem; }
+.wide-select select { min-width: 12rem; }
+.wide-select-lg select { min-width: 16rem; }
+.select-chevron::after {
+  content: "";
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  width: 18px; height: 18px;
+  transform: translateY(-50%);
+  background-repeat: no-repeat;
+  background-size: 18px 18px;
+  opacity: .85;
+  pointer-events: none;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><path fill="%23a5b4fc" d="M5.5 7.5l4.5 4.5l4.5-4.5" stroke="%23a5b4fc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+}
+
+/* Sortable table UX */
+[data-controller="sortable"] [data-sortable-target="item"]:hover {
+  background: rgba(148, 163, 184, 0.08); /* slate-400/10 */
+}
+.drag-handle { cursor: grab; }
+.drag-handle:active { cursor: grabbing; }
+
+/* Turbo Frames inside tables shouldn't render as blocks */
+table turbo-frame { display: contents; }
+/* Modal frame overlay */
+turbo-frame#modal:empty { display: none; }
+turbo-frame#modal { position: fixed; inset: 0; display: flex; align-items: flex-start; justify-content: center; background: rgba(2,6,23,0.65); backdrop-filter: blur(2px); z-index: 40; padding: 1rem; overflow-y: auto; }
+.modal-card { max-width: 56rem; width: 100%; border: 1px solid rgb(51 65 85); background: rgba(2,6,23,0.92); border-radius: .75rem; padding: 1rem; margin: auto 0; min-height: fit-content; }

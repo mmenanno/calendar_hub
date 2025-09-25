@@ -1,0 +1,42 @@
+<%= turbo_frame_tag dom_id(mapping) do %>
+  <tr class="text-slate-300">
+    <td class="px-3 py-2" colspan="8">
+      <%= form_with model: mapping, url: event_mapping_path(mapping), method: :patch, class: "grid grid-cols-1 gap-4 md:grid-cols-8" do |f| %>
+        <div class="md:col-span-2">
+          <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.source") %></label>
+          <div class="select-chevron">
+            <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: t("ui.common.all") }, class: select_class) %>
+          </div>
+        </div>
+        <div>
+          <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.match") %></label>
+          <div class="select-chevron">
+            <%= f.select(:match_type, EventMapping::MATCH_TYPES.values.map { |t| [t.humanize, t] }, {}, class: select_class) %>
+          </div>
+        </div>
+        <div class="md:col-span-8">
+          <%= f.label(:pattern, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+          <%= f.text_field(:pattern, class: input_class) %>
+        </div>
+        <div class="md:col-span-8">
+          <%= f.label(:replacement, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+          <%= f.text_field(:replacement, class: input_class) %>
+        </div>
+        <div class="md:col-span-2 flex items-end gap-4">
+          <label class="inline-flex items-center gap-2 text-xs text-slate-400">
+            <%= f.check_box(:case_sensitive) %>
+            <%= t("ui.mappings.case") %>
+          </label>
+          <label class="inline-flex items-center gap-2 text-xs text-slate-400">
+            <%= f.check_box(:active) %>
+            <%= t("ui.mappings.active") %>
+          </label>
+        </div>
+        <div class="md:col-span-6 flex items-end justify-end gap-2">
+          <%= f.submit(t("ui.common.save"), class: "rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-400") %>
+          <%= link_to t("ui.common.cancel"), event_mappings_path, data: { turbo_frame: dom_id(mapping) }, class: "rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:border-slate-500" %>
+        </div>
+      <% end %>
+    </td>
+  </tr>
+<% end %>

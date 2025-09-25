@@ -1,0 +1,24 @@
+<div class="min-h-screen bg-slate-950 text-slate-100">
+  <header class="bg-slate-900/70 backdrop-blur sticky top-0 z-10 border-b border-slate-800">
+    <div class="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">📅</span>
+        <div>
+          <% p = CalendarEventPresenter.new(@event, self) %>
+          <h1 class="text-xl font-semibold">
+            <%= p.title %>
+            <%= turbo_frame_tag dom_id(@event, :badge) do %>
+              <%= render "calendar_events/badge", event: @event %>
+            <% end %>
+          </h1>
+          <p class="text-sm text-slate-400"><%= l @event.starts_at, format: :long %> – <%= l @event.ends_at, format: :long %></p>
+        </div>
+      </div>
+      <%= render "shared/top_nav", active: nil %>
+    </div>
+  </header>
+
+  <section class="mx-auto w-full max-w-4xl px-6 py-8">
+    <%= render "calendar_events/show_frame", event: @event %>
+  </section>
+</div>

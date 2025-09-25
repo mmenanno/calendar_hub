@@ -1,0 +1,42 @@
+<% if flash.any? %>
+  <div class="mb-4 space-y-2">
+    <% flash.each do |type, message| %>
+      <% icon_char = "i"
+         icon_bg = "bg-slate-500/20"
+         icon_text = "text-slate-300"
+         bar_class = "bg-slate-400/50" %>
+      <% case type.to_s
+         when "notice", "success"
+           icon_char = "✓"
+           icon_bg = "bg-emerald-500/20"
+           icon_text = "text-emerald-300"
+           bar_class = "bg-emerald-400/60"
+         when "alert", "error"
+           icon_char = "!"
+           icon_bg = "bg-rose-500/20"
+           icon_text = "text-rose-300"
+           bar_class = "bg-rose-400/60"
+         end %>
+      <div class="<%= flash_classes(type) %> relative overflow-hidden" data-controller="dismissable" data-dismissable-delay-value="6000">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex h-5 w-5 items-center justify-center rounded-full <%= icon_bg %> <%= icon_text %>"><%= icon_char %></span>
+          <div>
+            <% if message.include?("Destination found:") %>
+              <% head, path = message.split("Destination found: ", 2) %>
+              <p><%= head %></p>
+              <% if path.present? %>
+                <pre class="mt-1 overflow-x-auto rounded border border-slate-800 bg-slate-950/50 px-2 py-1 text-xs text-slate-300"><%= path %></pre>
+              <% end %>
+            <% else %>
+              <span><%= message %></span>
+            <% end %>
+          </div>
+        </div>
+        <button type="button" class="text-slate-400 transition hover:text-slate-200" data-action="dismissable#dismiss">&times;</button>
+        <div class="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-transparent">
+          <div class="h-full w-0 <%= bar_class %>" data-dismissable-target="progress"></div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>
