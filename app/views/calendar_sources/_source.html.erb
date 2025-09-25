@@ -44,6 +44,11 @@
               form: { class: "inline", data: { controller: "confirm", confirm_message_value: t("ui.sources.confirm.archive", name: source.name) } },
               class: "rounded-lg border border-rose-700/70 px-3 py-1 text-xs text-rose-300 transition hover:border-rose-500 hover:text-rose-200" %>
       <% else %>
+        <%= button_to t("ui.sources.unarchive"),
+              unarchive_calendar_source_path(source),
+              method: :patch,
+              form: { class: "inline", data: { turbo_stream: true } },
+              class: "rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-200 transition hover:border-slate-500" %>
         <%= button_to t("ui.sources.purge"),
               purge_calendar_source_path(source),
               method: :delete,

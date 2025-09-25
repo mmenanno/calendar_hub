@@ -14,3 +14,12 @@ ics_feed:
   settings:
     time_zone: UTC
   active: true
+
+archived_source:
+  name: Archived Source
+  ingestion_url: https://example.com/archived.ics
+  calendar_identifier: archived
+  settings:
+    time_zone: UTC
+  active: false
+  deleted_at: <%= 1.day.ago %>

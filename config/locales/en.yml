@@ -11,6 +11,7 @@ en:
       sync_skipped: "No active sources were scheduled."
       sync_inactive: "Source is paused or lacks a fetch adapter."
       archived: "Source archived"
+      unarchived: "Source unarchived"
       purge_scheduled: "Purge scheduled"
     mappings:
       added: "Mapping added"
@@ -100,6 +101,7 @@ en:
       pause: "Pause"
       resume: "Resume"
       archive: "Archive source"
+      unarchive: "Unarchive"
       purge: "Purge"
       now: "Now"
       active: "Active"
