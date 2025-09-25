@@ -1,0 +1,54 @@
+inherit_gem:
+  rubocop-shopify: rubocop.yml
+
+plugins:
+  - rubocop-rails
+  - rubocop-performance
+  - rubocop-minitest
+  - rubocop-thread_safety
+
+AllCops:
+  Exclude:
+    - bin/bundle
+    - db/schema.rb
+  Include:
+    - '.toys/**/*.rb'
+  NewCops: enable
+
+Rails:
+  Enabled: true
+
+Rails/UnknownEnv:
+  Environments:
+    - production
+    - development
+    - test
+
+Rails/RefuteMethods:
+  EnforcedStyle: refute
+
+Rails/Output:
+  Exclude:
+    - db/seeds.rb
+
+Rails/I18nLocaleTexts:
+  Exclude:
+    - test/views/**/*
+
+Performance:
+  Enabled: true
+
+Minitest:
+  Enabled: true
+
+Minitest/MultipleAssertions:
+  Max: 7
+  Exclude:
+    - test/views/**/*
+
+ThreadSafety:
+  Enabled: true
+
+Naming/PredicateMethod:
+  AllowedMethods:
+    - notify

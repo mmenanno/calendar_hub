@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [ main ]
+    paths-ignore:
+      - "log/**"
+      - "tmp/**"
+      - ".dockerignore"
+      - ".gitattributes"
+      - ".gitignore"
+      - "README.md"
+      - "docs/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validation-checks:
+    name: Validate
+    uses: ./.github/workflows/validate-code.yml

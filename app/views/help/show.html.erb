@@ -1,0 +1,32 @@
+<div class="min-h-screen bg-slate-950 text-slate-100">
+  <header class="bg-slate-900/70 backdrop-blur sticky top-0 z-10 border-b border-slate-800">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">?</span>
+        <div>
+          <h1 class="text-xl font-semibold">Help</h1>
+          <p class="text-sm text-slate-400">How Calendar Hub works and Apple Calendar tips.</p>
+        </div>
+      </div>
+      <%= render "shared/top_nav", active: :help %>
+    </div>
+  </header>
+
+  <section class="mx-auto w-full max-w-4xl px-6 py-8 space-y-6">
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+      <h2 class="mb-2 text-lg font-semibold">How It Works</h2>
+      <ol class="list-decimal space-y-2 pl-5 text-sm text-slate-300">
+        <li>Add a Source: provide an .ics feed URL.</li>
+        <li>Choose where events land: set an Apple Calendar identifier in Settings or per source.</li>
+        <li>Click Sync: events are normalized, mapped, and queued in the background.</li>
+        <li>Review in Events: filter by source to verify imported items.</li>
+      </ol>
+      <p class="mt-3 text-xs text-slate-400">Tip: Event mappings can rename titles and are applied before syncing to Apple Calendar.</p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+      <h2 class="mb-2 text-lg font-semibold">Finding Your Apple Calendar</h2>
+      <p class="text-sm text-slate-300">Open Apple Calendar → left sidebar → right‑click a calendar → Get Info. Use the calendar name as the identifier. If you use multiple accounts, keep the name unique.</p>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,125 @@
+name: Build and Push Image
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - "log/**"
+      - "tmp/**"
+      - "docs/**"
+      - "README.md"
+      - ".github/**"
+      - "!.github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/calendar_hub
+
+jobs:
+  run-ci:
+    name: Run CI Checks
+    uses: ./.github/workflows/validate-code.yml
+
+  build-and-push:
+    name: Build and Push
+    needs: run-ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read VERSION file
+        id: get_version
+        run: |
+          if [ -f VERSION ]; then
+            VERSION=$(cat VERSION | tr -d '\n' | tr -d '\r')
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          else
+            echo "version=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref_name == 'main' }}
+            type=raw,value=${{ steps.get_version.outputs.version }},enable=${{ steps.get_version.outputs.version != '' }}
+            type=sha
+
+      - name: Create or update GitHub Release for version
+        if: ${{ steps.get_version.outputs.version != '' }}
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.get_version.outputs.version }}
+          commit: ${{ github.sha }}
+          name: ${{ steps.get_version.outputs.version }}
+          generateReleaseNotes: true
+          allowUpdates: true
+          makeLatest: true
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Install ORAS CLI
+        uses: oras-project/setup-oras@v1
+
+      - name: Tag SBOM and provenance referrers
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update >/dev/null 2>&1 && sudo apt-get install -y jq >/dev/null 2>&1
+          echo "$TAGS" | tr ' ' '\n' | sed '/^$/d' | while read -r fullref; do
+            tag="${fullref##*:}"
+            case "$tag" in
+              latest|[0-9]*)
+                echo "Discovering referrers for $fullref"
+                json=$(oras discover -o json "$fullref" || echo '')
+                if [ -z "$json" ] || [ "$json" = "null" ]; then
+                  echo "No referrers for $fullref"
+                  continue
+                fi
+                sbom_digest=$(echo "$json" | jq -r '[.manifests[] | select((.artifactType|test("syft|spdx|cyclonedx")))] | .[0].digest // empty')
+                prov_digest=$(echo "$json" | jq -r '[.manifests[] | select((.artifactType|test("in-toto")))] | .[0].digest // empty')
+                if [ -n "$sbom_digest" ]; then
+                  echo "Tagging SBOM $sbom_digest as ${tag}-sbom"
+                  oras tag "${IMAGE_NAME}@${sbom_digest}" "${tag}-sbom"
+                fi
+                if [ -n "$prov_digest" ]; then
+                  echo "Tagging provenance $prov_digest as ${tag}-provenance"
+                  oras tag "${IMAGE_NAME}@${prov_digest}" "${tag}-provenance"
+                fi
+                ;;
+              *)
+                echo "Skipping non-release tag: $tag"
+                ;;
+            esac
+          done
