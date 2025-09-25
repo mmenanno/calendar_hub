@@ -36,6 +36,16 @@ Rails.application.routes.draw do
     end
   end
 
+  resources :filter_rules, only: [:index, :create, :destroy, :edit, :update] do
+    collection do
+      post :reorder
+      post :test
+    end
+    member do
+      patch :toggle
+    end
+  end
+
   get "/realtime", to: "realtime#show", as: :realtime
   post "/realtime/ping", to: "realtime#ping", as: :realtime_ping
   namespace :admin do

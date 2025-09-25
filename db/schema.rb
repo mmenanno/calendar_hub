@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_25_184026) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_25_214632) do
   create_table "app_settings", force: :cascade do |t|
     t.string "default_time_zone", default: "UTC", null: false
     t.string "default_calendar_identifier"
@@ -100,6 +100,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_25_184026) do
     t.datetime "updated_at", null: false
     t.index ["calendar_source_id", "active", "position"], name: "idx_on_calendar_source_id_active_position_f8d680a321"
     t.index ["calendar_source_id"], name: "index_event_mappings_on_calendar_source_id"
+  end
+
+  create_table "filter_rules", force: :cascade do |t|
+    t.integer "calendar_source_id"
+    t.string "match_type", default: "contains", null: false
+    t.string "pattern", null: false
+    t.string "field_name", default: "title", null: false
+    t.boolean "case_sensitive", default: false, null: false
+    t.boolean "active", default: true, null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["calendar_source_id", "active", "position"], name: "idx_filter_rules_source_active_position"
+    t.index ["calendar_source_id"], name: "index_filter_rules_on_calendar_source_id"
   end
 
   create_table "solid_cable_messages", force: :cascade do |t|
@@ -266,6 +280,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_25_184026) do
   add_foreign_key "calendar_event_audits", "calendar_events"
   add_foreign_key "calendar_events", "calendar_sources"
   add_foreign_key "event_mappings", "calendar_sources"
+  add_foreign_key "filter_rules", "calendar_sources"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

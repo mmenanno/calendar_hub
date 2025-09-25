@@ -49,7 +49,7 @@ module CalendarHub
     def initialize_adapter; end
 
     def upsert_events(fetched_events)
-      fetched_events.map do |fetched|
+      events = fetched_events.map do |fetched|
         event = source.calendar_events.find_or_initialize_by(external_id: fetched.uid)
         event.assign_attributes(
           title: fetched.summary,
@@ -65,6 +65,9 @@ module CalendarHub
         event.save!
         event
       end
+
+      CalendarHub::EventFilter.apply_filters(events)
+      events
     end
 
     def push_updates_to_apple(events)

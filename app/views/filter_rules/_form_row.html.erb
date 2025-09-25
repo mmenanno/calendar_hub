@@ -1,0 +1,49 @@
+<%= turbo_frame_tag dom_id(filter_rule, :row) do %>
+  <tr class="text-slate-300">
+    <td class="px-3 py-2" colspan="7">
+      <%= form_with model: filter_rule, url: filter_rule_path(filter_rule), method: :patch, class: "grid grid-cols-1 gap-4 md:grid-cols-7" do |f| %>
+        <div>
+          <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Source</label>
+          <div class="select-chevron">
+            <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: "All" }, class: select_class) %>
+          </div>
+        </div>
+        <div>
+          <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Field</label>
+          <div class="select-chevron">
+            <%= f.select(:field_name, FilterRule::FIELD_NAMES.values.map { |f| [f.humanize, f] }, {}, class: select_class) %>
+          </div>
+        </div>
+        <div>
+          <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Match</label>
+          <div class="select-chevron">
+            <%= f.select(:match_type, FilterRule::MATCH_TYPES.values.map { |t| [t.humanize, t] }, {}, class: select_class) %>
+          </div>
+        </div>
+        <div class="md:col-span-2">
+          <%= f.label(:pattern, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+          <%= f.text_field(:pattern, class: input_class) %>
+        </div>
+        <div class="flex items-end gap-4">
+          <label class="inline-flex items-center gap-2 text-xs text-slate-400">
+            <%= f.check_box(:case_sensitive) %>
+            Case sensitive
+          </label>
+          <label class="inline-flex items-center gap-2 text-xs text-slate-400">
+            <%= f.check_box(:active) %>
+            Active
+          </label>
+        </div>
+        <div class="flex items-end justify-end gap-2">
+          <%= f.submit("Save", class: "cursor-pointer rounded-lg bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-500") %>
+          <%= link_to(
+                "Cancel",
+                filter_rules_path,
+                data: { turbo_frame: dom_id(filter_rule, :row) },
+                class: "cursor-pointer rounded border border-slate-600 px-3 py-1 text-xs text-slate-300 hover:border-slate-500",
+              ) %>
+        </div>
+      <% end %>
+    </td>
+  </tr>
+<% end %>

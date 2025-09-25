@@ -1,0 +1,99 @@
+<div class="min-h-screen bg-slate-950 text-slate-100">
+  <header class="bg-slate-900/70 backdrop-blur sticky top-0 z-10 border-b border-slate-800">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/20 text-red-300">🚫</span>
+        <div>
+          <h1 class="text-xl font-semibold">Filter Rules</h1>
+          <p class="text-sm text-slate-400">Automatically exclude events from Apple Calendar sync</p>
+        </div>
+      </div>
+      <%= render "shared/top_nav", active: :filter_rules %>
+    </div>
+  </header>
+
+  <section class="mx-auto w-full max-w-6xl px-6 py-8">
+    <%= render "shared/flashes" %>
+
+    <div class="space-y-6">
+      <div id="new_filter_rule_form" class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5" data-controller="collapsible" data-collapsible-key-value="add-filter-rule" data-collapsible-default-open-value="<%= (@filter_rules || FilterRule.all).blank? %>" data-collapsible-remember-value="false">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-lg font-semibold">Add Filter Rule</h2>
+          <button type="button" class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-200 hover:border-slate-500" data-action="collapsible#toggle">
+            <span data-collapsible-target="label">Show</span>
+            <span data-collapsible-target="icon" class="ml-1 inline-block transition-transform">▾</span>
+          </button>
+        </div>
+        <div data-collapsible-target="content" class="hidden">
+          <%= render "filter_rules/form", filter_rule: FilterRule.new %>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-lg font-semibold">Filter Rules</h2>
+          <p class="text-sm text-slate-400">
+            <%= pluralize((@filter_rules || []).count, "rule") %> configured
+          </p>
+        </div>
+
+        <div class="mb-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+          <h3 class="mb-2 text-sm font-medium text-slate-300">Test Filter Rules</h3>
+          <%= form_with url: test_filter_rules_path, method: :post, class: "grid gap-3 md:grid-cols-4", data: { turbo_stream: true } do |f| %>
+            <div>
+              <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Source</label>
+              <div class="select-chevron">
+                <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: "All" }, class: select_class) %>
+              </div>
+            </div>
+            <div>
+              <%= f.label(:sample_title, "Title", class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+              <%= f.text_field(:sample_title, placeholder: "e.g. Team Meeting", class: input_class) %>
+            </div>
+            <div>
+              <%= f.label(:sample_description, "Description", class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+              <%= f.text_field(:sample_description, placeholder: "e.g. Weekly standup", class: input_class) %>
+            </div>
+            <div>
+              <%= f.label(:sample_location, "Location", class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+              <%= f.text_field(:sample_location, placeholder: "e.g. Conference Room A", class: input_class) %>
+            </div>
+            <div class="md:col-span-4 flex justify-end">
+              <%= f.submit("Test", class: "cursor-pointer rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-600") %>
+            </div>
+          <% end %>
+          <div id="filter_test_result" class="mt-4"></div>
+        </div>
+
+        <% if (@filter_rules || []).any? %>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="border-b border-slate-700 text-left">
+                <tr class="text-slate-400">
+                  <th class="px-3 py-2">Source</th>
+                  <th class="px-3 py-2">Field</th>
+                  <th class="px-3 py-2">Match</th>
+                  <th class="px-3 py-2">Pattern</th>
+                  <th class="px-3 py-2">Case Sensitive</th>
+                  <th class="px-3 py-2">Status</th>
+                  <th class="px-3 py-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="filter_rules_list" class="divide-y divide-slate-800 text-slate-300" data-controller="sortable" data-sortable-url-value="<%= reorder_filter_rules_path %>" data-sortable-handle-value=".drag-handle">
+                <% (@filter_rules || []).each do |filter_rule| %>
+                  <%= render "filter_rules/row", filter_rule: filter_rule %>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="py-8 text-center text-slate-400">
+            <span class="mb-2 inline-block text-3xl">🚫</span>
+            <p class="mb-1">No filter rules configured</p>
+            <p class="text-sm">Add your first rule above to start filtering events</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </section>
+</div>
