@@ -86,9 +86,17 @@ jobs:
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: 'mode=max'
+          sbom: true
 
       - name: Install ORAS CLI
         uses: oras-project/setup-oras@v1
+
+      - name: Log in to GHCR for ORAS
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GH_TOKEN" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Tag SBOM and provenance referrers
         env:
@@ -103,12 +111,12 @@ jobs:
               latest|[0-9]*)
                 echo "Discovering referrers for $fullref"
                 json=$(oras discover -o json "$fullref" || echo '')
-                if [ -z "$json" ] || [ "$json" = "null" ]; then
+                if [ -z "$json" ] || [ "$json" = "null" ] || ! echo "$json" | jq -e '.manifests? | length > 0' >/dev/null 2>&1; then
                   echo "No referrers for $fullref"
                   continue
                 fi
-                sbom_digest=$(echo "$json" | jq -r '[.manifests[] | select((.artifactType|test("syft|spdx|cyclonedx")))] | .[0].digest // empty')
-                prov_digest=$(echo "$json" | jq -r '[.manifests[] | select((.artifactType|test("in-toto")))] | .[0].digest // empty')
+                sbom_digest=$(echo "$json" | jq -r '[.manifests[]? | select((.artifactType|test("syft|spdx|cyclonedx")))] | .[0].digest // empty')
+                prov_digest=$(echo "$json" | jq -r '[.manifests[]? | select((.artifactType|test("in-toto")))] | .[0].digest // empty')
                 if [ -n "$sbom_digest" ]; then
                   echo "Tagging SBOM $sbom_digest as ${tag}-sbom"
                   oras tag "${IMAGE_NAME}@${sbom_digest}" "${tag}-sbom"
