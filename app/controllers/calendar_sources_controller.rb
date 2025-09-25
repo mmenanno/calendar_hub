@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class CalendarSourcesController < ApplicationController
-  before_action :set_calendar_source, only: [:show, :edit, :update, :destroy, :sync, :force_sync, :check_destination, :toggle_active, :purge]
+  before_action :set_calendar_source, only: [:show, :edit, :update, :destroy, :sync, :force_sync, :check_destination, :toggle_active, :purge, :unarchive]
 
   def index
     @calendar_sources = CalendarSource.includes(:sync_attempts, :calendar_events).order(:name)
@@ -66,6 +66,11 @@ class CalendarSourcesController < ApplicationController
         format.turbo_stream do
           render(turbo_stream: [
             turbo_stream.update("modal", ""),
+            turbo_stream.replace(
+              view_context.dom_id(@calendar_source, :card),
+              partial: "calendar_sources/source",
+              locals: { source: @calendar_source },
+            ),
             turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t("flashes.calendar_sources.updated") }),
           ])
         end
@@ -80,11 +85,19 @@ class CalendarSourcesController < ApplicationController
     @calendar_source.soft_delete!
     respond_to do |format|
       format.turbo_stream do
-        render(turbo_stream: turbo_stream.append(
-          "toast-anchor",
-          partial: "shared/toast",
-          locals: { message: t("flashes.calendar_sources.archived"), variant: :success },
-        ))
+        render(turbo_stream: [
+          turbo_stream.remove(view_context.dom_id(@calendar_source, :card)),
+          turbo_stream.replace(
+            "archived-sources-section",
+            partial: "calendar_sources/archived_section",
+            locals: { archived_sources: CalendarSource.unscoped.where.not(deleted_at: nil).order(:name) },
+          ),
+          turbo_stream.append(
+            "toast-anchor",
+            partial: "shared/toast",
+            locals: { message: t("flashes.calendar_sources.archived"), variant: :success },
+          ),
+        ])
       end
       format.html { redirect_to(calendar_events_path, notice: t("flashes.calendar_sources.archived")) }
     end
@@ -94,11 +107,20 @@ class CalendarSourcesController < ApplicationController
     PurgeCalendarSourceJob.perform_later(@calendar_source.id)
     respond_to do |format|
       format.turbo_stream do
-        render(turbo_stream: turbo_stream.append(
-          "toast-anchor",
-          partial: "shared/toast",
-          locals: { message: t("flashes.calendar_sources.purge_scheduled"), variant: :success },
-        ))
+        total_archived_count = CalendarSource.unscoped.where.not(deleted_at: nil).count
+
+        streams = [
+          turbo_stream.remove(view_context.dom_id(@calendar_source, :card)),
+          turbo_stream.append(
+            "toast-anchor",
+            partial: "shared/toast",
+            locals: { message: t("flashes.calendar_sources.purge_scheduled"), variant: :success },
+          ),
+        ]
+
+        streams << turbo_stream.remove("archived-sources") if total_archived_count <= 1
+
+        render(turbo_stream: streams)
       end
       format.html { redirect_to(calendar_events_path, notice: t("flashes.calendar_sources.purge_scheduled")) }
     end
@@ -184,10 +206,45 @@ class CalendarSourcesController < ApplicationController
     end
   end
 
+  def unarchive
+    @calendar_source.update!(deleted_at: nil, active: true)
+    respond_to do |format|
+      format.turbo_stream do
+        remaining_archived_count = CalendarSource.unscoped.where.not(deleted_at: nil).count
+
+        streams = [
+          turbo_stream.remove(view_context.dom_id(@calendar_source, :card)),
+          turbo_stream.prepend(
+            "sources-list",
+            render_to_string(partial: "calendar_sources/source", locals: { source: @calendar_source }),
+          ),
+          turbo_stream.append(
+            "toast-anchor",
+            partial: "shared/toast",
+            locals: { message: t("flashes.calendar_sources.unarchived"), variant: :success },
+          ),
+        ]
+
+        streams << if remaining_archived_count.zero?
+          turbo_stream.remove("archived-sources")
+        else
+          turbo_stream.replace(
+            "archived-sources-section",
+            partial: "calendar_sources/archived_section",
+            locals: { archived_sources: CalendarSource.unscoped.where.not(deleted_at: nil).order(:name) },
+          )
+        end
+
+        render(turbo_stream: streams)
+      end
+      format.html { redirect_to(calendar_events_path, notice: t("flashes.calendar_sources.unarchived")) }
+    end
+  end
+
   private
 
   def set_calendar_source
-    scope = action_name == "purge" ? CalendarSource.unscoped : CalendarSource
+    scope = ["purge", "unarchive"].include?(action_name) ? CalendarSource.unscoped : CalendarSource
     @calendar_source = scope.find(params[:id])
   end
 

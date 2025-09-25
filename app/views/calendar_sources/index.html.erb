@@ -39,14 +39,9 @@
         <% end %>
       </section>
 
-      <% if @archived_sources.any? %>
-        <section id="archived-sources" class="space-y-4">
-          <h2 class="mt-6 text-lg font-semibold"><%= t("ui.sources.archived_section") %></h2>
-          <% @archived_sources.each do |source| %>
-            <%= render "calendar_sources/source", source: source %>
-          <% end %>
-        </section>
-      <% end %>
+      <div id="archived-sources-section">
+        <%= render "calendar_sources/archived_section", archived_sources: @archived_sources %>
+      </div>
     </div>
   </section>
 </div>
