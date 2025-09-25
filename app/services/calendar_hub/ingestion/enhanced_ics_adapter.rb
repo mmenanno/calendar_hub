@@ -32,7 +32,14 @@ module CalendarHub
             ics_feed_last_modified: response["Last-Modified"],
           )
 
-          events = CalendarHub::ICS::Parser.new(response.body).events
+          parser = CalendarHub::ICS::Parser.new(response.body, default_time_zone: source.time_zone)
+          events = parser.events.map { |event| to_fetched_event(event) }
+
+          # Filter out events that start before the import_start_date
+          if source.import_start_date.present?
+            events = events.select { |event| event.starts_at >= source.import_start_date }
+          end
+
           { changed: true, events: events }
         else
           raise Ingestion::Error, "HTTP #{response.code}: #{response.message}"

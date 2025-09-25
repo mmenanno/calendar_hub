@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_25_214632) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_25_222724) do
   create_table "app_settings", force: :cascade do |t|
     t.string "default_time_zone", default: "UTC", null: false
     t.string "default_calendar_identifier"
@@ -81,10 +81,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_25_214632) do
     t.string "ics_feed_etag"
     t.string "ics_feed_last_modified"
     t.string "last_change_hash"
+    t.datetime "import_start_date"
     t.index ["active"], name: "index_calendar_sources_on_active"
     t.index ["auto_sync_enabled"], name: "index_calendar_sources_on_auto_sync_enabled"
     t.index ["calendar_identifier"], name: "index_calendar_sources_on_calendar_identifier"
     t.index ["deleted_at"], name: "index_calendar_sources_on_deleted_at"
+    t.index ["import_start_date"], name: "index_calendar_sources_on_import_start_date"
     t.index ["sync_frequency_minutes"], name: "index_calendar_sources_on_sync_frequency_minutes"
   end
 

@@ -20,7 +20,14 @@ module CalendarHub
         return [] if body.nil? # Not modified
 
         parser = CalendarHub::ICS::Parser.new(body, default_time_zone: source.time_zone)
-        parser.events.map { |event| to_fetched_event(event) }
+        events = parser.events.map { |event| to_fetched_event(event) }
+
+        # Filter out events that start before the import_start_date
+        if source.import_start_date.present?
+          events = events.select { |event| event.starts_at >= source.import_start_date }
+        end
+
+        events
       rescue Faraday::Error => error
         raise Error, error.message
       end

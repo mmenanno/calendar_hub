@@ -69,13 +69,13 @@ class CalendarEvent < ApplicationRecord
 
   def refresh_fingerprint
     payload = [
-      title,
-      description,
-      location,
+      title&.to_s&.encode("UTF-8", invalid: :replace, undef: :replace),
+      description&.to_s&.encode("UTF-8", invalid: :replace, undef: :replace),
+      location&.to_s&.encode("UTF-8", invalid: :replace, undef: :replace),
       starts_at.utc.iso8601,
       ends_at.utc.iso8601,
       status,
-      data.to_s,
+      data.to_s.encode("UTF-8", invalid: :replace, undef: :replace),
     ].join("--")
     self.fingerprint = Digest::SHA256.hexdigest(payload)
   end
