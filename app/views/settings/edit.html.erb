@@ -1,0 +1,119 @@
+<div class="min-h-screen bg-slate-950 text-slate-100">
+  <header class="bg-slate-900/70 backdrop-blur sticky top-0 z-10 border-b border-slate-800">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6l4 2" /></svg>
+        </span>
+        <div>
+          <h1 class="text-xl font-semibold"><%= t("ui.settings.header") %></h1>
+          <p class="text-sm text-slate-400"><%= t("ui.settings.subheader") %></p>
+        </div>
+      </div>
+      <%= render "shared/top_nav", active: :settings %>
+    </div>
+  </header>
+
+  <section class="mx-auto w-full max-w-4xl px-6 py-8">
+    <%= render "shared/flashes" %>
+
+    <div class="grid gap-8 lg:grid-cols-[1.2fr,1fr]">
+      <%= form_with model: @settings, url: settings_path, data: { controller: "dirty-form", action: "turbo:submit-end->dirty-form#reset" }, html: { autocomplete: "off", "data-1p-ignore": true, "data-lpignore": true } do |f| %>
+        <div class="space-y-4" id="settings-form">
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+            <h3 class="mb-3 text-base font-semibold"><%= t("ui.settings.defaults") %></h3>
+            <div class="space-y-3">
+              <div>
+                <%= f.label(:default_time_zone, class: "block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+                <div class="select-chevron">
+                  <%= f.time_zone_select(:default_time_zone, ActiveSupport::TimeZone.all, {}, class: select_class) %>
+                </div>
+                <p class="mt-1 text-xs text-slate-400"><%= t("ui.settings.used_when_missing_tz") %></p>
+              </div>
+              <div>
+                <%= f.label(:default_calendar_identifier, t("ui.settings.apple_identifier"), class: "block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+                <%= f.text_field(:default_calendar_identifier, placeholder: t("ui.settings.apple_identifier_placeholder"), class: input_class, data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply" }, autocomplete: "off") %>
+                <p class="mt-1 text-xs text-slate-400"><%= t("ui.settings.default_calendar_hint") %></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+            <h3 class="mb-2 text-base font-semibold"><%= t("ui.settings.base_url") %></h3>
+            <p class="mb-3 text-xs text-slate-400"><%= t("ui.settings.base_url_hint") %></p>
+            <div class="grid gap-3 md:grid-cols-3">
+              <div>
+                <%= f.label(:app_protocol, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+                <div class="select-chevron">
+                  <%= f.select(:app_protocol, [["https", "https"], ["http", "http"]], {}, class: select_class) %>
+                </div>
+              </div>
+              <div>
+                <%= f.label(:app_host, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+                <%= f.text_field(:app_host, placeholder: "hub.tail123.ts.net or localhost", class: input_class, data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply" }, autocomplete: "off", autocapitalize: "none", spellcheck: "false", "data-1p-ignore": true, "data-lpignore": true) %>
+              </div>
+              <div>
+                <%= f.label(:app_port, t("ui.settings.port_label"), class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+                <%= f.number_field(:app_port, placeholder: "e.g. 3000", class: input_class) %>
+                <p class="mt-1 text-xs text-slate-500"><%= t("ui.settings.port_hint") %></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+            <h3 class="mb-2 text-base font-semibold"><%= t("ui.settings.auth_header") %></h3>
+            <p class="mb-3 text-xs text-slate-400"><%= t("ui.settings.auth_hint") %></p>
+            <div class="grid gap-3 md:grid-cols-2">
+              <div>
+                <%= f.label(:apple_username, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+                <%= f.text_field(:apple_username, class: input_class, data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply" }, autocomplete: "off", inputmode: "email", autocapitalize: "none", spellcheck: "false", "data-1p-ignore": true, "data-lpignore": true) %>
+              </div>
+              <div>
+                <%= f.label(:apple_app_password, t("ui.settings.app_password_label"), class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+                <%= f.password_field(:apple_app_password, placeholder: (@settings.apple_app_password.present? ? "••••••••" : ""), autocomplete: "new-password", class: input_class, "data-1p-ignore": true, "data-lpignore": true, autocapitalize: "none", spellcheck: "false") %>
+                <p class="mt-1 text-xs text-slate-500"><%= t("ui.settings.app_password_hint") %></p>
+              </div>
+            </div>
+            <p class="mt-3 text-xs text-slate-500"><%= t("ui.settings.app_password_help") %></p>
+            <div class="mt-2">
+              <button type="button" data-controller="auth-test" data-action="click->auth-test#run" class="cursor-pointer inline-flex items-center rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:border-slate-500"><%= t("ui.settings.test_connection") %></button>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" data-dirty-form-target="save" class="hidden fixed bottom-4 right-4 z-20 rounded-full bg-indigo-500 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-400">
+          <%= t("ui.settings.save_changes") %>
+        </button>
+      <% end %>
+
+      <div class="space-y-4">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5" data-controller="collapsible" data-collapsible-key-value="settings-advanced">
+          <div class="mb-2 flex items-center justify-between">
+            <h3 class="text-base font-semibold"><%= t("ui.settings.advanced") %></h3>
+            <button type="button" class="cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:border-slate-500" data-action="collapsible#toggle">
+              <span data-collapsible-target="label"><%= t("ui.settings.show") %></span>
+              <span data-collapsible-target="icon" class="ml-1 inline-block transition-transform">▾</span>
+            </button>
+          </div>
+          <div data-collapsible-target="content" class="hidden">
+            <div class="space-y-3 text-sm">
+              <div>
+                <p class="text-slate-300"><%= t("ui.settings.verify_realtime") %></p>
+                <%= link_to t("ui.settings.open_realtime"), realtime_path, class: "inline-block rounded-lg border border-slate-700 px-3 py-2 text-slate-200 hover:border-slate-500" %>
+              </div>
+              <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-xs text-slate-300">
+                <% opts = UrlOptions.for_links %>
+                <p class="mb-1"><span class="text-slate-400"><%= t("ui.settings.effective_base_url") %></span> <code><%= opts[:protocol] || "http" %>://<%= opts[:host] %><%= opts[:port] ? ":#{opts[:port]}" : "" %></code></p>
+                <p class="mb-1"><span class="text-slate-400"><%= t("ui.settings.rails_env") %></span> <%= Rails.env %>; <span class="text-slate-400"><%= t("ui.settings.ruby") %></span> <%= RUBY_VERSION %>; <span class="text-slate-400"><%= t("ui.settings.rails") %></span> <%= Rails.version %></p>
+              </div>
+              <div>
+                <%= button_to t("ui.settings.reset_defaults"), reset_settings_path, method: :post, form: { data: { turbo_stream: true, controller: "confirm", confirm_message_value: t("ui.settings.confirm.reset") } }, class: "cursor-pointer inline-flex items-center rounded-lg border border-rose-800 px-3 py-2 text-sm text-rose-200 hover:border-rose-600" %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,47 @@
+<% p = CalendarEventPresenter.new(calendar_event, self) %>
+<%= turbo_frame_tag dom_id(calendar_event) do %>
+  <article id="<%= dom_id(calendar_event) %>" class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-sm shadow-slate-950/40 transition hover:border-slate-700">
+    <div class="flex items-start justify-between gap-4">
+      <div class="space-y-1">
+        <p class="text-xs uppercase tracking-wide text-slate-500">
+          <%= p.starts_at_long %>
+        </p>
+        <div class="flex items-center gap-2">
+          <h3 class="text-lg font-semibold text-slate-100"><%= p.title %></h3>
+          <% if p.excluded? %>
+            <span class="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-300"><%= t("ui.events.excluded") %></span>
+          <% end %>
+        </div>
+        <% if p.title_mapped? %>
+          <p class="text-xs text-slate-500">Original: <span class="text-slate-400"><%= p.original_title %></span></p>
+        <% end %>
+        <% if p.event.description.present? %>
+          <p class="text-sm text-slate-400"><%= p.event.description %></p>
+        <% end %>
+        <dl class="mt-2 grid grid-cols-2 gap-x-6 gap-y-2 text-xs text-slate-400 md:grid-cols-4">
+          <div>
+            <dt class="font-medium text-slate-500"><%= t("ui.events.source") %></dt>
+            <dd><%= p.source_name %></dd>
+          </div>
+          <div>
+            <dt class="font-medium text-slate-500"><%= t("ui.events.location") %></dt>
+            <dd><%= p.location %></dd>
+          </div>
+          <div>
+            <dt class="font-medium text-slate-500"><%= t("ui.events.duration") %></dt>
+            <dd><%= p.duration_precise %></dd>
+          </div>
+          <div>
+            <dt class="font-medium text-slate-500"><%= t("ui.events.status") %></dt>
+            <dd class="capitalize <%= p.status_badge_class %>"><%= p.status %></dd>
+          </div>
+        </dl>
+      </div>
+      <div class="shrink-0 text-right text-xs leading-5 text-slate-500 w-28 sm:w-32 md:w-36 lg:w-40">
+        <p class="mb-2 inline-block"><%= link_to t("ui.common.view"), calendar_event_path(calendar_event), data: { turbo_frame: "_top" }, class: "rounded border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500" %></p>
+        <p class="text-slate-400"><%= t("ui.common.last_synced") %></p>
+        <p class="whitespace-nowrap"><%= p.last_synced_text %></p>
+      </div>
+    </div>
+  </article>
+<% end %>

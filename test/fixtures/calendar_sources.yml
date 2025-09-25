@@ -1,0 +1,16 @@
+provider:
+  name: Provider Source
+  ingestion_url: https://example.com/provider.ics
+  calendar_identifier: personal
+  settings:
+    time_zone: America/Toronto
+    default_status: confirmed
+  active: true
+
+ics_feed:
+  name: Shared ICS Feed
+  ingestion_url: https://example.com/feed.ics
+  calendar_identifier: shared
+  settings:
+    time_zone: UTC
+  active: true

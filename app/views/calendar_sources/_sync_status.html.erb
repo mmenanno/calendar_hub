@@ -1,0 +1,53 @@
+<%# Renders the latest sync attempt for a source via `attempt` local %>
+<% latest = attempt || nil %>
+<div id="sync_status_source_<%= latest&.calendar_source_id || params[:id] || "unknown" %>" class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-xs">
+  <% if latest.present? %>
+    <% presenter = SyncStatusPresenter.new(latest) %>
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 <%= presenter.badge_class %>">
+        <span class="h-1.5 w-1.5 rounded-full <%= presenter.dot_class %>"></span>
+        <%= presenter.status_label %>
+      </span>
+      <% if presenter.started_ago %><span class="text-slate-400">Started <%= presenter.started_ago %></span><% end %>
+      <% if presenter.finished_ago %><span class="text-slate-400">Finished <%= presenter.finished_ago %></span><% end %>
+    </div>
+    <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div>
+        <p class="text-slate-500">Total</p>
+        <p class="text-slate-200"><%= latest.total_events %></p>
+      </div>
+      <div>
+        <p class="text-slate-500">Upserts</p>
+        <p class="text-slate-200"><%= latest.upserts %></p>
+      </div>
+      <div>
+        <p class="text-slate-500">Deletes</p>
+        <p class="text-slate-200"><%= latest.deletes %></p>
+      </div>
+      <div>
+        <p class="text-slate-500">Errors</p>
+        <p class="text-slate-200"><%= latest.errors_count %></p>
+      </div>
+    </div>
+    <% failures = latest.sync_event_results.failures.order(created_at: :desc).limit(5) %>
+    <% if failures.any? %>
+      <div class="mt-3">
+        <p class="mb-1 font-medium text-slate-300">Recent errors</p>
+        <ul class="space-y-1 text-slate-400">
+          <% failures.each do |row| %>
+            <li>
+              <span class="text-slate-500"><%= row.action.capitalize %></span>
+              <code class="mx-1 rounded bg-slate-800 px-1 py-0.5 text-[10px] text-slate-200"><%= row.external_id %></code>
+              — <%= row.error_message %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+    <% if latest.message.present? && latest.failed? %>
+      <p class="mt-2 text-rose-300"><%= latest.message %></p>
+    <% end %>
+  <% else %>
+    <p class="text-slate-400">No sync attempts yet.</p>
+  <% end %>
+</div>

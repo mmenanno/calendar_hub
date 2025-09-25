@@ -1,0 +1,33 @@
+<div class="min-h-screen bg-slate-950 text-slate-100">
+  <div class="mx-auto w-full max-w-3xl px-6 py-10 space-y-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold"><%= @calendar_source.name %></h1>
+      </div>
+      <%= link_to t("ui.sources.edit"), edit_calendar_source_path(@calendar_source), class: "rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:border-slate-500" %>
+    </div>
+
+    <div class="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+      <dl class="grid gap-3 text-sm text-slate-300">
+        <div>
+          <dt class="font-medium text-slate-500"><%= t("ui.sources.ingestion_url") %></dt>
+          <dd class="break-all"><%= @calendar_source.ingestion_url.presence || "—" %></dd>
+        </div>
+        <div>
+          <dt class="font-medium text-slate-500"><%= t("ui.sources.apple_identifier") %></dt>
+          <dd><%= @calendar_source.calendar_identifier %></dd>
+        </div>
+        <div>
+          <dt class="font-medium text-slate-500"><%= t("ui.events.time_zone") %></dt>
+          <dd><%= @calendar_source.time_zone %></dd>
+        </div>
+        <div>
+          <dt class="font-medium text-slate-500"><%= t("ui.common.last_synced") %></dt>
+          <dd><%= @calendar_source.last_synced_at ? time_ago_in_words(@calendar_source.last_synced_at) + " ago" : t("ui.common.never") %></dd>
+        </div>
+      </dl>
+    </div>
+
+    <%= button_to t("ui.sources.sync"), sync_calendar_source_path(@calendar_source), method: :post, class: "rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400", form: { data: { controller: "confirm", confirm_message_value: t("ui.sources.confirm.sync_now") } } %>
+  </div>
+</div>
