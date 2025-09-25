@@ -18,6 +18,8 @@ class CalendarSource < ApplicationRecord
   validates :sync_window_start_hour, :sync_window_end_hour, allow_nil: true, inclusion: { in: 0..23 }
   validates :sync_frequency_minutes, allow_nil: true, numericality: { greater_than: 0 }
 
+  before_create :set_import_start_date
+
   def time_zone
     super.presence || AppSetting.instance.default_time_zone || "UTC"
   end
@@ -143,6 +145,10 @@ class CalendarSource < ApplicationRecord
 
   def requires_ingestion_url?
     true
+  end
+
+  def set_import_start_date
+    self.import_start_date ||= Time.current
   end
 
   def encrypt_payload(value)

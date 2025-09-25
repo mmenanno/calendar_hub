@@ -280,6 +280,7 @@ class CalendarSourcesController < ApplicationController
       :sync_window_end_hour,
       :auto_sync_enabled,
       :sync_frequency_minutes,
+      :import_start_date,
     ])
 
     # Convert blank sync_frequency_minutes to nil so it uses the default

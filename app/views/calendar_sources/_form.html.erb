@@ -30,6 +30,14 @@
       <% end %>
       <p class="mt-1 text-xs text-slate-400"><%= t("ui.sources.required_ics_url") %></p>
     </div>
+    <div>
+      <%= form.label(:import_start_date, "Import Events From", class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
+      <%= form.datetime_local_field(:import_start_date, value: calendar_source.import_start_date&.strftime("%Y-%m-%dT%H:%M"), class: input_class) %>
+      <% if calendar_source.errors[:import_start_date].any? %>
+        <p class="mt-1 text-xs text-rose-300"><%= calendar_source.errors[:import_start_date].to_sentence %></p>
+      <% end %>
+      <p class="mt-1 text-xs text-slate-400">Only events starting on or after this date will be imported. Leave blank to import all events.</p>
+    </div>
   </fieldset>
 
   <fieldset class="space-y-4 rounded-lg border border-slate-800 bg-slate-950/40 p-4">
