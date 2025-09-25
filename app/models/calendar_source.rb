@@ -4,6 +4,7 @@ class CalendarSource < ApplicationRecord
   has_many :calendar_events, dependent: :destroy
   has_many :sync_attempts, dependent: :destroy
   has_many :event_mappings, dependent: :destroy
+  has_many :filter_rules, dependent: :destroy
 
   scope :active, -> { where(active: true) }
   scope :auto_sync_enabled, -> { where(auto_sync_enabled: true) }

@@ -46,4 +46,15 @@ module ApplicationHelper
       "#{base} border-slate-800 bg-slate-900/70 text-slate-200"
     end
   end
+
+  def calendar_hub_logo(type: :textless, **options)
+    case type
+    when :text
+      image_tag("logos/text_logo.png", alt: "Calendar Hub", **options)
+    when :textless
+      image_tag("logos/textless_logo.png", alt: "Calendar Hub", **options)
+    when :favicon
+      image_tag("logos/favicon.png", alt: "Calendar Hub", **options)
+    end
+  end
 end

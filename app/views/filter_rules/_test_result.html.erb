@@ -1,0 +1,19 @@
+<div class="rounded-lg border border-slate-600 bg-slate-800/30 p-3">
+  <div class="mb-2 flex items-center gap-2">
+    <span class="text-sm font-medium text-slate-300">Test Result:</span>
+    <% if should_filter %>
+      <span class="inline-flex items-center rounded-full bg-red-900 px-2 py-1 text-xs font-medium text-red-300">
+        Would be FILTERED (excluded from sync)
+      </span>
+    <% else %>
+      <span class="inline-flex items-center rounded-full bg-green-900 px-2 py-1 text-xs font-medium text-green-300">
+        Would be SYNCED to Apple Calendar
+      </span>
+    <% end %>
+  </div>
+  <div class="text-xs text-slate-400">
+    <div><strong>Title:</strong> <%= input[:title].presence || "—" %></div>
+    <div><strong>Description:</strong> <%= input[:description].presence || "—" %></div>
+    <div><strong>Location:</strong> <%= input[:location].presence || "—" %></div>
+  </div>
+</div>

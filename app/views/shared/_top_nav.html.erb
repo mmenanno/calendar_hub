@@ -2,6 +2,7 @@
   <%= link_to t("navigation.events"), calendar_events_path, class: navigation_link_class(active: local_assigns[:active] == :events) %>
   <%= link_to t("navigation.sources"), calendar_sources_path, class: navigation_link_class(active: local_assigns[:active] == :sources) %>
   <%= link_to t("navigation.mappings"), event_mappings_path, class: navigation_link_class(active: local_assigns[:active] == :mappings) %>
+  <%= link_to "Filters", filter_rules_path, class: navigation_link_class(active: local_assigns[:active] == :filter_rules) %>
   <%= link_to t("navigation.settings"), edit_settings_path, class: navigation_link_class(active: local_assigns[:active] == :settings) %>
   <%= link_to t("navigation.jobs"), admin_jobs_path, class: navigation_link_class(active: local_assigns[:active] == :jobs) %>
   <%= link_to help_path, class: navigation_link_class(active: local_assigns[:active] == :help) do %>

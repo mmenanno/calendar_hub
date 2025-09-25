@@ -21,6 +21,12 @@ en:
       removed: "Mapping removed"
       enabled: "Mapping enabled"
       disabled: "Mapping disabled"
+    filter_rules:
+      enabled: "Filter rule enabled"
+      disabled: "Filter rule disabled"
+      created: "Filter rule created successfully"
+      updated: "Filter rule updated successfully"
+      deleted: "Filter rule deleted successfully"
     realtime:
       broadcast_sent: "Broadcast sent"
     settings:

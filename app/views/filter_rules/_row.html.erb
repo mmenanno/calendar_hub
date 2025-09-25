@@ -1,0 +1,65 @@
+<%= turbo_frame_tag dom_id(filter_rule, :row), data: { sortable_item: filter_rule.id } do %>
+  <tr class="text-slate-300">
+    <td class="px-3 py-2">
+      <div class="flex items-center gap-2">
+        <span class="drag-handle cursor-move text-slate-500 hover:text-slate-300">⋮⋮</span>
+        <span class="text-xs"><%= filter_rule.calendar_source&.name || "All" %></span>
+      </div>
+    </td>
+    <td class="px-3 py-2">
+      <span class="inline-flex items-center rounded-full bg-slate-700 px-2 py-1 text-xs font-medium text-slate-300">
+        <%= filter_rule.field_name.humanize %>
+      </span>
+    </td>
+    <td class="px-3 py-2">
+      <span class="inline-flex items-center rounded-full bg-slate-700 px-2 py-1 text-xs font-medium text-slate-300">
+        <%= filter_rule.match_type.humanize %>
+      </span>
+    </td>
+    <td class="px-3 py-2">
+      <code class="rounded bg-slate-800 px-2 py-1 text-xs"><%= filter_rule.pattern %></code>
+    </td>
+    <td class="px-3 py-2">
+      <% if filter_rule.case_sensitive? %>
+        <span class="text-green-400">Yes</span>
+      <% else %>
+        <span class="text-slate-500">No</span>
+      <% end %>
+    </td>
+    <td class="px-3 py-2">
+      <% if filter_rule.active? %>
+        <span class="inline-flex items-center rounded-full bg-green-900 px-2 py-1 text-xs font-medium text-green-300">
+          Active
+        </span>
+      <% else %>
+        <span class="inline-flex items-center rounded-full bg-slate-700 px-2 py-1 text-xs font-medium text-slate-400">
+          Disabled
+        </span>
+      <% end %>
+    </td>
+    <td class="px-3 py-2 text-right">
+      <div class="flex items-center justify-end gap-2">
+        <%= button_to(
+              filter_rule.active? ? "Disable" : "Enable",
+              toggle_filter_rule_path(filter_rule),
+              method: :patch,
+              form: { data: { turbo_stream: true } },
+              class: "cursor-pointer rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-500",
+            ) %>
+        <%= link_to(
+              "Edit",
+              edit_filter_rule_path(filter_rule),
+              data: { turbo_frame: dom_id(filter_rule, :row) },
+              class: "cursor-pointer rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:border-slate-500",
+            ) %>
+        <%= button_to(
+              "Delete",
+              filter_rule_path(filter_rule),
+              method: :delete,
+              form: { data: { turbo_stream: true, turbo_confirm: "Are you sure?" } },
+              class: "cursor-pointer rounded border border-red-600 px-2 py-1 text-xs text-red-300 hover:border-red-500",
+            ) %>
+      </div>
+    </td>
+  </tr>
+<% end %>
