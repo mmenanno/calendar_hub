@@ -58,7 +58,7 @@
               </div>
               <div>
                 <%= f.label(:app_host, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
-                <%= f.text_field(:app_host, placeholder: "hub.tail123.ts.net or localhost", class: input_class, data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply" }, autocomplete: "off", autocapitalize: "none", spellcheck: "false", "data-1p-ignore": true, "data-lpignore": true) %>
+                <%= f.text_field(:app_host, placeholder: t("ui.settings.placeholder_host"), class: input_class, data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply" }, autocomplete: "off", autocapitalize: "none", spellcheck: "false", "data-1p-ignore": true, "data-lpignore": true) %>
               </div>
               <div>
                 <%= f.label(:app_port, t("ui.settings.port_label"), class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>

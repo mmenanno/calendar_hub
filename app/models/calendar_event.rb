@@ -12,7 +12,12 @@ class CalendarEvent < ApplicationRecord
     cancelled: "cancelled",
   }.freeze
 
-  belongs_to :calendar_source
+  belongs_to :calendar_source, inverse_of: :calendar_events
+
+  # Override the association to bypass soft-delete scope
+  def calendar_source
+    CalendarSource.unscoped.find_by(id: calendar_source_id)
+  end
 
   enum :status, STATUS_VALUES
 

@@ -3,7 +3,7 @@
   <div class="text-sm text-slate-400">Source: <span class="text-slate-300"><%= p.source_name %></span></div>
   <div>
     <%= button_to(
-          event.sync_exempt? ? "Include in Apple Calendar" : "Exclude from Apple Calendar",
+          event.sync_exempt? ? t("ui.events.include") : t("ui.events.exclude"),
           toggle_sync_calendar_event_path(event),
           method: :patch,
           form: { data: { turbo_stream: true } },

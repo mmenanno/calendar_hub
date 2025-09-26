@@ -39,4 +39,16 @@ class CalendarEventTest < ActiveSupport::TestCase
       assert_in_delta Time.zone.parse("2025-09-22 12:00"), @event.reload.synced_at, 1.second
     end
   end
+
+  test "can access soft-deleted calendar source" do
+    # Soft delete the calendar source
+    @event.calendar_source.soft_delete!
+
+    # Reload the event to clear any cached associations
+    @event.reload
+
+    # Should still be able to access the soft-deleted source
+    refute_nil(@event.calendar_source)
+    refute_nil(@event.calendar_source.deleted_at)
+  end
 end

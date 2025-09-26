@@ -22,7 +22,14 @@ class CalendarEventPresenter
   end
 
   def source_name
-    event.calendar_source.name
+    source = event.calendar_source
+    return "Unknown Source" unless source
+
+    if source.deleted_at?
+      "#{source.name} (archived)"
+    else
+      source.name
+    end
   end
 
   def starts_at_long

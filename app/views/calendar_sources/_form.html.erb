@@ -1,12 +1,14 @@
 <%= form_with model: calendar_source, class: "space-y-5", html: { autocomplete: "off", "data-1p-ignore": true, "data-lpignore": true } do |form| %>
   <% if calendar_source.errors.any? %>
     <div class="rounded-lg border border-rose-700/40 bg-rose-950/40 p-4 text-sm text-rose-200">
-      <p class="font-semibold">There were issues with your submission:</p>
+      <p class="font-semibold"><%= t("ui.sources.issues_with_submission") %></p>
       <ul class="list-disc pl-5">
         <% calendar_source.errors.full_messages.each do |message| %>
           <li><%= message %></li>
         <% end %>
       </ul>
+      <%= link_to t("ui.sources.delete"), calendar_source_path(calendar_source), class: "rounded-lg border border-rose-700/40 px-3 py-2 text-sm text-rose-200 hover:border-rose-500", data: { turbo_method: :delete, controller: "confirm", confirm_message_value: t("ui.sources.remove", name: calendar_source.name) } %>
+      <%= form.submit(calendar_source.persisted? ? t("ui.sources.update") : t("ui.sources.create"), class: "cursor-pointer rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400") %>
     </div>
   <% end %>
 

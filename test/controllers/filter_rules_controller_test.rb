@@ -138,4 +138,24 @@ class FilterRulesControllerTest < ActionDispatch::IntegrationTest
       }
     end
   end
+
+  test "should duplicate filter rule" do
+    assert_difference("FilterRule.count") do
+      post duplicate_filter_rule_url(@filter_rule), as: :turbo_stream
+    end
+
+    copy = FilterRule.order(:created_at).last
+
+    assert_equal(@filter_rule.pattern, copy.pattern)
+    assert_equal(@filter_rule.field_name, copy.field_name)
+    assert_equal(@filter_rule.match_type, copy.match_type)
+  end
+
+  test "should not run filter test when no inputs provided" do
+    post test_filter_rules_url,
+      params: { sample_title: "", sample_description: "", sample_location: "" },
+      as: :turbo_stream
+
+    assert_response(:success)
+  end
 end
