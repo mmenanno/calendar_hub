@@ -61,8 +61,15 @@ module CalendarHub
 end
 
 Rails.application.config.after_initialize do
-  # Schedule cache warming after initialization
+  # Skip cache warming during asset precompilation, rake tasks, console, or test
+  next if Rails.application.config.assets&.compile == false ||
+    defined?(Rails::Console) ||
+    File.basename($PROGRAM_NAME) == "rake" ||
+    Rails.env.test? ||
+    ENV["RAILS_ENV"] == "assets" ||
+    ARGV.include?("assets:precompile")
+
   if CalendarHub::CacheWarmer.send(:should_warm_cache?)
-    CacheWarmupJob.set(wait: 1.second).perform_later
+    CacheWarmupJob.set(wait: 3.seconds).perform_later
   end
 end
