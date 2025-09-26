@@ -65,7 +65,7 @@ class EventMappingsController < ApplicationController
                 <div class="mb-3 flex items-center justify-between">
                   <h2 class="text-lg font-semibold"><%= t("ui.mappings.add_rule") %></h2>
                   <button type="button" class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-200 hover:border-slate-500" data-action="collapsible#toggle">
-                    <span data-collapsible-target="label"><%= t("ui.common.show") %></span>
+                    <span data-collapsible-target="label"><%= t("common.actions.show") %></span>
                     <span data-collapsible-target="icon" class="ml-1 inline-block transition-transform">▾</span>
                   </button>
                 </div>
@@ -74,7 +74,7 @@ class EventMappingsController < ApplicationController
                     <div>
                       <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.source") %></label>
                       <div class="select-chevron">
-                        <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: t("ui.common.all") }, class: select_class) %>
+                        <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: t("common.states.all") }, class: select_class) %>
                       </div>
                     </div>
                     <div>

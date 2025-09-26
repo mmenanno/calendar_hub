@@ -6,10 +6,10 @@
       <dl class="mt-2 text-xs text-slate-400">
         <div class="flex gap-2">
           <dt class="font-medium text-slate-500"><%= t("ui.sources.calendar") %></dt>
-          <dd><%= sp.calendar_identifier || t("ui.common.unknown") %></dd>
+          <dd><%= sp.calendar_identifier || t("common.states.unknown") %></dd>
         </div>
         <div class="flex gap-2">
-          <dt class="font-medium text-slate-500"><%= t("ui.common.last_synced") %>:</dt>
+          <dt class="font-medium text-slate-500"><%= t("common.fields.last_synced") %>:</dt>
           <dd><%= sp.last_synced_text %></dd>
         </div>
         <div class="flex gap-2">
@@ -52,7 +52,7 @@
         <!-- Secondary Actions Row (Top) -->
         <div class="flex items-center gap-1">
           <%= button_to t("ui.sources.check_destination"), check_destination_calendar_source_path(source), method: :get, form: { class: "inline", data: { turbo: false } }, class: "cursor-pointer rounded-lg border border-slate-700/50 bg-slate-950/40 px-2 py-1 text-xs text-slate-400 transition hover:border-slate-500 hover:text-slate-200 backdrop-blur-sm" %>
-          <%= button_to t("ui.sources.archive"),
+          <%= button_to t("common.actions.archive"),
                 calendar_source_path(source),
                 method: :delete,
                 form: { class: "inline", data: { controller: "confirm", confirm_message_value: t("ui.sources.confirm.archive", name: source.name) } },
@@ -63,7 +63,7 @@
         <div class="flex items-center gap-1">
           <!-- Sync Group -->
           <div class="flex items-center gap-1 rounded-lg border border-slate-800/50 bg-slate-950/60 px-2 py-1 backdrop-blur-sm">
-            <%= button_to t("ui.sources.sync"), sync_calendar_source_path(source), method: :post, form: { class: "inline", data: { turbo_stream: true } }, class: "cursor-pointer rounded border-0 bg-transparent px-2 py-1 text-xs text-slate-200 transition hover:bg-slate-800" %>
+            <%= button_to t("common.actions.sync"), sync_calendar_source_path(source), method: :post, form: { class: "inline", data: { turbo_stream: true } }, class: "cursor-pointer rounded border-0 bg-transparent px-2 py-1 text-xs text-slate-200 transition hover:bg-slate-800" %>
             <%= button_to t("ui.sources.force_sync"), force_sync_calendar_source_path(source), method: :post, form: { class: "inline", data: { turbo_stream: true, controller: "confirm", confirm_message_value: t("ui.sources.confirm.force_sync", name: source.name) } }, class: "cursor-pointer rounded border-0 bg-transparent px-2 py-1 text-xs text-slate-200 transition hover:bg-slate-800" %>
             <div class="h-4 w-px bg-slate-700"></div>
             <%= button_to(source.auto_sync_enabled? ? "Auto: ON" : "Auto: OFF", toggle_auto_sync_calendar_source_path(source), method: :patch, form: { class: "inline", data: { turbo_stream: true } }, class: "cursor-pointer rounded border-0 bg-transparent px-2 py-1 text-xs transition hover:bg-slate-800 #{source.auto_sync_enabled? ? "text-indigo-300" : "text-slate-400"}") %>
@@ -71,19 +71,19 @@
 
           <!-- Management Group -->
           <div class="flex items-center gap-1 rounded-lg border border-slate-800/50 bg-slate-950/60 px-2 py-1 backdrop-blur-sm">
-            <%= link_to t("ui.sources.edit"), edit_calendar_source_path(source), data: { turbo_frame: "modal" }, class: "cursor-pointer rounded border-0 bg-transparent px-2 py-1 text-xs text-slate-200 transition hover:bg-slate-800" %>
-            <%= button_to(source.active? ? t("ui.sources.pause") : t("ui.sources.resume"), toggle_active_calendar_source_path(source), method: :patch, form: { class: "inline", data: { turbo_stream: true } }, class: "cursor-pointer rounded border-0 bg-transparent px-2 py-1 text-xs text-slate-200 transition hover:bg-slate-800") %>
+            <%= link_to t("common.actions.edit"), edit_calendar_source_path(source), data: { turbo_frame: "modal" }, class: "cursor-pointer rounded border-0 bg-transparent px-2 py-1 text-xs text-slate-200 transition hover:bg-slate-800" %>
+            <%= button_to(source.active? ? t("common.actions.pause") : t("common.actions.resume"), toggle_active_calendar_source_path(source), method: :patch, form: { class: "inline", data: { turbo_stream: true } }, class: "cursor-pointer rounded border-0 bg-transparent px-2 py-1 text-xs text-slate-200 transition hover:bg-slate-800") %>
           </div>
         </div>
       </div>
     <% else %>
       <div class="flex items-center gap-1">
-        <%= button_to t("ui.sources.unarchive"),
+        <%= button_to t("common.actions.unarchive"),
               unarchive_calendar_source_path(source),
               method: :patch,
               form: { class: "inline", data: { turbo_stream: true } },
               class: "cursor-pointer rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs text-slate-200 transition hover:border-slate-500 backdrop-blur-sm" %>
-        <%= button_to t("ui.sources.purge"),
+        <%= button_to t("common.actions.purge"),
               purge_calendar_source_path(source),
               method: :delete,
               form: { class: "inline", data: { controller: "confirm", confirm_message_value: t("ui.sources.confirm.purge", name: source.name) } },

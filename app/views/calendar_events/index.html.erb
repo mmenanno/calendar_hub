@@ -40,7 +40,7 @@
                 </div>
                 <%= form.text_field(:q, value: params[:q], placeholder: t("ui.events.search_placeholder"), class: input_class, data: { action: "input->auto-submit#submit" }) %>
                 <% if params[:source_id].present? %>
-                  <%= link_to t("ui.common.clear"), calendar_events_path, class: "text-sm text-slate-400 hover:text-slate-200" %>
+                  <%= link_to t("common.actions.clear"), calendar_events_path, class: "text-sm text-slate-400 hover:text-slate-200" %>
                 <% end %>
               <% end %>
               <%= link_to t("navigation.sync_all"), sync_all_calendar_sources_path, class: "rounded-lg bg-indigo-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-indigo-400", data: { turbo_method: :post } %>
@@ -68,7 +68,7 @@
           <div class="mb-4 flex items-center justify-between">
             <h3 class="text-base font-semibold text-slate-100"><%= t("ui.sources.header") %></h3>
             <div class="flex items-center gap-3">
-              <%= link_to t("ui.common.manage"), calendar_sources_path, class: "text-sm text-indigo-300 hover:text-indigo-200" %>
+              <%= link_to t("common.actions.manage"), calendar_sources_path, class: "text-sm text-indigo-300 hover:text-indigo-200" %>
             </div>
           </div>
           <div class="space-y-3">
