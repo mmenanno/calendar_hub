@@ -7,11 +7,21 @@ class CalendarEventsController < ApplicationController
 
     scope = CalendarEvent.upcoming
     scope = scope.where(calendar_source_id: @selected_source.id) if @selected_source
-    if params[:q].present?
-      q = "%#{params[:q].strip}%"
-      scope = scope.where("title LIKE ? OR location LIKE ?", q, q)
-    end
+
+    # Hide excluded events by default unless explicitly shown
+    show_excluded = params[:show_excluded] == "true"
+    scope = scope.where(sync_exempt: false) unless show_excluded
+
     @events = scope.includes(:calendar_source).limit(200)
+
+    if params[:q].present?
+      @events = filter_events_by_search(@events, params[:q].strip)
+    end
+    @show_excluded = show_excluded
+
+    if turbo_frame_request_id == "events-list"
+      render(partial: "events_list", locals: { events: @events, selected_source: @selected_source })
+    end
   end
 
   def show
@@ -36,6 +46,33 @@ class CalendarEventsController < ApplicationController
         render(turbo_stream: streams)
       end
       format.html { redirect_to(calendar_event_path(@event), notice: msg) }
+    end
+  end
+
+  private
+
+  def filter_events_by_search(events, search_term)
+    return events if search_term.blank?
+
+    search_term = search_term.downcase
+
+    events.select do |event|
+      search_data = event_search_data(event)
+
+      search_data[:original_title].include?(search_term) ||
+        search_data[:mapped_title].include?(search_term) ||
+        search_data[:location].include?(search_term)
+    end
+  end
+
+  def event_search_data(event)
+    cache_key = "event_search_data/#{event.id}/#{event.updated_at.to_i}"
+    Rails.cache.fetch(cache_key, expires_in: 30.minutes) do
+      {
+        original_title: event.title.to_s.downcase,
+        mapped_title: CalendarHub::NameMapper.apply(event.title, source: event.calendar_source).to_s.downcase,
+        location: event.location.to_s.downcase,
+      }
     end
   end
 end

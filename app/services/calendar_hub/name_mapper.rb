@@ -6,7 +6,7 @@ module CalendarHub
       def apply(title, source: nil)
         return title if title.blank?
 
-        rules = EventMapping.active.where(calendar_source_id: [nil, source&.id])
+        rules = cached_active_mappings(source)
         rules.each do |rule|
           case rule.match_type
           when "equals"
@@ -41,6 +41,15 @@ module CalendarHub
           a.include?(b)
         else
           false
+        end
+      end
+
+      private
+
+      def cached_active_mappings(source)
+        cache_key = "name_mapper/active_mappings/#{source&.id || "global"}"
+        Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
+          EventMapping.active.where(calendar_source_id: [nil, source&.id]).to_a
         end
       end
     end

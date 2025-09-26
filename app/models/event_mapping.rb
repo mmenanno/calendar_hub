@@ -16,4 +16,14 @@ class EventMapping < ApplicationRecord
 
   validates :match_type, inclusion: { in: MATCH_TYPES.values }
   validates :pattern, :replacement, presence: true
+
+  after_destroy :clear_name_mapper_cache
+  after_save :clear_name_mapper_cache
+
+  private
+
+  def clear_name_mapper_cache
+    cache_key = "name_mapper/active_mappings/#{calendar_source_id || "global"}"
+    Rails.cache.delete(cache_key)
+  end
 end
