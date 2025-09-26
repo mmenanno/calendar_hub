@@ -52,9 +52,13 @@ module CalendarHub
             when "DTSTART"
               tzid ||= params["TZID"]
               current_event[:dtstart] = parse_datetime(value, params)
+              current_event[:dtstart_params] = params
+              current_event[:dtstart_raw] = value
             when "DTEND"
               tzid ||= params["TZID"]
               current_event[:dtend] = parse_datetime(value, params)
+              current_event[:dtend_params] = params
+              current_event[:dtend_raw] = value
             else
               current_event[key.downcase.to_sym] = value
             end
@@ -67,15 +71,23 @@ module CalendarHub
       def build_event(attributes, tzid)
         return if attributes[:uid].blank? || attributes[:dtstart].blank?
 
+        # Detect all-day events by checking if DTSTART has VALUE=DATE parameter
+        all_day = all_day_event?(attributes)
+
+        # For all-day events, ensure proper time handling
+        starts_at = attributes[:dtstart]
+        ends_at = attributes[:dtend] || (all_day ? starts_at + 1.day : starts_at)
+
         Event.new(
           uid: attributes[:uid],
           summary: attributes[:summary],
           description: attributes[:description],
           location: attributes[:location],
-          starts_at: attributes[:dtstart],
-          ends_at: attributes[:dtend] || attributes[:dtstart],
+          starts_at: starts_at,
+          ends_at: ends_at,
           status: attributes[:status] || "confirmed",
           time_zone: tzid || default_time_zone,
+          all_day: all_day,
           raw_properties: attributes,
         )
       end
@@ -116,16 +128,29 @@ module CalendarHub
 
       def parse_datetime(value, params)
         tzid = params["TZID"]
-        normalized = normalize_datetime_string(value)
 
-        if value.end_with?("Z")
-          Time.strptime(value, "%Y%m%dT%H%M%SZ").utc
-        elsif tzid && (zone = ActiveSupport::TimeZone[tzid])
-          zone.parse(normalized)
+        # Handle all-day events (DATE format without time)
+        if params["VALUE"] == "DATE" || value.exclude?("T")
+          # For all-day events, parse as date and set to beginning of day in the appropriate timezone
+          date_value = Date.strptime(value, "%Y%m%d")
+          if tzid && (zone = ActiveSupport::TimeZone[tzid])
+            zone.local(date_value.year, date_value.month, date_value.day, 0, 0, 0)
+          else
+            default_zone.local(date_value.year, date_value.month, date_value.day, 0, 0, 0)
+          end
         else
-          default_zone.parse(normalized)
+          normalized = normalize_datetime_string(value)
+
+          if value.end_with?("Z")
+            Time.strptime(value, "%Y%m%dT%H%M%SZ").utc
+          elsif tzid && (zone = ActiveSupport::TimeZone[tzid])
+            zone.parse(normalized)
+          else
+            default_zone.parse(normalized)
+          end
         end
       rescue ArgumentError
+        normalized = normalize_datetime_string(value)
         default_zone.parse(normalized)
       end
 
@@ -157,6 +182,17 @@ module CalendarHub
 
       def decode_value(value)
         value.gsub("\\n", "\n")
+      end
+
+      def all_day_event?(attributes)
+        # Check if DTSTART has VALUE=DATE parameter (indicates all-day event)
+        dtstart_params = attributes[:dtstart_params] || {}
+        return true if dtstart_params["VALUE"] == "DATE"
+
+        # Also check if the date value doesn't contain 'T' (time component)
+        # This handles cases where VALUE=DATE parameter might be missing but it's still a date-only value
+        dtstart_raw = attributes[:dtstart_raw] || ""
+        dtstart_raw.to_s.exclude?("T")
       end
     end
   end

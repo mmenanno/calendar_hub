@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_25_222724) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_26_140937) do
   create_table "app_settings", force: :cascade do |t|
     t.string "default_time_zone", default: "UTC", null: false
     t.string "default_calendar_identifier"
@@ -54,6 +54,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_25_222724) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "sync_exempt", default: false, null: false
+    t.boolean "all_day", default: false, null: false
+    t.index ["all_day"], name: "index_calendar_events_on_all_day"
     t.index ["calendar_source_id", "external_id"], name: "index_calendar_events_on_calendar_source_id_and_external_id", unique: true
     t.index ["calendar_source_id", "starts_at"], name: "idx_events_source_starts"
     t.index ["calendar_source_id"], name: "index_calendar_events_on_calendar_source_id"

@@ -58,6 +58,7 @@ module CalendarHub
           starts_at: fetched.starts_at,
           ends_at: fetched.ends_at,
           status: fetched.status,
+          all_day: fetched.all_day || false,
           source_updated_at: Time.current,
           data: (event.data || {}).merge(fetched.raw_properties || {}),
         )

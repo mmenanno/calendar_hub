@@ -22,6 +22,7 @@ module CalendarHub
           ends_at: Time.zone.parse("2025-09-24 11:00"),
           status: "confirmed",
           time_zone: @source.time_zone,
+          all_day: false,
           raw_properties: { provider_data: { practitioner: "Dr. Smith" } },
         ),
       ]

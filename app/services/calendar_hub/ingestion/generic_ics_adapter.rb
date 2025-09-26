@@ -65,6 +65,7 @@ module CalendarHub
           ends_at: event.ends_at,
           status: normalized_status(event.status),
           time_zone: source.time_zone,
+          all_day: event.all_day || false,
           raw_properties: event.raw_properties,
         )
       end

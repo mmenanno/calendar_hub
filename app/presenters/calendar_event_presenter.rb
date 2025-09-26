@@ -38,26 +38,41 @@ class CalendarEventPresenter
   end
 
   def starts_at_long
-    view.l(event.starts_at.in_time_zone(event.time_zone), format: :long)
+    if event.all_day?
+      view.l(event.starts_at.in_time_zone(event.time_zone).to_date, format: :long)
+    else
+      view.l(event.starts_at.in_time_zone(event.time_zone), format: :long)
+    end
   end
 
   def ends_at_long
-    view.l(event.ends_at.in_time_zone(event.time_zone), format: :long)
+    if event.all_day?
+      view.l(event.ends_at.in_time_zone(event.time_zone).to_date, format: :long)
+    else
+      view.l(event.ends_at.in_time_zone(event.time_zone), format: :long)
+    end
   end
 
   # Provide a precise duration like "80 minutes" or "1 hour 20 minutes"
   def duration_precise
-    total_seconds = (event.ends_at - event.starts_at).to_i
-    total_minutes = (total_seconds / 60.0).round
-    return "0 minutes" if total_minutes <= 0
+    if event.all_day?
+      days = event.duration_days
+      return "All day" if days <= 1
 
-    hours = total_minutes / 60
-    minutes = total_minutes % 60
+      view.pluralize(days, "day")
+    else
+      total_seconds = (event.ends_at - event.starts_at).to_i
+      total_minutes = (total_seconds / 60.0).round
+      return "0 minutes" if total_minutes <= 0
 
-    parts = []
-    parts << view.pluralize(hours, "hour") if hours.positive?
-    parts << view.pluralize(minutes, "minute") if minutes.positive?
-    parts.join(" ")
+      hours = total_minutes / 60
+      minutes = total_minutes % 60
+
+      parts = []
+      parts << view.pluralize(hours, "hour") if hours.positive?
+      parts << view.pluralize(minutes, "minute") if minutes.positive?
+      parts.join(" ")
+    end
   end
 
   def last_synced_text
@@ -76,5 +91,17 @@ class CalendarEventPresenter
 
   def excluded?
     event.sync_exempt?
+  end
+
+  def time_display
+    if event.all_day?
+      if event.duration_days <= 1
+        "All day"
+      else
+        "#{starts_at_long} - #{ends_at_long}"
+      end
+    else
+      starts_at_long.to_s
+    end
   end
 end

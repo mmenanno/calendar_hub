@@ -45,6 +45,7 @@ module CalendarHub
           ends_at: 2.weeks.ago + 1.hour,
           status: "confirmed",
           time_zone: @source.time_zone,
+          all_day: false,
           raw_properties: {},
         )
 
@@ -57,6 +58,7 @@ module CalendarHub
           ends_at: 2.days.ago + 1.hour,
           status: "confirmed",
           time_zone: @source.time_zone,
+          all_day: false,
           raw_properties: {},
         )
 

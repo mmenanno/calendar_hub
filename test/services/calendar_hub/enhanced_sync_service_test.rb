@@ -4,7 +4,7 @@ require "test_helper"
 
 module CalendarHub
   class EnhancedSyncServiceTest < ActiveSupport::TestCase
-    MockEvent = Struct.new(:uid, :summary, :description, :location, :starts_at, :ends_at, :status, :raw_properties)
+    MockEvent = Struct.new(:uid, :summary, :description, :location, :starts_at, :ends_at, :status, :all_day, :raw_properties)
 
     setup do
       @source = calendar_sources(:provider)
@@ -40,6 +40,7 @@ module CalendarHub
           1.hour.from_now,
           2.hours.from_now,
           "confirmed",
+          false,
           {},
         ),
       ]
@@ -74,6 +75,7 @@ module CalendarHub
           1.hour.from_now,
           2.hours.from_now,
           "confirmed",
+          false,
           {},
         ),
       ]

@@ -26,7 +26,9 @@ class CalendarEvent < ApplicationRecord
 
   validates :external_id, :title, :starts_at, :ends_at, :time_zone, presence: true
   validates :external_id, uniqueness: { scope: :calendar_source_id }
+  validates :all_day, inclusion: { in: [true, false] }
   validate :ensure_end_after_start
+  validate :ensure_all_day_times_are_valid
 
   before_validation :assign_default_time_zone
   before_save :refresh_fingerprint
@@ -60,6 +62,16 @@ class CalendarEvent < ApplicationRecord
     update!(synced_at: Time.current)
   end
 
+  def all_day?
+    all_day
+  end
+
+  def duration_days
+    return 0 unless all_day?
+
+    (ends_at.to_date - starts_at.to_date).to_i
+  end
+
   private
 
   def assign_default_time_zone
@@ -70,6 +82,22 @@ class CalendarEvent < ApplicationRecord
     return if ends_at.blank? || starts_at.blank?
 
     errors.add(:ends_at, "must be after the start time") if ends_at < starts_at
+  end
+
+  def ensure_all_day_times_are_valid
+    return unless all_day?
+    return if starts_at.blank? || ends_at.blank?
+
+    start_zone = starts_at.in_time_zone(time_zone)
+    end_zone = ends_at.in_time_zone(time_zone)
+
+    if start_zone.hour.nonzero? || start_zone.min.nonzero? || start_zone.sec.nonzero?
+      errors.add(:starts_at, "must be at beginning of day for all-day events")
+    end
+
+    if end_zone.hour.nonzero? || end_zone.min.nonzero? || end_zone.sec.nonzero?
+      errors.add(:ends_at, "must be at beginning of day for all-day events")
+    end
   end
 
   def refresh_fingerprint
