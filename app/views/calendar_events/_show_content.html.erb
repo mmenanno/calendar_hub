@@ -27,7 +27,7 @@
       <p><%= p.duration_precise %></p>
     </div>
     <div class="text-right md:text-left">
-      <p class="text-slate-500"><%= t("ui.common.last_synced") %></p>
+      <p class="text-slate-500"><%= t("common.fields.last_synced") %></p>
       <p><%= p.last_synced_text %></p>
     </div>
   </div>
@@ -67,7 +67,7 @@
         <div class="flex items-center gap-2">
           <code class="rounded bg-slate-800 px-2 py-1 text-xs"><%= link_url %></code>
           <button type="button" data-controller="clipboard" data-clipboard-text-value="<%= link_url %>" data-action="click->clipboard#copy" class="cursor-pointer rounded border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:border-slate-500">
-            <span data-clipboard-target="label"><%= t("ui.common.copy") %></span>
+            <span data-clipboard-target="label"><%= t("common.actions.copy") %></span>
           </button>
         </div>
       </dd>

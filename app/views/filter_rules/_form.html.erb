@@ -31,6 +31,6 @@
     <%= t("ui.mappings.active") %>
   </label>
   <div class="flex justify-end gap-2">
-    <%= f.submit(filter_rule.persisted? ? t("ui.common.save") : t("ui.filter_rules.add_rule_button"), class: "cursor-pointer rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400") %>
+    <%= f.submit(filter_rule.persisted? ? t("common.actions.save") : t("ui.filter_rules.add_rule_button"), class: "cursor-pointer rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400") %>
   </div>
 <% end %>

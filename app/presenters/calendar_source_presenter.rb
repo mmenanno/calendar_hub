@@ -15,7 +15,7 @@ class CalendarSourcePresenter
   end
 
   def last_synced_text
-    source.last_synced_at ? "#{view.time_ago_in_words(source.last_synced_at)} ago" : I18n.t("ui.common.never")
+    source.last_synced_at ? "#{view.time_ago_in_words(source.last_synced_at)} ago" : I18n.t("common.states.never")
   end
 
   def pending_count
@@ -48,9 +48,9 @@ class CalendarSourcePresenter
   end
 
   def active_label
-    return I18n.t("ui.sources.archived") if deleted?
+    return I18n.t("common.states.archived") if deleted?
 
-    source.active? ? I18n.t("ui.sources.active") : I18n.t("ui.sources.paused")
+    source.active? ? I18n.t("common.states.active") : I18n.t("common.states.paused")
   end
 
   def deleted?

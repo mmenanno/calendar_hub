@@ -9,7 +9,7 @@
         <div>
           <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.source") %></label>
           <div class="select-chevron">
-            <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: t("ui.common.all") }, class: select_class) %>
+            <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: t("common.states.all") }, class: select_class) %>
           </div>
         </div>
         <div>
@@ -36,8 +36,8 @@
             <%= t("ui.mappings.active") %>
           </label>
           <div class="ml-auto flex gap-2">
-            <%= f.submit(t("ui.common.save"), class: "cursor-pointer rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-400") %>
-            <button type="button" onclick="document.getElementById('modal').innerHTML=''" class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:border-slate-500"><%= t("ui.common.cancel") %></button>
+            <%= f.submit(t("common.actions.save"), class: "cursor-pointer rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-400") %>
+            <button type="button" onclick="document.getElementById('modal').innerHTML=''" class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:border-slate-500"><%= t("common.actions.cancel") %></button>
           </div>
         </div>
       <% end %>

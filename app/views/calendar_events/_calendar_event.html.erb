@@ -38,8 +38,8 @@
         </dl>
       </div>
       <div class="shrink-0 text-right text-xs leading-5 text-slate-500 w-28 sm:w-32 md:w-36 lg:w-40">
-        <p class="mb-2 inline-block"><%= link_to t("ui.common.view"), calendar_event_path(calendar_event), data: { turbo_frame: "_top" }, class: "rounded border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500" %></p>
-        <p class="text-slate-400"><%= t("ui.common.last_synced") %></p>
+        <p class="mb-2 inline-block"><%= link_to t("common.actions.view"), calendar_event_path(calendar_event), data: { turbo_frame: "_top" }, class: "rounded border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500" %></p>
+        <p class="text-slate-400"><%= t("common.fields.last_synced") %></p>
         <p class="whitespace-nowrap"><%= p.last_synced_text %></p>
       </div>
     </div>

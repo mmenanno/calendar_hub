@@ -2,8 +2,8 @@
   <turbo-frame id="modal">
     <div class="modal-card">
       <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-lg font-semibold"><%= t("ui.sources.edit") %> <%= @calendar_source.name %></h2>
-        <button onclick="document.getElementById('modal').innerHTML=''" class="cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"><%= t("ui.common.close") %></button>
+        <h2 class="text-lg font-semibold"><%= t("common.actions.edit") %> <%= @calendar_source.name %></h2>
+        <button onclick="document.getElementById('modal').innerHTML=''" class="cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"><%= t("common.actions.close") %></button>
       </div>
       <%= render "form", calendar_source: @calendar_source %>
     </div>
@@ -11,7 +11,7 @@
 <% else %>
   <div class="min-h-screen bg-slate-950 text-slate-100">
     <div class="mx-auto w-full max-w-3xl px-6 py-10">
-      <h1 class="mb-6 text-2xl font-semibold"><%= t("ui.sources.edit") %> <%= @calendar_source.name %></h1>
+      <h1 class="mb-6 text-2xl font-semibold"><%= t("common.actions.edit") %> <%= @calendar_source.name %></h1>
       <%= render "form", calendar_source: @calendar_source %>
     </div>
   </div>

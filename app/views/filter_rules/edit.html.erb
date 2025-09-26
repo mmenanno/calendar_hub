@@ -3,7 +3,7 @@
     <div class="modal-card">
       <div class="mb-4 flex items-center justify-between">
         <h2 class="text-lg font-semibold"><%= t("ui.filter_rules.edit_rule") %></h2>
-        <button onclick="document.getElementById('modal').innerHTML=''" class="cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"><%= t("ui.common.close") %></button>
+        <button onclick="document.getElementById('modal').innerHTML=''" class="cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"><%= t("common.actions.close") %></button>
       </div>
       <%= render "filter_rules/form", filter_rule: @filter_rule %>
     </div>

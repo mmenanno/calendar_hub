@@ -1,6 +1,6 @@
 <tr id="<%= dom_id(filter_rule, :row) %>" class="text-slate-300" draggable="true" data-id="<%= filter_rule.id %>" data-sortable-target="item">
   <td class="px-3 py-2 drag-handle text-slate-400">≡</td>
-  <td class="px-3 py-2"><%= filter_rule.calendar_source&.name || t("ui.common.all") %></td>
+  <td class="px-3 py-2"><%= filter_rule.calendar_source&.name || t("common.states.all") %></td>
   <td class="px-3 py-2">
     <span class="inline-flex items-center rounded-full bg-slate-700 px-2 py-1 text-xs font-medium text-slate-300"><%= filter_rule.field_name.humanize %></span>
   </td>
@@ -8,7 +8,7 @@
     <span class="inline-flex items-center rounded-full bg-slate-700 px-2 py-1 text-xs font-medium text-slate-300"><%= filter_rule.match_type.humanize %></span>
   </td>
   <td class="px-3 py-2 font-mono"><%= filter_rule.pattern %></td>
-  <td class="px-3 py-2"><%= filter_rule.case_sensitive? ? t("ui.common.yes") : t("ui.common.no") %></td>
+  <td class="px-3 py-2"><%= filter_rule.case_sensitive? ? t("common.states.yes") : t("common.states.no") %></td>
   <td class="px-3 py-2">
     <%= form_with url: toggle_filter_rule_path(filter_rule), method: :patch, data: { turbo_stream: true }, class: "inline-flex" do %>
       <% on = filter_rule.active? %>
@@ -16,18 +16,18 @@
         <span class="relative inline-flex h-4 w-8 items-center rounded-full transition <%= on ? "bg-emerald-600/70" : "bg-slate-700" %>">
           <span class="inline-block h-3 w-3 transform rounded-full bg-white transition <%= on ? "translate-x-4" : "translate-x-1" %>"></span>
         </span>
-        <span class="<%= on ? "text-emerald-300" : "text-slate-400" %>"><%= on ? t("ui.common.on") : t("ui.common.off") %></span>
+        <span class="<%= on ? "text-emerald-300" : "text-slate-400" %>"><%= on ? t("common.states.on") : t("common.states.off") %></span>
       </button>
     <% end %>
   </td>
   <td class="px-3 py-2 pr-6 text-right">
     <div class="inline-flex items-center gap-2">
-      <%= link_to t("ui.common.edit"), edit_filter_rule_path(filter_rule), data: { turbo_frame: "modal" }, class: "cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:border-slate-500" %>
+      <%= link_to t("common.actions.edit"), edit_filter_rule_path(filter_rule), data: { turbo_frame: "modal" }, class: "cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:border-slate-500" %>
       <%= form_with url: duplicate_filter_rule_path(filter_rule), method: :post, data: { turbo_stream: true }, class: "inline" do %>
-        <button type="submit" class="cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-200 transition hover:border-slate-500"><%= t("ui.common.duplicate") %></button>
+        <button type="submit" class="cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-200 transition hover:border-slate-500"><%= t("common.actions.duplicate") %></button>
       <% end %>
       <%= form_with url: filter_rule_path(filter_rule), method: :delete, data: { turbo_stream: true, controller: "confirm", confirm_message_value: t("ui.filter_rules.confirm_delete", name: filter_rule.pattern) }, class: "inline" do %>
-        <button type="submit" class="cursor-pointer rounded-lg border border-red-600 px-2 py-1 text-xs text-red-300 transition hover:border-red-500"><%= t("ui.common.remove") %></button>
+        <button type="submit" class="cursor-pointer rounded-lg border border-red-600 px-2 py-1 text-xs text-red-300 transition hover:border-red-500"><%= t("common.actions.remove") %></button>
       <% end %>
     </div>
   </td>

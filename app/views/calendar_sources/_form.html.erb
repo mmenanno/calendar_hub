@@ -7,7 +7,7 @@
           <li><%= message %></li>
         <% end %>
       </ul>
-      <%= link_to t("ui.sources.delete"), calendar_source_path(calendar_source), class: "rounded-lg border border-rose-700/40 px-3 py-2 text-sm text-rose-200 hover:border-rose-500", data: { turbo_method: :delete, controller: "confirm", confirm_message_value: t("ui.sources.remove", name: calendar_source.name) } %>
+      <%= link_to t("common.actions.delete"), calendar_source_path(calendar_source), class: "rounded-lg border border-rose-700/40 px-3 py-2 text-sm text-rose-200 hover:border-rose-500", data: { turbo_method: :delete, controller: "confirm", confirm_message_value: t("ui.sources.remove", name: calendar_source.name) } %>
       <%= form.submit(calendar_source.persisted? ? t("ui.sources.update") : t("ui.sources.create"), class: "cursor-pointer rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400") %>
     </div>
   <% end %>
@@ -73,13 +73,13 @@
       <div>
         <%= form.label(:sync_window_start_hour, t("ui.sources.sync_window_start"), class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
         <div class="select-chevron">
-          <%= form.select(:sync_window_start_hour, (0..23).map { |h| ["#{h}:00", h] }, { include_blank: t("ui.common.any") }, class: select_class) %>
+          <%= form.select(:sync_window_start_hour, (0..23).map { |h| ["#{h}:00", h] }, { include_blank: t("common.states.any") }, class: select_class) %>
         </div>
       </div>
       <div>
         <%= form.label(:sync_window_end_hour, t("ui.sources.sync_window_end"), class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
         <div class="select-chevron">
-          <%= form.select(:sync_window_end_hour, (0..23).map { |h| ["#{h}:00", h] }, { include_blank: t("ui.common.any") }, class: select_class) %>
+          <%= form.select(:sync_window_end_hour, (0..23).map { |h| ["#{h}:00", h] }, { include_blank: t("common.states.any") }, class: select_class) %>
         </div>
       </div>
     </div>
@@ -95,7 +95,7 @@
       <%= form.label(:sync_frequency_minutes, t("ui.sources.sync_frequency"), class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
       <div class="flex items-center gap-2">
         <%= form.number_field(:sync_frequency_minutes, min: 5, step: 5, value: calendar_source.read_attribute(:sync_frequency_minutes), placeholder: "#{AppSetting.instance.default_sync_frequency_minutes} (default)", class: "#{input_class} w-32") %>
-        <span class="text-sm text-slate-400"><%= t("ui.common.minutes") %></span>
+        <span class="text-sm text-slate-400"><%= t("common.fields.minutes") %></span>
       </div>
       <p class="mt-1 text-xs text-slate-500"><%= t("ui.sources.sync_frequency_hint") %></p>
     </div>

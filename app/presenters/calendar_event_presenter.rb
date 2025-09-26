@@ -56,7 +56,7 @@ class CalendarEventPresenter
   end
 
   def last_synced_text
-    event.synced_at ? "#{view.time_ago_in_words(event.synced_at)} ago" : I18n.t("ui.common.pending")
+    event.synced_at ? "#{view.time_ago_in_words(event.synced_at)} ago" : I18n.t("common.states.pending")
   end
 
   def location
