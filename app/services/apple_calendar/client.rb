@@ -46,7 +46,18 @@ module AppleCalendar
 
       collection_url = cached_collection_url(calendar_identifier) || discover_calendar_url(calendar_identifier)
       url = build_calendar_object_url(collection_url, uid)
-      request(:delete, url)
+
+      begin
+        request(:delete, url)
+      rescue => e
+        # 404 Not Found is actually success for DELETE - the event is already gone
+        if e.message.include?(" 404 ")
+          Rails.logger.debug { "[AppleCal] DELETE #{uid} returned 404 - event already deleted" }
+        else
+          raise
+        end
+      end
+
       uid
     end
 

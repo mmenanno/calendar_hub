@@ -72,6 +72,23 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
     ENV.delete("APPLE_READONLY")
   end
 
+  test "delete_event handles 404 gracefully" do
+    seed_cache("Work", url: "https://caldav.example.test/calendars/user/Work/")
+    # Defensive stubs in case discovery is still attempted (should not be used)
+    stub_request(:propfind, "https://caldav.example.test/.well-known/caldav")
+      .to_return(status: 301, headers: { "Location" => "https://caldav.example.test/principals/user/" }, body: "")
+    stub_request(:propfind, "https://caldav.example.test/principals/user/").to_return(status: 207, body: "<d:multistatus xmlns:d=\"DAV:\" xmlns:cal=\"urn:ietf:params:xml:ns:caldav\"><d:response><d:propstat><d:prop><cal:calendar-home-set><d:href>/calendars/user/</d:href></cal:calendar-home-set></d:prop></d:propstat></d:response></d:multistatus>")
+    stub_request(:propfind, "https://caldav.example.test/calendars/user/").to_return(status: 207, body: "<d:multistatus xmlns:d=\"DAV:\" xmlns:cal=\"urn:ietf:params:xml:ns:caldav\"><d:response><d:href>/calendars/user/Work/</d:href><d:propstat><d:prop><d:displayname>Work</d:displayname><d:resourcetype><d:collection/><cal:calendar/></d:resourcetype></d:prop></d:propstat></d:response></d:multistatus>")
+    stub = stub_request(:delete, "https://caldav.example.test/calendars/user/Work/abc123.ics")
+      .to_return(status: 404, body: "Not Found")
+
+    # Should not raise an exception and should return the uid
+    result = @client.delete_event(calendar_identifier: "Work", uid: "abc123")
+
+    assert_equal("abc123", result)
+    assert_requested(stub)
+  end
+
   private
 
   def caldav_key(identifier)
