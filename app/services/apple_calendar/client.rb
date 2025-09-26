@@ -239,8 +239,19 @@ module AppleCalendar
 
     def build_ics(payload)
       uid = payload[:uid]
-      dtstart = payload[:starts_at].utc.strftime("%Y%m%dT%H%M%SZ")
-      dtend   = payload[:ends_at].utc.strftime("%Y%m%dT%H%M%SZ")
+      all_day = payload[:all_day] || false
+
+      # Format dates differently for all-day events
+      if all_day
+        # For all-day events, use VALUE=DATE format (no time component)
+        dtstart = "VALUE=DATE:#{payload[:starts_at].strftime("%Y%m%d")}"
+        dtend = "VALUE=DATE:#{payload[:ends_at].strftime("%Y%m%d")}"
+      else
+        # For timed events, use the standard UTC format
+        dtstart = payload[:starts_at].utc.strftime("%Y%m%dT%H%M%SZ")
+        dtend = payload[:ends_at].utc.strftime("%Y%m%dT%H%M%SZ")
+      end
+
       summary = (payload[:summary] || payload[:title] || "").to_s
       description = (payload[:description] || "").to_s
       location = (payload[:location] || "").to_s
@@ -257,8 +268,8 @@ module AppleCalendar
         BEGIN:VEVENT
         UID:#{uid}
         DTSTAMP:#{now}
-        DTSTART:#{dtstart}
-        DTEND:#{dtend}
+        DTSTART#{all_day ? ";" : ":"}#{dtstart}
+        DTEND#{all_day ? ";" : ":"}#{dtend}
         SUMMARY:#{escape_ics(summary)}
         DESCRIPTION:#{escape_ics(description)}
         LOCATION:#{escape_ics(location)}

@@ -24,6 +24,7 @@ module CalendarHub
           starts_at: event.starts_at,
           ends_at: event.ends_at,
           status: event.status,
+          all_day: event.all_day?,
           transparency: "opaque",
         }
       end
