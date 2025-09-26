@@ -26,41 +26,63 @@
     <div class="grid gap-8 lg:grid-cols-[2fr,1fr]">
       <div>
         <div class="mb-4 flex items-center justify-between">
-          <div>
-            <h2 class="text-lg font-semibold"><%= t("ui.events.upcoming") %></h2>
-            <% if @selected_source %>
-              <p class="text-sm text-slate-400"><%= t("ui.events.filtered_to", name: @selected_source.name) %></p>
+          <div class="flex items-center gap-4">
+            <div>
+              <h2 class="text-lg font-semibold"><%= t("ui.events.upcoming") %></h2>
+              <% if @selected_source %>
+                <p class="text-sm text-slate-400"><%= t("ui.events.filtered_to", name: @selected_source.name) %></p>
+              <% end %>
+            </div>
+            <%= link_to calendar_events_path(source_id: params[:source_id], q: params[:q], show_excluded: !@show_excluded),
+                  class: "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition #{"border-amber-500/30 bg-amber-500/10 text-amber-300" if @show_excluded} #{"border-slate-700 bg-slate-800/50 text-slate-300 hover:border-slate-600" unless @show_excluded}" do %>
+              <% if @show_excluded %>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464M9.878 9.878a3 3 0 105.303 5.303m0 0L8.464 8.464M5.036 13.69L8.464 8.464m0 0L5.036 13.69m3.428-5.226a9.972 9.972 0 00-.428 1.849m4.243 4.243a3.001 3.001 0 01-4.243-4.243m4.243 4.243L19.536 10.31M9.878 9.878a3 3 0 014.243 4.243M9.878 9.878L8.464 8.464" />
+                </svg>
+                <%= t("ui.events.hide_excluded") %>
+              <% else %>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <%= t("ui.events.show_excluded") %>
+              <% end %>
             <% end %>
           </div>
           <div class="text-right">
-            <div class="flex items-center justify-end gap-2">
-              <%= form_with url: calendar_events_path, method: :get, local: true, data: { controller: "auto-submit" }, class: "inline-flex items-center gap-2" do |form| %>
-                <div class="select-chevron wide-select-lg">
-                  <%= form.collection_select(:source_id, @calendar_sources, :id, :name, { include_blank: t("ui.events.all_sources"), selected: params[:source_id].presence || @selected_source&.id }, class: select_class, data: { action: "change->auto-submit#submit" }) %>
-                </div>
-                <%= form.text_field(:q, value: params[:q], placeholder: t("ui.events.search_placeholder"), class: input_class, data: { action: "input->auto-submit#submit" }) %>
-                <% if params[:source_id].present? %>
-                  <%= link_to t("common.actions.clear"), calendar_events_path, class: "text-sm text-slate-400 hover:text-slate-200" %>
+            <div class="flex items-center justify-end gap-2 mb-2">
+              <turbo-frame id="events-search-form">
+                <%= form_with url: calendar_events_path, method: :get, data: { controller: "search", search_target: "form", turbo_frame: "events-list" }, class: "inline-flex items-center gap-2" do |form| %>
+                  <div class="select-chevron wide-select-lg">
+                    <%= form.collection_select(:source_id, @calendar_sources, :id, :name, { include_blank: t("ui.events.all_sources"), selected: params[:source_id].presence || @selected_source&.id }, class: select_class, data: { action: "change->search#submitForm" }) %>
+                  </div>
+                  <%= form.text_field(:q, value: params[:q], placeholder: t("ui.events.search_placeholder"), class: input_class, data: { search_target: "input", action: "input->search#search" }) %>
+                  <%= form.hidden_field(:show_excluded, value: @show_excluded) %>
+                  <% if params[:source_id].present? || params[:q].present? %>
+                    <%= link_to t("common.actions.clear"), calendar_events_path(show_excluded: @show_excluded), class: "text-sm text-slate-400 hover:text-slate-200" %>
+                  <% end %>
                 <% end %>
-              <% end %>
+              </turbo-frame>
               <%= link_to t("navigation.sync_all"), sync_all_calendar_sources_path, class: "rounded-lg bg-indigo-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-indigo-400", data: { turbo_method: :post } %>
             </div>
             <p class="mt-1 text-xs text-slate-400"><%= t("ui.events.filter_hint") %></p>
           </div>
         </div>
-        <div id="calendar-events" class="space-y-4">
-          <% if @events.any? %>
-            <%= render partial: "calendar_events/calendar_event", collection: @events, as: :calendar_event %>
-          <% else %>
-            <div class="rounded-xl border border-dashed border-slate-800 bg-slate-900/50 p-6 text-center text-sm text-slate-400">
-              <% if @selected_source %>
-                <%= t("ui.events.none_for_selected", name: @selected_source.name) %>
-              <% else %>
-                <%= t("ui.events.none_connect") %>
-              <% end %>
-            </div>
-          <% end %>
-        </div>
+        <turbo-frame id="events-list">
+          <div id="calendar-events" class="space-y-4">
+            <% if @events.any? %>
+              <%= render partial: "calendar_events/calendar_event", collection: @events, as: :calendar_event %>
+            <% else %>
+              <div class="rounded-xl border border-dashed border-slate-800 bg-slate-900/50 p-6 text-center text-sm text-slate-400">
+                <% if @selected_source %>
+                  <%= t("ui.events.none_for_selected", name: @selected_source.name) %>
+                <% else %>
+                  <%= t("ui.events.none_connect") %>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </turbo-frame>
       </div>
 
       <aside class="space-y-4">

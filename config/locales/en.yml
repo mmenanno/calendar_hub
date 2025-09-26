@@ -134,10 +134,12 @@ en:
       excluded: "Excluded"
       filtered_to: "Filtered to %{name}"
       filter_hint: "Show events from a specific source."
+      hide_excluded: "Hide Excluded"
       none_connect: "No events found. Connect a calendar source to get started."
       none_for_selected: "No events for %{name}. Try clearing the filter or syncing."
       original_title: "Original Title"
       search_placeholder: "Search title or location"
+      show_excluded: "Show Excluded"
       upcoming: "Upcoming Events"
 
     filter_rules:
