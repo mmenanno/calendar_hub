@@ -43,6 +43,7 @@ Rails.application.routes.draw do
     end
     member do
       patch :toggle
+      post :duplicate
     end
   end
 

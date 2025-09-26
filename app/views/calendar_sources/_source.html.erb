@@ -6,7 +6,7 @@
       <dl class="mt-2 text-xs text-slate-400">
         <div class="flex gap-2">
           <dt class="font-medium text-slate-500"><%= t("ui.sources.calendar") %></dt>
-          <dd><%= sp.calendar_identifier %></dd>
+          <dd><%= sp.calendar_identifier || t("ui.common.unknown") %></dd>
         </div>
         <div class="flex gap-2">
           <dt class="font-medium text-slate-500"><%= t("ui.common.last_synced") %>:</dt>

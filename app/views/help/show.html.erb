@@ -4,8 +4,8 @@
       <div class="flex items-center gap-3">
         <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">?</span>
         <div>
-          <h1 class="text-xl font-semibold">Help</h1>
-          <p class="text-sm text-slate-400">How Calendar Hub works and Apple Calendar tips.</p>
+          <h1 class="text-xl font-semibold"><%= t("ui.help.header") %></h1>
+          <p class="text-sm text-slate-400"><%= t("ui.help.subheader") %></p>
         </div>
       </div>
       <%= render "shared/top_nav", active: :help %>
@@ -14,15 +14,15 @@
 
   <section class="mx-auto w-full max-w-4xl px-6 py-8 space-y-6">
     <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-      <h2 class="mb-2 text-lg font-semibold">How It Works</h2>
+      <h2 class="mb-2 text-lg font-semibold"><%= t("ui.help.how_it_works") %></h2>
       <ol class="list-decimal space-y-2 pl-5 text-sm text-slate-300">
-        <li>Add a Source: provide an .ics feed URL and configure sync settings.</li>
-        <li>Choose where events land: set an Apple Calendar identifier in Settings or per source.</li>
-        <li>Enable Auto-sync (optional): automatically sync at regular intervals.</li>
-        <li>Click Sync manually or let auto-sync handle it: events are normalized, mapped, and queued in the background.</li>
-        <li>Review in Events: filter by source to verify imported items.</li>
+        <li><%= t("ui.help.add_source") %></li>
+        <li><%= t("ui.help.choose_destination") %></li>
+        <li><%= t("ui.help.enable_auto_sync") %></li>
+        <li><%= t("ui.help.click_sync") %></li>
+        <li><%= t("ui.help.review_events") %></li>
       </ol>
-      <p class="mt-3 text-xs text-slate-400">Tip: Event mappings can rename titles and are applied before syncing to Apple Calendar.</p>
+      <p class="mt-3 text-xs text-slate-400"><%= t("ui.help.tip") %></p>
     </div>
 
     <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">

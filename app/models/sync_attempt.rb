@@ -71,5 +71,14 @@ class SyncAttempt < ApplicationRecord
       partial: "calendar_sources/sync_status",
       locals: { attempt: self },
     )
+
+    if finished_at.present?
+      broadcast_replace_to(
+        "calendar_sources",
+        target: ActionView::RecordIdentifier.dom_id(calendar_source, :card),
+        partial: "calendar_sources/source",
+        locals: { source: calendar_source.reload },
+      )
+    end
   end
 end

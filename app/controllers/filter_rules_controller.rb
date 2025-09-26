@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class FilterRulesController < ApplicationController
-  before_action :set_filter_rule, only: [:destroy]
+  before_action :set_filter_rule, only: [:destroy, :edit, :update, :toggle, :duplicate]
 
   def index
     @filter_rules = FilterRule.includes(:calendar_source).order(:position, :created_at)
@@ -20,22 +20,13 @@ class FilterRulesController < ApplicationController
   end
 
   def toggle
-    filter_rule = FilterRule.find(params[:id])
-    filter_rule.update!(active: !filter_rule.active?)
-
-    if filter_rule.calendar_source
-      CalendarHub::FilterSyncService.new(source: filter_rule.calendar_source).sync_filter_rules
-    else
-      CalendarSource.active.find_each do |source|
-        CalendarHub::FilterSyncService.new(source: source).sync_filter_rules
-      end
-    end
+    @filter_rule.update!(active: !@filter_rule.active?)
 
     respond_to do |format|
       format.turbo_stream do
         render(turbo_stream: [
-          turbo_stream.replace(view_context.dom_id(filter_rule, :row), partial: "filter_rules/row", locals: { filter_rule: filter_rule }),
-          turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t(filter_rule.active? ? "flashes.filter_rules.enabled" : "flashes.filter_rules.disabled") }),
+          turbo_stream.replace(view_context.dom_id(@filter_rule, :row), partial: "filter_rules/row", locals: { filter_rule: @filter_rule }),
+          turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t(@filter_rule.active? ? "flashes.filter_rules.enabled" : "flashes.filter_rules.disabled") }),
         ])
       end
       format.html { redirect_to(filter_rules_path) }
@@ -107,18 +98,11 @@ class FilterRulesController < ApplicationController
   def update
     @filter_rule = FilterRule.find(params[:id])
     if @filter_rule.update(filter_rule_params)
-      if @filter_rule.calendar_source
-        CalendarHub::FilterSyncService.new(source: @filter_rule.calendar_source).sync_filter_rules
-      else
-        CalendarSource.active.find_each do |source|
-          CalendarHub::FilterSyncService.new(source: source).sync_filter_rules
-        end
-      end
-
       respond_to do |format|
         format.turbo_stream do
           render(turbo_stream: [
             turbo_stream.replace(view_context.dom_id(@filter_rule, :row), partial: "filter_rules/row", locals: { filter_rule: @filter_rule }),
+            turbo_stream.update("modal", ""),
             turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t("flashes.filter_rules.updated") }),
           ])
         end
@@ -157,6 +141,25 @@ class FilterRulesController < ApplicationController
         ])
       end
       format.html { redirect_to(filter_rules_path, notice: t("flashes.filter_rules.deleted")) }
+    end
+  end
+
+  def duplicate
+    copy = @filter_rule.dup
+    copy.position = FilterRule.maximum(:position).to_i + 1
+    copy.save!
+
+    respond_to do |format|
+      format.turbo_stream do
+        render(turbo_stream: [
+          turbo_stream.after(
+            view_context.dom_id(@filter_rule, :row),
+            render_to_string(partial: "filter_rules/row", locals: { filter_rule: copy }),
+          ),
+          turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t("flashes.filter_rules.duplicated") }),
+        ])
+      end
+      format.html { redirect_to(filter_rules_path, notice: t("flashes.filter_rules.duplicated")) }
     end
   end
 

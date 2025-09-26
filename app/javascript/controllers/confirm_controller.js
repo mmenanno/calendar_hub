@@ -46,11 +46,11 @@ export default class extends Controller {
       dialog.style.margin = 'auto'
       dialog.innerHTML = `
         <form method="dialog" class="p-5">
-          <h2 class="mb-2 text-base font-semibold">Please Confirm</h2>
-          <p class="mb-5 text-sm text-slate-300">${this.escapeHtml(message || 'Are you sure?')}</p>
+          <h2 class="mb-2 text-base font-semibold">${this.escapeHtml(this.translate('title') || 'Please Confirm')}</h2>
+          <p class="mb-5 text-sm text-slate-300">${this.escapeHtml(message || this.translate('default') || 'Are you sure?')}</p>
           <div class="flex justify-end gap-2">
-            <button value="cancel" class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:border-slate-500">Cancel</button>
-            <button value="confirm" class="rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500">Confirm</button>
+            <button value="cancel" class="cursor-pointer rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:border-slate-500">${this.escapeHtml(this.translate('cancel') || 'Cancel')}</button>
+            <button value="confirm" class="cursor-pointer rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500">${this.escapeHtml(this.translate('confirm') || 'Confirm')}</button>
           </div>
         </form>`
 
@@ -115,6 +115,16 @@ export default class extends Controller {
   }
 
   escapeHtml (str) {
-    return (str || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+    return (str || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  }
+
+  translate (key) {
+    const translations = {
+      title: 'Please Confirm',
+      default: 'Are you sure?',
+      cancel: 'Cancel',
+      confirm: 'Confirm'
+    }
+    return translations[key]
   }
 }

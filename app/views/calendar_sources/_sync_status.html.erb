@@ -13,19 +13,19 @@
     </div>
     <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
       <div>
-        <p class="text-slate-500">Total</p>
+        <p class="text-slate-500"><%= t("ui.sync_status.total") %></p>
         <p class="text-slate-200"><%= latest.total_events %></p>
       </div>
       <div>
-        <p class="text-slate-500">Upserts</p>
+        <p class="text-slate-500"><%= t("ui.sync_status.upserts") %></p>
         <p class="text-slate-200"><%= latest.upserts %></p>
       </div>
       <div>
-        <p class="text-slate-500">Deletes</p>
+        <p class="text-slate-500"><%= t("ui.sync_status.deletes") %></p>
         <p class="text-slate-200"><%= latest.deletes %></p>
       </div>
       <div>
-        <p class="text-slate-500">Errors</p>
+        <p class="text-slate-500"><%= t("ui.sync_status.errors") %></p>
         <p class="text-slate-200"><%= latest.errors_count %></p>
       </div>
     </div>

@@ -1,36 +1,36 @@
-<%= form_with model: filter_rule, url: filter_rules_path, class: "grid gap-3", data: { controller: "filter-form" } do |f| %>
+<%= form_with model: filter_rule, url: filter_rule.persisted? ? filter_rule_path(filter_rule) : filter_rules_path, method: filter_rule.persisted? ? :patch : :post, class: "grid gap-3", data: { controller: "filter-form" } do |f| %>
   <div>
-    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Source</label>
+    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.source") %></label>
     <div class="select-chevron">
       <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: "All" }, class: select_class) %>
     </div>
   </div>
   <div>
-    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Field</label>
+    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.field") %></label>
     <div class="select-chevron">
       <%= f.select(:field_name, FilterRule::FIELD_NAMES.values.map { |f| [f.humanize, f] }, {}, class: select_class) %>
     </div>
   </div>
   <div>
-    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Match</label>
+    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.match") %></label>
     <div class="select-chevron wide-select">
       <%= f.select(:match_type, FilterRule::MATCH_TYPES.values.map { |t| [t.humanize, t] }, {}, class: select_class, data: { filter_form_target: "match", action: "change->filter-form#validate" }) %>
     </div>
   </div>
   <div>
     <%= f.label(:pattern, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
-    <%= f.text_field(:pattern, required: true, placeholder: "e.g. Team Meeting", class: input_class, data: { filter_form_target: "pattern", action: "input->filter-form#validate" }) %>
-    <p data-filter-form-target="error" class="mt-1 hidden text-xs text-rose-300">Invalid regex pattern</p>
+    <%= f.text_field(:pattern, required: true, placeholder: t("ui.mappings.sample_title"), class: input_class, data: { filter_form_target: "pattern", action: "input->filter-form#validate" }) %>
+    <p data-filter-form-target="error" class="mt-1 hidden text-xs text-rose-300"><%= t("ui.mappings.invalid_regex") %></p>
   </div>
   <label class="inline-flex items-center gap-2 text-xs text-slate-400">
     <%= f.check_box(:case_sensitive) %>
-    Case sensitive
+    <%= t("ui.mappings.case_sensitive") %>
   </label>
   <label class="inline-flex items-center gap-2 text-xs text-slate-400">
-    <%= f.check_box(:active, checked: true) %>
-    Active
+    <%= f.check_box(:active, checked: filter_rule.new_record? ? true : nil) %>
+    <%= t("ui.mappings.active") %>
   </label>
   <div class="flex justify-end gap-2">
-    <%= f.submit("Add Rule", class: "cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500") %>
+    <%= f.submit(filter_rule.persisted? ? t("ui.common.save") : t("ui.filter_rules.add_rule_button"), class: "cursor-pointer rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400") %>
   </div>
 <% end %>
