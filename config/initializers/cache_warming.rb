@@ -67,7 +67,8 @@ Rails.application.config.after_initialize do
     File.basename($PROGRAM_NAME) == "rake" ||
     Rails.env.test? ||
     ENV["RAILS_ENV"] == "assets" ||
-    ARGV.include?("assets:precompile")
+    ARGV.include?("assets:precompile") ||
+    ENV["SECRET_KEY_BASE_DUMMY"] == "1"
 
   if CalendarHub::CacheWarmer.send(:should_warm_cache?)
     CacheWarmupJob.set(wait: 3.seconds).perform_later
