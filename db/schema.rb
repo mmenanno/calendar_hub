@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_26_140937) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_26_160000) do
   create_table "app_settings", force: :cascade do |t|
     t.string "default_time_zone", default: "UTC", null: false
     t.string "default_calendar_identifier"
@@ -23,6 +23,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_26_140937) do
     t.string "apple_username"
     t.string "apple_app_password"
     t.integer "default_sync_frequency_minutes", default: 60, null: false
+    t.text "apple_credentials_ciphertext"
   end
 
   create_table "calendar_event_audits", force: :cascade do |t|

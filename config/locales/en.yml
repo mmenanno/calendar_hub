@@ -112,6 +112,8 @@ en:
       apple_test_failed: "Apple Calendar test failed: %{error}"
       apple_test_found: "Apple Calendar reachable. Destination found: %{path}"
       apple_test_ok: "Apple Calendar reachable. Credentials accepted."
+      key_rotated: "Credential key rotated."
+      key_rotation_failed: "Rotating credential key failed: %{error}"
       reset: "Settings reset to defaults."
       review_errors: "Please review the errors below."
       saved: "Settings saved."
