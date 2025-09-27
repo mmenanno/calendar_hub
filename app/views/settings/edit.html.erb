@@ -109,6 +109,17 @@
                 <p class="text-slate-300"><%= t("ui.settings.verify_realtime") %></p>
                 <%= link_to t("ui.settings.open_realtime"), realtime_path, class: "inline-block rounded-lg border border-slate-700 px-3 py-2 text-slate-200 hover:border-slate-500" %>
               </div>
+              <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-xs text-slate-300 space-y-2">
+                <p class="font-semibold text-slate-200"><%= t("ui.settings.credential_key_header") %></p>
+                <% key_status = CalendarHub::CredentialEncryption.key_status %>
+                <p><span class="text-slate-400"><%= t("ui.settings.credential_key_fingerprint") %></span> <code><%= key_status[:fingerprint] %></code></p>
+                <% if key_status[:created_at] %>
+                  <p><span class="text-slate-400"><%= t("ui.settings.credential_key_created_at") %></span> <%= l(key_status[:created_at], format: :long) %></p>
+                <% end %>
+                <p><span class="text-slate-400"><%= t("ui.settings.credential_key_location") %></span> <code><%= key_status[:path] %></code></p>
+                <%= button_to t("ui.settings.rotate_credential_key"), rotate_credential_key_settings_path, method: :post, data: { turbo_stream: true, confirm: t("ui.settings.rotate_credential_key_confirm") }, class: "cursor-pointer inline-flex items-center rounded-lg border border-indigo-700 px-3 py-2 text-sm text-indigo-200 hover:border-indigo-500", form: { data: { controller: "dirty-form", dirty_form_target: "form" } } %>
+                <p class="text-slate-500"><%= t("ui.settings.credential_key_hint") %></p>
+              </div>
               <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-xs text-slate-300">
                 <% opts = UrlOptions.for_links %>
                 <p class="mb-1"><span class="text-slate-400"><%= t("ui.settings.effective_base_url") %></span> <code><%= opts[:protocol] || "http" %>://<%= opts[:host] %><%= opts[:port] ? ":#{opts[:port]}" : "" %></code></p>

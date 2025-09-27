@@ -152,44 +152,10 @@ class CalendarSource < ApplicationRecord
   end
 
   def encrypt_payload(value)
-    normalized = (value || {}).each_with_object({}) do |(key, val), memo|
-      next if val.blank?
-
-      memo[key.to_s] = val
-    end
-    return if normalized.blank?
-
-    self.class.credential_encryptor.encrypt_and_sign(normalized.to_json)
+    CalendarHub::CredentialEncryption.encrypt(value)
   end
 
   def decrypt_payload(ciphertext)
-    return {}.with_indifferent_access if ciphertext.blank?
-
-    JSON.parse(self.class.credential_encryptor.decrypt_and_verify(ciphertext)).with_indifferent_access
-  rescue ActiveSupport::MessageEncryptor::InvalidMessage
-    {}.with_indifferent_access
-  end
-
-  class << self
-    def credential_encryptor
-      key = credential_key_material
-      salt = credential_salt
-      secret = ActiveSupport::KeyGenerator.new(key).generate_key(salt, ActiveSupport::MessageEncryptor.key_len)
-      ActiveSupport::MessageEncryptor.new(secret, cipher: "aes-256-gcm")
-    end
-
-    private
-
-    def credential_key_material
-      default_key_material
-    end
-
-    def credential_salt
-      "calendar-source-salt"
-    end
-
-    def default_key_material
-      Rails.application.key_generator.generate_key("calendar_source_credentials", ActiveSupport::MessageEncryptor.key_len)
-    end
+    CalendarHub::CredentialEncryption.decrypt(ciphertext)
   end
 end

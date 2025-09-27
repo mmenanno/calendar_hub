@@ -24,6 +24,7 @@ Rails.application.routes.draw do
   resource :settings, only: [:show, :edit, :update] do
     post :test_calendar
     post :reset
+    post :rotate_credential_key
   end
   resources :event_mappings, only: [:index, :create, :destroy, :edit, :update] do
     collection do

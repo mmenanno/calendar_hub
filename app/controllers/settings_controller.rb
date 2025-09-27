@@ -54,6 +54,34 @@ class SettingsController < ApplicationController
     end
   end
 
+  def rotate_credential_key
+    AppSetting.instance.rotate_credentials_key!
+
+    respond_to do |format|
+      msg = t("flashes.settings.key_rotated")
+      format.turbo_stream do
+        render(turbo_stream: turbo_stream.append(
+          "toast-anchor",
+          partial: "shared/toast",
+          locals: { message: msg, variant: :success },
+        ))
+      end
+      format.html { redirect_to(edit_settings_path, notice: msg) }
+    end
+  rescue CalendarHub::CredentialEncryption::KeyRotationError => e
+    respond_to do |format|
+      error = t("flashes.settings.key_rotation_failed", error: e.message)
+      format.turbo_stream do
+        render(turbo_stream: turbo_stream.append(
+          "toast-anchor",
+          partial: "shared/toast",
+          locals: { message: error, variant: :error },
+        ))
+      end
+      format.html { redirect_to(edit_settings_path, alert: error) }
+    end
+  end
+
   def test_calendar
     client = if params[:apple_username].present? || params[:apple_app_password].present?
       AppleCalendar::Client.new(credentials: { username: params[:apple_username], app_specific_password: params[:apple_app_password] })
