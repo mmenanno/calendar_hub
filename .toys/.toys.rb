@@ -5,5 +5,6 @@
 # expand :minitest, files: ["test/**/*_test.rb"], libs: ["test", "lib"]
 
 alias_tool :style, :rubocop
+alias_tool :cov, :coverage
 
 expand :rake

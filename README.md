@@ -50,6 +50,8 @@ Key screens/routes:
 toys checks
 ```
 
+To coverage is collected locally when tests are run. SimpleCov writes reports to `coverage/`; open results with `toys cov` to inspect details. Branch coverage is enabled by default.
+
 ## Deployment
 
 ### Docker (production)
