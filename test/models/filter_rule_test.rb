@@ -3,17 +3,15 @@
 require "test_helper"
 
 class FilterRuleTest < ActiveSupport::TestCase
+  include ModelBuilders
+
   def setup
     @calendar_source = calendar_sources(:provider)
     @event = calendar_events(:provider_consult)
   end
 
   test "should be valid with required attributes" do
-    filter_rule = FilterRule.new(
-      pattern: "Team Meeting",
-      field_name: "title",
-      match_type: "contains",
-    )
+    filter_rule = filter_rules(:global_meeting_filter)
 
     assert_predicate(filter_rule, :valid?)
   end
@@ -46,12 +44,8 @@ class FilterRuleTest < ActiveSupport::TestCase
   end
 
   test "should match event with contains match_type" do
-    filter_rule = FilterRule.create!(
-      pattern: "Meeting",
-      field_name: "title",
-      match_type: "contains",
-      case_sensitive: false,
-    )
+    filter_rule = filter_rules(:global_meeting_filter)
+    filter_rule.update!(active: true)
 
     event = CalendarEvent.new(title: "Team Meeting", description: "Weekly sync", location: "Office")
 
@@ -206,5 +200,130 @@ class FilterRuleTest < ActiveSupport::TestCase
     )
 
     assert_nil(global_rule.calendar_source)
+  end
+
+  test "should handle unknown mode in compare? method" do
+    filter_rule = FilterRule.create!(
+      pattern: "Meeting",
+      field_name: "title",
+      match_type: "contains",
+    )
+
+    # Test the private compare? method with unknown mode
+    result = filter_rule.send(:compare?, "test", "test", case_sensitive: true, mode: :unknown)
+
+    refute(result)
+  end
+
+  test "should use active scope" do
+    active_rule = FilterRule.create!(
+      pattern: "Active Meeting",
+      field_name: "title",
+      match_type: "contains",
+      active: true,
+    )
+
+    inactive_rule = FilterRule.create!(
+      pattern: "Inactive Meeting",
+      field_name: "title",
+      match_type: "contains",
+      active: false,
+    )
+
+    active_rules = FilterRule.active
+
+    assert_includes(active_rules, active_rule)
+    refute_includes(active_rules, inactive_rule)
+  end
+
+  test "should order by position and created_at in default scope" do
+    FilterRule.destroy_all
+
+    FilterRule.create!(
+      pattern: "Rule 1",
+      field_name: "title",
+      match_type: "contains",
+      position: 2,
+    )
+
+    rule2 = FilterRule.create!(
+      pattern: "Rule 2",
+      field_name: "title",
+      match_type: "contains",
+      position: 1,
+    )
+
+    rules = FilterRule.all.to_a
+
+    assert_equal(rule2, rules.first)
+  end
+
+  test "should handle unknown field_name via database manipulation" do
+    filter_rule = FilterRule.create!(
+      pattern: "Meeting",
+      field_name: "title",
+      match_type: "contains",
+    )
+
+    # Use SQL to bypass Rails enum validation and test defensive programming
+    ActiveRecord::Base.connection.execute(
+      "UPDATE filter_rules SET field_name = 'unknown_field' WHERE id = #{filter_rule.id}",
+    )
+
+    # Reload to get the corrupted data
+    filter_rule.reload
+
+    event = CalendarEvent.new(title: "Team Meeting", description: "Weekly sync", location: "Office")
+
+    # Should handle unknown field gracefully and return false
+    refute(filter_rule.matches?(event))
+  end
+
+  test "should handle unknown match_type via database manipulation" do
+    filter_rule = FilterRule.create!(
+      pattern: "Meeting",
+      field_name: "title",
+      match_type: "contains",
+    )
+
+    # Use SQL to bypass Rails enum validation and test defensive programming
+    ActiveRecord::Base.connection.execute(
+      "UPDATE filter_rules SET match_type = 'unknown_type' WHERE id = #{filter_rule.id}",
+    )
+
+    # Reload to get the corrupted data
+    filter_rule.reload
+
+    event = CalendarEvent.new(title: "Team Meeting", description: "Weekly sync", location: "Office")
+
+    # Should handle unknown match_type gracefully and return false
+    refute(filter_rule.matches?(event))
+  end
+
+  test "should handle case_sensitive flag with regex" do
+    # Test case_sensitive = true with regex
+    case_sensitive_rule = FilterRule.create!(
+      pattern: "Meeting",
+      field_name: "title",
+      match_type: "regex",
+      case_sensitive: true,
+    )
+
+    event_matching_case = CalendarEvent.new(title: "Meeting", description: "Test", location: "Test")
+    event_wrong_case = CalendarEvent.new(title: "meeting", description: "Test", location: "Test")
+
+    assert(case_sensitive_rule.matches?(event_matching_case))
+    refute(case_sensitive_rule.matches?(event_wrong_case))
+
+    # Test case_sensitive = false with regex
+    case_insensitive_rule = FilterRule.create!(
+      pattern: "Meeting",
+      field_name: "title",
+      match_type: "regex",
+      case_sensitive: false,
+    )
+
+    assert(case_insensitive_rule.matches?(event_matching_case))
+    assert(case_insensitive_rule.matches?(event_wrong_case))
   end
 end

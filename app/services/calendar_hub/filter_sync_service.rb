@@ -23,7 +23,7 @@ module CalendarHub
     end
 
     def sync_event_filter_status(event)
-      return unless event.calendar_source == source
+      return unless event&.calendar_source == source
 
       if event.sync_exempt?
         apple_client.delete_event(
@@ -45,7 +45,7 @@ module CalendarHub
 
       event.mark_synced!
     rescue StandardError => error
-      Rails.logger.error("[FilterSync] Failed to sync event #{event.id}: #{error.message}")
+      Rails.logger.error("[FilterSync] Failed to sync event #{event&.id}: #{error.message}")
       raise
     end
 
@@ -62,7 +62,7 @@ module CalendarHub
     def event_url_for(event)
       Rails.application.routes.url_helpers.calendar_event_url(
         event,
-        **UrlOptions.call,
+        **UrlOptions.for_links,
       )
     end
   end

@@ -1,0 +1,46 @@
+# frozen_string_literal: true
+
+basic_mapping:
+  calendar_source: provider
+  match_type: contains
+  pattern: "Meeting"
+  replacement: "Team Meeting"
+  case_sensitive: false
+  position: 0
+  active: true
+
+regex_mapping:
+  calendar_source: ics_feed
+  match_type: regex
+  pattern: "^(.*) - (.*)"
+  replacement: "\\2: \\1"
+  case_sensitive: true
+  position: 1
+  active: true
+
+global_mapping:
+  calendar_source:
+  match_type: equals
+  pattern: "Daily Standup"
+  replacement: "Daily Team Standup"
+  case_sensitive: false
+  position: 2
+  active: true
+
+inactive_mapping:
+  calendar_source: provider
+  match_type: contains
+  pattern: "Old Pattern"
+  replacement: "New Pattern"
+  case_sensitive: true
+  position: 3
+  active: false
+
+case_sensitive_mapping:
+  calendar_source: ics_feed
+  match_type: equals
+  pattern: "URGENT"
+  replacement: "High Priority"
+  case_sensitive: true
+  position: 4
+  active: true

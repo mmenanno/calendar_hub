@@ -3,7 +3,11 @@
 require "test_helper"
 
 class AutoSyncSchedulerJobTest < ActiveJob::TestCase
+  include ActiveJob::TestHelper
+
   setup do
+    CalendarSource.find_each { |source| source.update!(auto_sync_enabled: false) }
+
     @source1 = calendar_sources(:provider)
     @source2 = calendar_sources(:ics_feed)
     @source1.update!(auto_sync_enabled: true, sync_frequency_minutes: 30)
@@ -91,5 +95,43 @@ class AutoSyncSchedulerJobTest < ActiveJob::TestCase
     result = AutoSyncSchedulerJob.perform_now
 
     assert_equal 2, result
+  end
+
+  test "schedules jobs immediately and with delay based on domain optimization" do
+    # Create multiple sources from the same domain to trigger domain optimization staggering
+    @source1.update!(
+      ingestion_url: "https://example.com/calendar1.ics",
+      last_synced_at: 1.hour.ago,
+      auto_sync_enabled: true,
+      sync_frequency_minutes: 30,
+    )
+    @source2.update!(
+      ingestion_url: "https://example.com/calendar2.ics",
+      last_synced_at: 1.hour.ago,
+      auto_sync_enabled: true,
+      sync_frequency_minutes: 30,
+    )
+
+    # Freeze time to ensure predictable behavior
+    freeze_time do
+      frozen_now = Time.current
+
+      # Mock the domain optimizer to return a schedule with one immediate and one delayed time
+      # The delayed time must be in the future relative to when the job captures 'now'
+      schedule = {
+        @source1.id => frozen_now - 1.second, # This will be <= now (immediate)
+        @source2.id => frozen_now + 10.minutes, # This will be > now (delayed)
+      }
+      CalendarHub::DomainOptimizer.stubs(:optimize_sync_schedule).returns(schedule)
+
+      result = AutoSyncSchedulerJob.perform_now
+
+      assert_equal 2, result
+
+      # Verify that jobs were scheduled (this covers the domain optimization code path)
+      enqueued_jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.select { |job| job["job_class"] == "SyncCalendarJob" }
+
+      assert_equal 2, enqueued_jobs.count
+    end
   end
 end

@@ -28,3 +28,109 @@ shared_checkin:
   source_updated_at: 2025-09-21 09:30:00
   synced_at:
   data: {}
+
+future_event:
+  calendar_source: provider
+  external_id: future-123
+  title: "Future Event"
+  description: "Upcoming appointment"
+  location: "Office"
+  starts_at: <%= 1.day.from_now %>
+  ends_at: <%= 1.day.from_now + 1.hour %>
+  status: confirmed
+  source_updated_at: <%= Time.current %>
+  synced_at: <%= Time.current %>
+  time_zone: UTC
+  all_day: false
+  data: {}
+
+past_event:
+  calendar_source: provider
+  external_id: past-123
+  title: "Past Event"
+  description: "Completed appointment"
+  location: "Studio"
+  starts_at: <%= 1.day.ago %>
+  ends_at: <%= 1.day.ago + 1.hour %>
+  status: confirmed
+  source_updated_at: <%= 2.days.ago %>
+  synced_at: <%= 1.day.ago %>
+  time_zone: UTC
+  all_day: false
+  data: {}
+
+unsynced_event:
+  calendar_source: provider
+  external_id: unsynced-123
+  title: "Unsynced Event"
+  description: "Needs sync"
+  location: "Remote"
+  starts_at: <%= 2.hours.from_now %>
+  ends_at: <%= 3.hours.from_now %>
+  status: confirmed
+  source_updated_at: <%= Time.current %>
+  synced_at:
+  time_zone: UTC
+  all_day: false
+  data: {}
+
+cancelled_event:
+  calendar_source: provider
+  external_id: cancelled-123
+  title: "Cancelled Event"
+  description: "Was cancelled"
+  location: "Office"
+  starts_at: <%= 1.hour.from_now %>
+  ends_at: <%= 2.hours.from_now %>
+  status: cancelled
+  source_updated_at: <%= 1.hour.ago %>
+  synced_at: <%= 1.hour.ago %>
+  time_zone: UTC
+  all_day: false
+  data: {}
+
+all_day_event:
+  calendar_source: ics_feed
+  external_id: allday-123
+  title: "All Day Event"
+  description: "Full day event"
+  location: ""
+  starts_at: <%= Date.current.beginning_of_day %>
+  ends_at: <%= Date.current.end_of_day %>
+  status: confirmed
+  source_updated_at: <%= Time.current %>
+  synced_at: <%= Time.current %>
+  time_zone: UTC
+  all_day: true
+  data: {}
+
+sync_exempt_event:
+  calendar_source: provider
+  external_id: exempt-123
+  title: "Exempt Event"
+  description: "Should not sync"
+  location: "Office"
+  starts_at: <%= 1.hour.from_now %>
+  ends_at: <%= 2.hours.from_now %>
+  status: confirmed
+  source_updated_at: <%= Time.current %>
+  synced_at:
+  time_zone: UTC
+  all_day: false
+  sync_exempt: true
+  data: {}
+
+outdated_event:
+  calendar_source: provider
+  external_id: outdated-123
+  title: "Outdated Event"
+  description: "Source updated after sync"
+  location: "Studio"
+  starts_at: <%= 3.hours.from_now %>
+  ends_at: <%= 4.hours.from_now %>
+  status: confirmed
+  source_updated_at: <%= Time.current %>
+  synced_at: <%= 1.hour.ago %>
+  time_zone: UTC
+  all_day: false
+  data: {}

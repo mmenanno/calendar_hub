@@ -19,4 +19,13 @@ class PurgeCalendarSourceJobTest < ActiveSupport::TestCase
     assert_nil CalendarEvent.find_by(id: event.id)
     assert_nil SyncAttempt.find_by(id: attempt.id)
   end
+
+  test "handles non-existent source gracefully" do
+    non_existent_id = 99999
+
+    # Should not raise an error when source doesn't exist
+    assert_nothing_raised do
+      PurgeCalendarSourceJob.perform_now(non_existent_id)
+    end
+  end
 end
