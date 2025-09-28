@@ -1,7 +1,7 @@
-import { Controller } from "@hotwired/stimulus"
+import BaseController from "./base_controller"
 
 // Closes the shared Turbo Frame modal on Escape or backdrop click
-export default class extends Controller {
+export default class extends BaseController {
   connect () {
     this.onKeyDown = this.handleKeyDown.bind(this)
     window.addEventListener('keydown', this.onKeyDown)

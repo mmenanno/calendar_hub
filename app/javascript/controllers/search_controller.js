@@ -1,6 +1,6 @@
-import { Controller } from "@hotwired/stimulus"
+import BaseController from "./base_controller"
 
-export default class extends Controller {
+export default class extends BaseController {
   static targets = ["input", "form"]
   static values = { delay: { type: Number, default: 300 } }
 
@@ -15,17 +15,13 @@ export default class extends Controller {
   search() {
     this.clearTimeout()
     this.timeout = setTimeout(() => {
-      this.submitForm()
+      this.submit()
     }, this.delayValue)
   }
 
-  submitForm() {
+  submit() {
     if (this.hasFormTarget) {
-      if (this.formTarget.requestSubmit) {
-        this.formTarget.requestSubmit()
-      } else {
-        this.formTarget.submit()
-      }
+      this.submitForm(this.formTarget)
     }
   }
 

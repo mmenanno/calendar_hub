@@ -1,14 +1,10 @@
 // Auto-submit a form when a field changes
-import { Controller } from "@hotwired/stimulus"
+import BaseController from "./base_controller"
 
-export default class extends Controller {
+export default class extends BaseController {
   submit(event) {
     const form = event.target?.form || this.element
-    if (form && typeof form.requestSubmit === "function") {
-      form.requestSubmit()
-    } else if (form) {
-      form.submit()
-    }
+    this.submitForm(form)
   }
 }
 
