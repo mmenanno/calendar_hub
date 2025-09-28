@@ -3,6 +3,8 @@
 require "test_helper"
 
 class ParserTest < ActiveSupport::TestCase
+  include ICSTestHelpers
+
   test "parses provider ics file" do
     parser = ::CalendarHub::ICS::Parser.new(file_fixture("provider.ics").read, default_time_zone: "America/Toronto")
     events = parser.events
@@ -51,17 +53,11 @@ class ParserTest < ActiveSupport::TestCase
   end
 
   test "handles events without UID" do
-    ics_content = <<~ICS
-      BEGIN:VCALENDAR
-      VERSION:2.0
-      PRODID:-//Test//EN
-      BEGIN:VEVENT
-      SUMMARY:No UID Event
-      DTSTART:20250101T100000Z
-      DTEND:20250101T110000Z
-      END:VEVENT
-      END:VCALENDAR
-    ICS
+    ics_content = build_ics_content({
+      summary: "No UID Event",
+      starts_at: Time.utc(2025, 1, 1, 10, 0, 0),
+      ends_at: Time.utc(2025, 1, 1, 11, 0, 0),
+    }).gsub(/UID:.*\n/, "")
 
     parser = ::CalendarHub::ICS::Parser.new(ics_content)
     events = parser.events

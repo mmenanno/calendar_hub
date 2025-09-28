@@ -6,6 +6,7 @@ module CalendarHub
   class SyncServiceTest < ActiveSupport::TestCase
     include ModelBuilders
     include MochaHelpers
+    include ICSTestHelpers
 
     setup do
       @source = calendar_sources(:provider)
@@ -16,16 +17,14 @@ module CalendarHub
 
     test "upserts fetched events and syncs with apple" do
       fetched_events = [
-        ::CalendarHub::ICS::Event.new(
+        build_ics_event(
           uid: "prov-999",
           summary: "Therapy",
           description: "Routine",
           location: "Studio",
           starts_at: Time.zone.parse("2025-09-24 10:00"),
           ends_at: Time.zone.parse("2025-09-24 11:00"),
-          status: "confirmed",
           time_zone: @source.time_zone,
-          all_day: false,
           raw_properties: { provider_data: { practitioner: "Dr. Smith" } },
         ),
       ]
@@ -91,17 +90,12 @@ module CalendarHub
 
     test "handles upsert errors gracefully" do
       fetched_events = [
-        ::CalendarHub::ICS::Event.new(
+        build_ics_event(
           uid: "error-event",
           summary: "Error Event",
-          description: "",
-          location: "",
           starts_at: Time.zone.parse("2025-09-24 10:00"),
           ends_at: Time.zone.parse("2025-09-24 11:00"),
-          status: "confirmed",
           time_zone: @source.time_zone,
-          all_day: false,
-          raw_properties: {},
         ),
       ]
 

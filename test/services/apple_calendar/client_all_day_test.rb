@@ -3,12 +3,14 @@
 require "test_helper"
 
 class AppleCalendarClientAllDayTest < ActiveSupport::TestCase
+  include ICSTestHelpers
+
   setup do
     @client = AppleCalendar::Client.new(credentials: { username: "test", app_specific_password: "test" })
   end
 
   test "generates correct ICS for all-day event" do
-    payload = {
+    payload = build_apple_payload(
       uid: "test-all-day-123",
       summary: "All Day Event",
       description: "This is an all-day event",
@@ -16,7 +18,7 @@ class AppleCalendarClientAllDayTest < ActiveSupport::TestCase
       starts_at: Time.utc(2025, 9, 27, 0, 0, 0),
       ends_at: Time.utc(2025, 9, 28, 0, 0, 0),
       all_day: true,
-    }
+    )
 
     ics = @client.send(:build_ics, payload)
 
