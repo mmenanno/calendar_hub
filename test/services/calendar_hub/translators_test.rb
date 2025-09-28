@@ -21,17 +21,15 @@ module CalendarHub
     end
 
     test "register method exists and can be called" do
-      assert_nothing_raised do
-        ::CalendarHub::Translators.register("test")
-      end
+      assert_respond_to(::CalendarHub::Translators, :register)
 
-      assert_nothing_raised do
-        ::CalendarHub::Translators.register("test1", "test2", "test3")
-      end
+      result1 = ::CalendarHub::Translators.register("test")
+      result2 = ::CalendarHub::Translators.register("test1", "test2", "test3")
+      result3 = ::CalendarHub::Translators.register
 
-      assert_nothing_raised do
-        ::CalendarHub::Translators.register
-      end
+      assert_nil(result1)
+      assert_nil(result2)
+      assert_nil(result3)
     end
 
     test "register method returns nil" do

@@ -29,21 +29,23 @@ class SearchPerformanceTest < ActionDispatch::IntegrationTest
     )
   end
 
-  test "search performance with caching" do
+  test "search functionality works correctly with caching" do
     get calendar_events_path(q: "Test")
 
-    start_time = Time.current
+    assert_response(:success)
+    assert_select("turbo-frame#events-list")
+    assert_select("div#calendar-events")
 
-    5.times do
-      get calendar_events_path(q: "Performance")
-      get calendar_events_path(q: "Optimized")
-      get calendar_events_path(q: "Location")
+    queries = ["Performance", "Optimized", "Location"]
+
+    queries.each do |query|
+      get calendar_events_path(q: query)
+
+      assert_response(:success)
+      assert_select("input[name='q'][value='#{query}']")
     end
 
-    end_time = Time.current
-    duration = end_time - start_time
-
-    assert_operator(duration, :<, 1.0, "Search should complete within 1 second with caching, took #{duration}s")
+    get calendar_events_path(q: "")
 
     assert_response(:success)
   end

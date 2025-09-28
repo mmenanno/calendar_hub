@@ -69,19 +69,25 @@ module CalendarHub
     end
 
     test "warm_event_search_caches handles events gracefully" do
-      # Should not raise error even with no events
-      assert_nothing_raised do
-        CalendarHub::CacheWarmer.send(:warm_event_search_caches)
-      end
+      CalendarEvent.count
+      CalendarEvent.delete_all
 
-      # Create an event
-      event = calendar_events(:provider_consult)
-      event.update!(starts_at: 1.week.from_now, ends_at: 1.week.from_now + 1.hour)
+      CalendarHub::CacheWarmer.send(:warm_event_search_caches)
 
-      # Should handle events without error
-      assert_nothing_raised do
-        CalendarHub::CacheWarmer.send(:warm_event_search_caches)
-      end
+      assert_equal(0, CalendarEvent.count)
+
+      event = CalendarEvent.create!(
+        calendar_source: calendar_sources(:provider),
+        external_id: "test-cache-event",
+        title: "Cache Test Event",
+        starts_at: 1.week.from_now,
+        ends_at: 1.week.from_now + 1.hour,
+      )
+
+      CalendarHub::CacheWarmer.send(:warm_event_search_caches)
+
+      assert_equal(1, CalendarEvent.count)
+      assert_equal(event.id, CalendarEvent.first.id)
     end
   end
 end

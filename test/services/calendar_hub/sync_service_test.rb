@@ -242,10 +242,13 @@ module CalendarHub
 
       service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client)
 
-      # Should not raise any errors when calling observer methods
-      assert_nothing_raised do
-        service.call
-      end
+      assert_instance_of(::CalendarHub::Shared::NullObserver, service.observer)
+
+      service.call
+
+      @source.reload
+
+      refute_nil(@source.last_synced_at)
     end
 
     test "calls observer methods during sync" do
