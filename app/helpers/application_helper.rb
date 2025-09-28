@@ -57,4 +57,41 @@ module ApplicationHelper
       image_tag("logos/favicon.png", alt: "Calendar Hub", **options)
     end
   end
+
+  # Form field helpers to DRY up repetitive form patterns
+  def form_field_label(form, field, text = nil, **options)
+    text ||= field.to_s.humanize
+    form.label(field, text, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400", **options)
+  end
+
+  def form_field_error(model, field)
+    return if model.errors[field].none?
+
+    content_tag(:p, model.errors[field].to_sentence, class: "mt-1 text-xs text-rose-300")
+  end
+
+  def form_field_hint(text)
+    content_tag(:p, text, class: "mt-1 text-xs text-slate-400")
+  end
+
+  # Button style helpers
+  def primary_button_class
+    "cursor-pointer rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400"
+  end
+
+  def secondary_button_class
+    "cursor-pointer rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:border-slate-500"
+  end
+
+  def danger_button_class
+    "cursor-pointer rounded-lg border border-rose-700/40 px-3 py-2 text-sm text-rose-200 transition hover:border-rose-500"
+  end
+
+  def small_primary_button_class
+    "cursor-pointer rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-400"
+  end
+
+  def small_danger_button_class
+    "cursor-pointer rounded-lg bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-500"
+  end
 end

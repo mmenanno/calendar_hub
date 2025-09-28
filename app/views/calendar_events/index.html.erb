@@ -1,27 +1,9 @@
-<%= turbo_stream_from "calendar_events" %>
-
-<div class="min-h-screen bg-slate-950 text-slate-100">
-  <header class="bg-slate-900/70 backdrop-blur sticky top-0 z-10 border-b border-slate-800">
-    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-      <div class="flex items-center gap-3">
-        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10m-11 8h12a2 2 0 002-2v-8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
-        </span>
-        <div>
-          <h1 class="text-xl font-semibold"><%= t("app.title") %></h1>
-          <p class="text-sm text-slate-400"><%= t("app.tagline") %></p>
-        </div>
-      </div>
-      <div class="flex items-center gap-3 text-sm">
-        <%= render "shared/top_nav", active: :events %>
-      </div>
-    </div>
-  </header>
-
-  <section class="mx-auto w-full max-w-6xl px-6 py-8">
-    <%= render "shared/flashes" %>
+<%= render "shared/page_header",
+      nav_active: :events,
+      icon: content_tag(:svg, content_tag(:path, "", "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "1.5", d: "M8 7V3m8 4V3m-9 8h10m-11 8h12a2 2 0 002-2v-8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"), xmlns: "http://www.w3.org/2000/svg", class: "h-6 w-6", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor"),
+      title: t("app.title"),
+      subtitle: t("app.tagline") do %>
+  <%= turbo_stream_from "calendar_events" %>
 
     <div class="grid gap-8 lg:grid-cols-[2fr,1fr]">
       <div>
@@ -101,5 +83,4 @@
         </div>
       </aside>
     </div>
-  </section>
-</div>
+<% end %>

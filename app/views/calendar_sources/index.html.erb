@@ -1,38 +1,18 @@
-<div class="min-h-screen bg-slate-950 text-slate-100">
-  <header class="bg-slate-900/70 backdrop-blur sticky top-0 z-10 border-b border-slate-800">
-    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-      <div class="flex items-center gap-3">
-        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10m-11 8h12a2 2 0 002-2v-8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
-        </span>
-        <div>
-          <h1 class="text-xl font-semibold"><%= t("ui.sources.header") %></h1>
-          <p class="text-sm text-slate-400">Manage external feeds and Apple calendar destinations.</p>
-        </div>
-      </div>
-      <%= render "shared/top_nav", active: :sources %>
-    </div>
-  </header>
-
-  <section class="mx-auto w-full max-w-6xl px-6 py-8">
-    <%= render "shared/flashes" %>
-    <%= turbo_stream_from "calendar_sources" %>
+<%= render "shared/page_header",
+      nav_active: :sources,
+      icon: content_tag(:svg, content_tag(:path, "", "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "1.5", d: "M8 7V3m8 4V3m-9 8h10m-11 8h12a2 2 0 002-2v-8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"), xmlns: "http://www.w3.org/2000/svg", class: "h-6 w-6", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor"),
+      title: t("ui.sources.header"),
+      subtitle: "Manage external feeds and Apple calendar destinations." do %>
+  <%= turbo_stream_from "calendar_sources" %>
 
     <div class="space-y-6">
-      <div id="new_source_form" class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5" data-controller="collapsible" data-collapsible-key-value="add-source" data-collapsible-default-open-value="<%= @calendar_sources.blank? %>" data-collapsible-remember-value="false">
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-lg font-semibold"><%= t("ui.sources.add_source") %></h2>
-          <button type="button" class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-200 hover:border-slate-500" data-action="collapsible#toggle">
-            <span data-collapsible-target="label"><%= t("ui.sources.toggle_show") %></span>
-            <span data-collapsible-target="icon" class="ml-1 inline-block transition-transform">▾</span>
-          </button>
-        </div>
-        <div data-collapsible-target="content" class="hidden">
-          <%= render "form", calendar_source: @new_source %>
-        </div>
-      </div>
+      <%= render "shared/collapsible_section",
+            id: "new_source_form",
+            key: "add-source",
+            title: t("ui.sources.add_source"),
+            default_open: @calendar_sources.blank? do %>
+        <%= render "form", calendar_source: @new_source %>
+      <% end %>
 
       <section id="sources-list" class="space-y-4">
         <% @calendar_sources.each do |source| %>
@@ -44,5 +24,4 @@
         <%= render "calendar_sources/archived_section", archived_sources: @archived_sources %>
       </div>
     </div>
-  </section>
-</div>
+<% end %>

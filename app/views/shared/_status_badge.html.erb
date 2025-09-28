@@ -1,0 +1,33 @@
+<%#
+  Reusable status badge component
+  Usage: render "shared/status_badge", status: "active", text: "Active", variant: :success
+%>
+<% variant = local_assigns[:variant] || :default %>
+<% badge_classes = case variant.to_sym
+   when :success
+     "bg-emerald-500/10 text-emerald-300"
+   when :warning
+     "bg-yellow-500/10 text-yellow-300"
+   when :danger
+     "bg-rose-500/10 text-rose-300"
+   when :info
+     "bg-indigo-500/10 text-indigo-300"
+   else
+     "bg-slate-800 text-slate-400"
+   end %>
+<% dot_classes = case variant.to_sym
+   when :success
+     "bg-emerald-400"
+   when :warning
+     "bg-yellow-400"
+   when :danger
+     "bg-rose-400"
+   when :info
+     "bg-indigo-400"
+   else
+     "bg-slate-600"
+   end %>
+<span class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs <%= badge_classes %> <%= local_assigns[:class] %>">
+  <span class="h-1.5 w-1.5 rounded-full <%= dot_classes %>"></span>
+  <%= local_assigns[:text] || local_assigns[:status] %>
+</span>
