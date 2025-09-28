@@ -2,7 +2,7 @@
 <% latest = attempt || nil %>
 <div id="sync_status_source_<%= latest&.calendar_source_id || params[:id] || "unknown" %>" class="max-w-md rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-xs">
   <% if latest.present? %>
-    <% presenter = SyncStatusPresenter.new(latest) %>
+    <% presenter = SyncStatusPresenter.new(latest, self) %>
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
       <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 <%= presenter.badge_class %>">
         <span class="h-1.5 w-1.5 rounded-full <%= presenter.dot_class %>"></span>
