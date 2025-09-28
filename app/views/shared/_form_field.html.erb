@@ -1,0 +1,32 @@
+<%#
+  Unified form field partial to reduce duplication
+  Usage: render "shared/form_field", form: form, field: :name, model: model, type: :text_field, hint: "Optional hint"
+%>
+<% model = local_assigns[:model] %>
+<div class="<%= local_assigns[:wrapper_class] %>">
+  <%= form_field_label(form, field, local_assigns[:label]) %>
+
+  <% if local_assigns[:type] == :select %>
+    <div class="select-chevron <%= "wide-select" if local_assigns[:wide] %>">
+      <%= form.send(:select, field, local_assigns[:options], local_assigns[:select_options] || {}, class: select_class, **local_assigns.fetch(:html_options, {})) %>
+    </div>
+  <% elsif local_assigns[:type] == :collection_select %>
+    <div class="select-chevron <%= "wide-select" if local_assigns[:wide] %>">
+      <%= form.collection_select(field, local_assigns[:collection], local_assigns[:value_method], local_assigns[:text_method], local_assigns[:select_options] || {}, class: select_class, **local_assigns.fetch(:html_options, {})) %>
+    </div>
+  <% elsif local_assigns[:type] == :time_zone_select %>
+    <div class="select-chevron">
+      <%= form.time_zone_select(field, ActiveSupport::TimeZone.all, local_assigns[:select_options] || {}, class: select_class) %>
+    </div>
+  <% elsif local_assigns[:type] == :check_box %>
+    <div class="flex items-center gap-3">
+      <%= form.check_box(field, class: "h-4 w-4 rounded border-slate-700 bg-slate-900 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-0", **local_assigns.fetch(:html_options, {})) %>
+      <%= form.label(field, local_assigns[:label] || field.to_s.humanize, class: "text-sm text-slate-300") %>
+    </div>
+  <% else %>
+    <%= form.send(local_assigns[:type] || :text_field, field, class: input_class, **local_assigns.fetch(:html_options, {})) %>
+  <% end %>
+
+  <%= form_field_error(model, field) if model %>
+  <%= form_field_hint(local_assigns[:hint]) if local_assigns[:hint] %>
+</div>

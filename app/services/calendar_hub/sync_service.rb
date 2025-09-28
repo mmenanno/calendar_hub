@@ -4,14 +4,13 @@ require "securerandom"
 
 module CalendarHub
   class SyncService
-    attr_reader :source, :apple_client, :translator, :adapter, :observer
+    attr_reader :source, :adapter, :observer, :apple_syncer
 
     def initialize(source:, apple_client: AppleCalendar::Client.new, observer: nil, adapter: nil)
       @source = source
-      @apple_client = apple_client
-      @translator = CalendarHub::Translators::EventTranslator.new(source)
       @adapter = adapter || CalendarHub::Ingestion::GenericICSAdapter.new(source)
-      @observer = observer || NullObserver.new
+      @observer = observer || CalendarHub::Shared::NullObserver.new
+      @apple_syncer = CalendarHub::Shared::AppleEventSyncer.new(source: source, apple_client: apple_client)
     end
 
     def call
@@ -22,7 +21,7 @@ module CalendarHub
       fetched_events = adapter.fetch_events
       observer.start(total: fetched_events.size)
       processed_events = upsert_events(fetched_events)
-      apply_counts = push_updates_to_apple(processed_events)
+      apply_counts = apple_syncer.sync_events_batch(processed_events, observer: observer)
       cancel_counts = cancel_missing_events(fetched_events)
       source.mark_synced!(token: generate_sync_token, timestamp: Time.current)
       observer.finish(status: :success)
@@ -71,39 +70,6 @@ module CalendarHub
       events
     end
 
-    def push_updates_to_apple(events)
-      upserts = 0
-      deletes = 0
-      events.sort_by { |e| e.starts_at.to_date }.chunk { |e| e.starts_at.to_date }.each do |_date, day_events|
-        day_events.each do |event|
-          if event.sync_exempt?
-            apple_client.delete_event(calendar_identifier: source.calendar_identifier, uid: composite_uid_for(event))
-            observer.delete_success(event)
-            deletes += 1
-          elsif event.cancelled?
-            apple_client.delete_event(calendar_identifier: source.calendar_identifier, uid: composite_uid_for(event))
-            observer.delete_success(event)
-            deletes += 1
-          else
-            payload = translator.call(event)
-            payload[:summary] = CalendarHub::NameMapper.apply(payload[:summary], source: source)
-            payload[:url] = event_url_for(event)
-            payload[:x_props] = { "X-CH-SOURCE" => source.name, "X-CH-SOURCE-ID" => source.id.to_s }
-            apple_client.upsert_event(calendar_identifier: source.calendar_identifier, payload: payload)
-            observer.upsert_success(event)
-            upserts += 1
-          end
-          event.mark_synced!
-        rescue StandardError => error
-          Rails.logger.error("[CalendarSync] Failed to sync event #{event.external_id}: #{error.message}")
-          observer.upsert_error(event, error)
-        end
-        # Small pause between day-batches to avoid server throttling
-        sleep(0.05)
-      end
-      { upserts: upserts, deletes: deletes }
-    end
-
     def cancel_missing_events(fetched_events)
       canceled = 0
       external_ids = fetched_events.map(&:uid)
@@ -112,7 +78,7 @@ module CalendarHub
         next if event.cancelled?
 
         event.update!(status: :cancelled, source_updated_at: Time.current)
-        apple_client.delete_event(calendar_identifier: source.calendar_identifier, uid: composite_uid_for(event))
+        apple_syncer.delete_event(event)
         observer.delete_success(event)
         canceled += 1
         event.mark_synced!
@@ -125,34 +91,6 @@ module CalendarHub
 
     def generate_sync_token
       SecureRandom.hex(16)
-    end
-  end
-end
-
-# Null observer that no-ops when not provided
-module CalendarHub
-  class NullObserver
-    def start(total: 0); end
-    def upsert_success(event); end
-    def upsert_error(event, error); end
-    def delete_success(event); end
-    def delete_error(event, error); end
-    def finish(status: :success, message: nil); end
-  end
-end
-
-module CalendarHub
-  class SyncService
-    private
-
-    def event_url_for(event)
-      Rails.application.routes.url_helpers.calendar_event_url(event, **UrlOptions.for_links)
-    rescue
-      nil
-    end
-
-    def composite_uid_for(event)
-      "ch-#{event.calendar_source_id}-#{event.external_id}"
     end
   end
 end

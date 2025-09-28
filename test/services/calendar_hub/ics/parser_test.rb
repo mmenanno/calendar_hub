@@ -3,8 +3,10 @@
 require "test_helper"
 
 class ParserTest < ActiveSupport::TestCase
+  include ICSTestHelpers
+
   test "parses provider ics file" do
-    parser = CalendarHub::ICS::Parser.new(file_fixture("provider.ics").read, default_time_zone: "America/Toronto")
+    parser = ::CalendarHub::ICS::Parser.new(file_fixture("provider.ics").read, default_time_zone: "America/Toronto")
     events = parser.events
 
     assert_equal 2, events.count
@@ -37,33 +39,27 @@ class ParserTest < ActiveSupport::TestCase
   end
 
   test "handles empty ics content" do
-    parser = CalendarHub::ICS::Parser.new("")
+    parser = ::CalendarHub::ICS::Parser.new("")
     events = parser.events
 
     assert_empty(events)
   end
 
   test "handles nil ics content" do
-    parser = CalendarHub::ICS::Parser.new(nil)
+    parser = ::CalendarHub::ICS::Parser.new(nil)
     events = parser.events
 
     assert_empty(events)
   end
 
   test "handles events without UID" do
-    ics_content = <<~ICS
-      BEGIN:VCALENDAR
-      VERSION:2.0
-      PRODID:-//Test//EN
-      BEGIN:VEVENT
-      SUMMARY:No UID Event
-      DTSTART:20250101T100000Z
-      DTEND:20250101T110000Z
-      END:VEVENT
-      END:VCALENDAR
-    ICS
+    ics_content = build_ics_content({
+      summary: "No UID Event",
+      starts_at: Time.utc(2025, 1, 1, 10, 0, 0),
+      ends_at: Time.utc(2025, 1, 1, 11, 0, 0),
+    }).gsub(/UID:.*\n/, "")
 
-    parser = CalendarHub::ICS::Parser.new(ics_content)
+    parser = ::CalendarHub::ICS::Parser.new(ics_content)
     events = parser.events
 
     assert_empty(events)
@@ -82,7 +78,7 @@ class ParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content)
+    parser = ::CalendarHub::ICS::Parser.new(ics_content)
     events = parser.events
 
     assert_empty(events)
@@ -102,7 +98,7 @@ class ParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "America/New_York")
+    parser = ::CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "America/New_York")
     events = parser.events
 
     assert_equal(1, events.count)
@@ -129,7 +125,7 @@ class ParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content)
+    parser = ::CalendarHub::ICS::Parser.new(ics_content)
     events = parser.events
 
     assert_equal(1, events.count)
@@ -154,7 +150,7 @@ class ParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content)
+    parser = ::CalendarHub::ICS::Parser.new(ics_content)
     events = parser.events
 
     assert_equal(1, events.count)
@@ -178,7 +174,7 @@ class ParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content)
+    parser = ::CalendarHub::ICS::Parser.new(ics_content)
     events = parser.events
 
     assert_equal(1, events.count)
@@ -208,7 +204,7 @@ class ParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content)
+    parser = ::CalendarHub::ICS::Parser.new(ics_content)
     events = parser.events
 
     assert_equal(1, events.count)
@@ -236,7 +232,7 @@ class ParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content)
+    parser = ::CalendarHub::ICS::Parser.new(ics_content)
     events = parser.events
 
     assert_equal(1, events.count)
@@ -260,7 +256,7 @@ class ParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content)
+    parser = ::CalendarHub::ICS::Parser.new(ics_content)
     events = parser.events
 
     assert_equal(1, events.count)
@@ -284,7 +280,7 @@ class ParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "America/New_York")
+    parser = ::CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "America/New_York")
     events = parser.events
 
     # Invalid datetime should cause the event to be skipped
@@ -305,7 +301,7 @@ class ParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content)
+    parser = ::CalendarHub::ICS::Parser.new(ics_content)
     events = parser.events
 
     assert_equal(1, events.count)
@@ -329,7 +325,7 @@ class ParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "America/New_York")
+    parser = ::CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "America/New_York")
     events = parser.events
 
     assert_equal(1, events.count)
@@ -354,7 +350,7 @@ class ParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content)
+    parser = ::CalendarHub::ICS::Parser.new(ics_content)
     events = parser.events
 
     assert_equal(1, events.count)
@@ -379,7 +375,7 @@ class ParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content)
+    parser = ::CalendarHub::ICS::Parser.new(ics_content)
     events = parser.events
 
     assert_equal(1, events.count)
@@ -390,7 +386,7 @@ class ParserTest < ActiveSupport::TestCase
   end
 
   test "parse_line handles parameters without values" do
-    parser = CalendarHub::ICS::Parser.new("")
+    parser = ::CalendarHub::ICS::Parser.new("")
 
     # Test parameter parsing with missing value after =
     key, params, value = parser.send(:parse_line, "DTSTART;TZID=:20250101T100000Z")
@@ -401,7 +397,7 @@ class ParserTest < ActiveSupport::TestCase
   end
 
   test "parse_datetime handles date-only format without VALUE=DATE parameter" do
-    parser = CalendarHub::ICS::Parser.new("", default_time_zone: "America/New_York")
+    parser = ::CalendarHub::ICS::Parser.new("", default_time_zone: "America/New_York")
 
     # Test date without T but without VALUE=DATE parameter
     result = parser.send(:parse_datetime, "20250101", {})
@@ -413,7 +409,7 @@ class ParserTest < ActiveSupport::TestCase
   end
 
   test "parse_datetime handles TZID with valid timezone for all-day events" do
-    parser = CalendarHub::ICS::Parser.new("", default_time_zone: "UTC")
+    parser = ::CalendarHub::ICS::Parser.new("", default_time_zone: "UTC")
 
     result = parser.send(:parse_datetime, "20250101", { "VALUE" => "DATE", "TZID" => "America/Los_Angeles" })
 
@@ -424,7 +420,7 @@ class ParserTest < ActiveSupport::TestCase
   end
 
   test "parse_datetime handles TZID with valid timezone for timed events" do
-    parser = CalendarHub::ICS::Parser.new("", default_time_zone: "UTC")
+    parser = ::CalendarHub::ICS::Parser.new("", default_time_zone: "UTC")
 
     result = parser.send(:parse_datetime, "20250101T100000", { "TZID" => "America/New_York" })
 
@@ -434,7 +430,7 @@ class ParserTest < ActiveSupport::TestCase
   end
 
   test "default_zone falls back to UTC when invalid timezone" do
-    parser = CalendarHub::ICS::Parser.new("", default_time_zone: "Invalid/Timezone")
+    parser = ::CalendarHub::ICS::Parser.new("", default_time_zone: "Invalid/Timezone")
 
     zone = parser.send(:default_zone)
 
@@ -442,7 +438,7 @@ class ParserTest < ActiveSupport::TestCase
   end
 
   test "normalize_datetime_string handles date-only format" do
-    parser = CalendarHub::ICS::Parser.new("")
+    parser = ::CalendarHub::ICS::Parser.new("")
 
     result = parser.send(:normalize_datetime_string, "20250101")
 
@@ -450,7 +446,7 @@ class ParserTest < ActiveSupport::TestCase
   end
 
   test "parsed_components extracts date and time components correctly" do
-    parser = CalendarHub::ICS::Parser.new("")
+    parser = ::CalendarHub::ICS::Parser.new("")
 
     result = parser.send(:parsed_components, "20250315", "143022")
 
@@ -464,7 +460,7 @@ class ParserTest < ActiveSupport::TestCase
 
   test "unfolded_lines handles content with no folded lines" do
     content = "LINE1\nLINE2\nLINE3"
-    parser = CalendarHub::ICS::Parser.new(content)
+    parser = ::CalendarHub::ICS::Parser.new(content)
 
     lines = parser.send(:unfolded_lines)
 
@@ -473,7 +469,7 @@ class ParserTest < ActiveSupport::TestCase
 
   test "unfolded_lines handles content ending with folded line" do
     content = "LINE1\nLINE2\n FOLDED"
-    parser = CalendarHub::ICS::Parser.new(content)
+    parser = ::CalendarHub::ICS::Parser.new(content)
 
     lines = parser.send(:unfolded_lines)
 
@@ -481,7 +477,7 @@ class ParserTest < ActiveSupport::TestCase
   end
 
   test "decode_value handles multiple escaped newlines" do
-    parser = CalendarHub::ICS::Parser.new("")
+    parser = ::CalendarHub::ICS::Parser.new("")
 
     result = parser.send(:decode_value, "Line 1\\nLine 2\\nLine 3")
 
@@ -489,7 +485,7 @@ class ParserTest < ActiveSupport::TestCase
   end
 
   test "all_day_event? returns true for VALUE=DATE parameter" do
-    parser = CalendarHub::ICS::Parser.new("")
+    parser = ::CalendarHub::ICS::Parser.new("")
 
     attributes = { dtstart_params: { "VALUE" => "DATE" }, dtstart_raw: "20250101T100000Z" }
 
@@ -497,7 +493,7 @@ class ParserTest < ActiveSupport::TestCase
   end
 
   test "all_day_event? returns true for date without T even without VALUE=DATE" do
-    parser = CalendarHub::ICS::Parser.new("")
+    parser = ::CalendarHub::ICS::Parser.new("")
 
     attributes = { dtstart_params: {}, dtstart_raw: "20250101" }
 
@@ -505,7 +501,7 @@ class ParserTest < ActiveSupport::TestCase
   end
 
   test "all_day_event? returns false for timed events" do
-    parser = CalendarHub::ICS::Parser.new("")
+    parser = ::CalendarHub::ICS::Parser.new("")
 
     attributes = { dtstart_params: {}, dtstart_raw: "20250101T100000Z" }
 
@@ -513,7 +509,7 @@ class ParserTest < ActiveSupport::TestCase
   end
 
   test "all_day_event? handles missing dtstart_params and dtstart_raw" do
-    parser = CalendarHub::ICS::Parser.new("")
+    parser = ::CalendarHub::ICS::Parser.new("")
 
     attributes = {}
 

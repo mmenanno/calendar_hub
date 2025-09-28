@@ -1,0 +1,21 @@
+<%#
+  Reusable section card component
+  Usage: render "shared/section_card", title: "Section Title", variant: :default do
+    # content
+  end
+%>
+<% variant = local_assigns[:variant] || :default %>
+<% card_classes = case variant.to_sym
+   when :light
+     "bg-slate-900/60"
+   when :lighter
+     "bg-slate-900/70"
+   else
+     "bg-slate-900/60"
+   end %>
+<div class="rounded-2xl border border-slate-800 <%= card_classes %> p-5 <%= local_assigns[:class] %>">
+  <% if local_assigns[:title] %>
+    <h2 class="mb-4 text-lg font-semibold"><%= local_assigns[:title] %></h2>
+  <% end %>
+  <%= yield %>
+</div>

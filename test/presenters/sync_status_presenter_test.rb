@@ -14,7 +14,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
       started_at: 1.hour.ago,
       finished_at: 1.hour.ago,
     )
-    presenter = SyncStatusPresenter.new(attempt)
+    presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
     assert_equal("bg-emerald-500/10 text-emerald-300", presenter.badge_class)
   end
@@ -25,7 +25,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
       status: :running,
       started_at: 1.hour.ago,
     )
-    presenter = SyncStatusPresenter.new(attempt)
+    presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
     assert_equal("bg-indigo-500/10 text-indigo-300", presenter.badge_class)
   end
@@ -37,7 +37,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
       started_at: 1.hour.ago,
       finished_at: 1.hour.ago,
     )
-    presenter = SyncStatusPresenter.new(attempt)
+    presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
     assert_equal("bg-rose-500/10 text-rose-300", presenter.badge_class)
   end
@@ -48,7 +48,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
       status: :queued,
       started_at: 1.hour.ago,
     )
-    presenter = SyncStatusPresenter.new(attempt)
+    presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
     assert_equal("bg-slate-800 text-slate-300", presenter.badge_class)
   end
@@ -60,7 +60,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
       started_at: 1.hour.ago,
       finished_at: 1.hour.ago,
     )
-    presenter = SyncStatusPresenter.new(attempt)
+    presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
     assert_equal("bg-emerald-400", presenter.dot_class)
   end
@@ -71,7 +71,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
       status: :running,
       started_at: 1.hour.ago,
     )
-    presenter = SyncStatusPresenter.new(attempt)
+    presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
     assert_equal("bg-indigo-400", presenter.dot_class)
   end
@@ -83,7 +83,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
       started_at: 1.hour.ago,
       finished_at: 1.hour.ago,
     )
-    presenter = SyncStatusPresenter.new(attempt)
+    presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
     assert_equal("bg-rose-400", presenter.dot_class)
   end
@@ -94,7 +94,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
       status: :queued,
       started_at: 1.hour.ago,
     )
-    presenter = SyncStatusPresenter.new(attempt)
+    presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
     assert_equal("bg-slate-500", presenter.dot_class)
   end
@@ -106,7 +106,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
       started_at: 1.hour.ago,
       finished_at: 1.hour.ago,
     )
-    presenter = SyncStatusPresenter.new(attempt)
+    presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
     assert_equal("Success", presenter.status_label)
   end
@@ -121,7 +121,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
         started_at: 1.hour.ago,
         finished_at: (status.in?([:success, :failed]) ? 1.hour.ago : nil),
       )
-      presenter = SyncStatusPresenter.new(attempt)
+      presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
       assert_equal(status.to_s.capitalize, presenter.status_label)
     end
@@ -134,7 +134,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
       started_at: 2.hours.ago,
       finished_at: 1.hour.ago,
     )
-    presenter = SyncStatusPresenter.new(attempt)
+    presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
     result = presenter.started_ago
 
@@ -146,7 +146,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
       calendar_source: @source,
       status: :queued,
     )
-    presenter = SyncStatusPresenter.new(attempt)
+    presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
     assert_nil(presenter.started_ago)
   end
@@ -158,7 +158,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
       started_at: 2.hours.ago,
       finished_at: 1.hour.ago,
     )
-    presenter = SyncStatusPresenter.new(attempt)
+    presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
     result = presenter.finished_ago
 
@@ -171,7 +171,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
       status: :running,
       started_at: 1.hour.ago,
     )
-    presenter = SyncStatusPresenter.new(attempt)
+    presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
     assert_nil(presenter.finished_ago)
   end
@@ -183,7 +183,7 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
       started_at: 1.hour.ago,
       finished_at: 1.hour.ago,
     )
-    presenter = SyncStatusPresenter.new(attempt)
+    presenter = SyncStatusPresenter.new(attempt, ApplicationController.new.view_context)
 
     assert_equal(attempt, presenter.attempt)
   end

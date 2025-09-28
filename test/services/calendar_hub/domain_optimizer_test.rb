@@ -12,9 +12,9 @@ module CalendarHub
     end
 
     test "extracts apex domain correctly" do
-      assert_equal "example.com", CalendarHub::DomainOptimizer.extract_apex_domain("https://sub.example.com/path")
-      assert_equal "example.com", CalendarHub::DomainOptimizer.extract_apex_domain("https://example.com/path")
-      assert_equal "github.com", CalendarHub::DomainOptimizer.extract_apex_domain("https://api.github.com/path")
+      assert_equal "example.com", ::CalendarHub::DomainOptimizer.extract_apex_domain("https://sub.example.com/path")
+      assert_equal "example.com", ::CalendarHub::DomainOptimizer.extract_apex_domain("https://example.com/path")
+      assert_equal "github.com", ::CalendarHub::DomainOptimizer.extract_apex_domain("https://api.github.com/path")
     end
 
     test "groups sources by apex domain" do
@@ -25,7 +25,7 @@ module CalendarHub
       )
 
       sources = [@source1, @source2, @source3]
-      groups = CalendarHub::DomainOptimizer.group_sources_by_domain(sources)
+      groups = ::CalendarHub::DomainOptimizer.group_sources_by_domain(sources)
 
       assert_equal 2, groups.keys.count
       assert_equal 2, groups["example.com"].count
@@ -35,7 +35,7 @@ module CalendarHub
     test "handles invalid URLs gracefully" do
       @source1.update!(ingestion_url: "not-a-valid-url")
 
-      domain = CalendarHub::DomainOptimizer.extract_apex_domain(@source1.ingestion_url)
+      domain = ::CalendarHub::DomainOptimizer.extract_apex_domain(@source1.ingestion_url)
 
       assert_equal "unknown", domain
     end
@@ -44,7 +44,7 @@ module CalendarHub
       # This should trigger URI::InvalidURIError and hit the rescue block
       invalid_uri = "http://[invalid-ipv6-address"
 
-      domain = CalendarHub::DomainOptimizer.extract_apex_domain(invalid_uri)
+      domain = ::CalendarHub::DomainOptimizer.extract_apex_domain(invalid_uri)
 
       assert_equal "unknown", domain
     end
@@ -53,7 +53,7 @@ module CalendarHub
       sources = [@source1, @source2]
 
       freeze_time do
-        schedule = CalendarHub::DomainOptimizer.optimize_sync_schedule(sources)
+        schedule = ::CalendarHub::DomainOptimizer.optimize_sync_schedule(sources)
 
         frozen_time = Time.current
 
@@ -66,7 +66,7 @@ module CalendarHub
       sources = [@source1, @source2]
 
       freeze_time do
-        schedule = CalendarHub::DomainOptimizer.optimize_sync_schedule(sources, window_minutes: 10)
+        schedule = ::CalendarHub::DomainOptimizer.optimize_sync_schedule(sources, window_minutes: 10)
 
         frozen_time = Time.current
 
@@ -76,25 +76,25 @@ module CalendarHub
     end
 
     test "extract_apex_domain handles URLs without host" do
-      domain = CalendarHub::DomainOptimizer.extract_apex_domain("file:///local/file.ics")
+      domain = ::CalendarHub::DomainOptimizer.extract_apex_domain("file:///local/file.ics")
 
       assert_equal "", domain
     end
 
     test "extract_apex_domain handles single part domains" do
-      domain = CalendarHub::DomainOptimizer.extract_apex_domain("https://localhost/calendar.ics")
+      domain = ::CalendarHub::DomainOptimizer.extract_apex_domain("https://localhost/calendar.ics")
 
       assert_equal "localhost", domain
     end
 
     test "extract_apex_domain handles domains with many subdomains" do
-      domain = CalendarHub::DomainOptimizer.extract_apex_domain("https://a.b.c.example.com/calendar.ics")
+      domain = ::CalendarHub::DomainOptimizer.extract_apex_domain("https://a.b.c.example.com/calendar.ics")
 
       assert_equal "example.com", domain
     end
 
     test "optimize_sync_schedule handles empty sources array" do
-      schedule = CalendarHub::DomainOptimizer.optimize_sync_schedule([])
+      schedule = ::CalendarHub::DomainOptimizer.optimize_sync_schedule([])
 
       assert_empty(schedule)
     end
@@ -121,7 +121,7 @@ module CalendarHub
       sources = [source_high_id, source_low_id]
 
       freeze_time do
-        schedule = CalendarHub::DomainOptimizer.optimize_sync_schedule(sources)
+        schedule = ::CalendarHub::DomainOptimizer.optimize_sync_schedule(sources)
 
         frozen_time = Time.current
 
@@ -149,7 +149,7 @@ module CalendarHub
       sources = [source_domain1, source_domain2]
 
       freeze_time do
-        schedule = CalendarHub::DomainOptimizer.optimize_sync_schedule(sources)
+        schedule = ::CalendarHub::DomainOptimizer.optimize_sync_schedule(sources)
 
         frozen_time = Time.current
 
@@ -175,7 +175,7 @@ module CalendarHub
       )
 
       sources = [@source1, source_invalid, source_no_host]
-      groups = CalendarHub::DomainOptimizer.group_sources_by_domain(sources)
+      groups = ::CalendarHub::DomainOptimizer.group_sources_by_domain(sources)
 
       assert_equal(3, groups.keys.count)
       assert_includes(groups.keys, "example.com")

@@ -1,21 +1,21 @@
 # frozen_string_literal: true
 
-class CalendarSourcePresenter
-  attr_reader :source, :view
+class CalendarSourcePresenter < ApplicationPresenter
+  attr_reader :source
 
   def initialize(source, view_context)
+    super(view_context)
     @source = source
-    @view = view_context
   end
 
   delegate :name, to: :source
 
   def calendar_identifier
-    source.calendar_identifier.presence || "—"
+    presence_or_dash(source.calendar_identifier)
   end
 
   def last_synced_text
-    source.last_synced_at ? "#{view.time_ago_in_words(source.last_synced_at)} ago" : I18n.t("common.states.never")
+    time_ago_text(source.last_synced_at, I18n.t("common.states.never"))
   end
 
   def pending_count
@@ -32,19 +32,11 @@ class CalendarSourcePresenter
   end
 
   def active_badge_class
-    if deleted?
-      "bg-rose-500/10 text-rose-300"
-    else
-      source.active? ? "bg-emerald-500/10 text-emerald-300" : "bg-slate-800 text-slate-400"
-    end
+    badge_classes(active_badge_variant)
   end
 
   def active_dot_class
-    if deleted?
-      "bg-rose-400"
-    else
-      source.active? ? "bg-emerald-400" : "bg-slate-600"
-    end
+    dot_classes(active_badge_variant)
   end
 
   def active_label
@@ -73,27 +65,11 @@ class CalendarSourcePresenter
   end
 
   def auto_sync_badge_class
-    unless source.auto_sync_enabled?
-      return "bg-slate-800 text-slate-400"
-    end
-
-    if source.auto_syncable?
-      source.sync_due? ? "bg-yellow-500/10 text-yellow-300" : "bg-indigo-500/10 text-indigo-300"
-    else
-      "bg-slate-800 text-slate-400"
-    end
+    badge_classes(auto_sync_badge_variant)
   end
 
   def auto_sync_dot_class
-    unless source.auto_sync_enabled?
-      return "bg-slate-600"
-    end
-
-    if source.auto_syncable?
-      source.sync_due? ? "bg-yellow-400" : "bg-indigo-400"
-    else
-      "bg-slate-600"
-    end
+    dot_classes(auto_sync_badge_variant)
   end
 
   def sync_frequency_text
@@ -112,6 +88,24 @@ class CalendarSourcePresenter
       "#{frequency_text} #{I18n.t("ui.sources.default_frequency_suffix")}"
     else
       frequency_text
+    end
+  end
+
+  private
+
+  def active_badge_variant
+    return :danger if deleted?
+
+    source.active? ? :success : :default
+  end
+
+  def auto_sync_badge_variant
+    return :default unless source.auto_sync_enabled?
+
+    if source.auto_syncable?
+      source.sync_due? ? :warning : :info
+    else
+      :default
     end
   end
 end

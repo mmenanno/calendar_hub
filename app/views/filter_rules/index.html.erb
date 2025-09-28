@@ -1,34 +1,18 @@
-<div class="min-h-screen bg-slate-950 text-slate-100">
-  <header class="bg-slate-900/70 backdrop-blur sticky top-0 z-10 border-b border-slate-800">
-    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-      <div class="flex items-center gap-3">
-        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/20 text-red-300">🚫</span>
-        <div>
-          <h1 class="text-xl font-semibold"><%= t("ui.filter_rules.header") %></h1>
-          <p class="text-sm text-slate-400"><%= t("ui.filter_rules.subheader") %></p>
-        </div>
-      </div>
-      <%= render "shared/top_nav", active: :filter_rules %>
-    </div>
-  </header>
-
-  <section class="mx-auto w-full max-w-6xl px-6 py-8">
-    <%= turbo_stream_from "filter_rules" %>
-    <%= render "shared/flashes" %>
+<%= render "shared/page_header",
+      nav_active: :filter_rules,
+      icon: "🚫",
+      title: t("ui.filter_rules.header"),
+      subtitle: t("ui.filter_rules.subheader") do %>
+  <%= turbo_stream_from "filter_rules" %>
 
     <div class="space-y-6">
-      <div id="new_filter_rule_form" class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5" data-controller="collapsible" data-collapsible-key-value="add-filter-rule" data-collapsible-default-open-value="<%= (@filter_rules || FilterRule.all).blank? %>" data-collapsible-remember-value="false">
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-lg font-semibold"><%= t("ui.filter_rules.add_rule") %></h2>
-          <button type="button" class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-200 hover:border-slate-500" data-action="collapsible#toggle">
-            <span data-collapsible-target="label"><%= t("common.actions.show") %></span>
-            <span data-collapsible-target="icon" class="ml-1 inline-block transition-transform">▾</span>
-          </button>
-        </div>
-        <div data-collapsible-target="content" class="hidden">
-          <%= render "filter_rules/form", filter_rule: FilterRule.new %>
-        </div>
-      </div>
+      <%= render "shared/collapsible_section",
+            id: "new_filter_rule_form",
+            key: "add-filter-rule",
+            title: t("ui.filter_rules.add_rule"),
+            default_open: (@filter_rules || FilterRule.all).blank? do %>
+        <%= render "filter_rules/form", filter_rule: FilterRule.new %>
+      <% end %>
 
       <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
         <h2 class="mb-2 text-lg font-semibold"><%= t("ui.filter_rules.test_rules") %></h2>
@@ -94,5 +78,4 @@
         <% end %>
       </div>
     </div>
-  </section>
-</div>
+<% end %>

@@ -1,10 +1,10 @@
-import { Controller } from "@hotwired/stimulus"
+import BaseController from "./base_controller"
 
 // Usage:
 // - Add data-controller="confirm" and data-confirm-message-value="..." to a link or to the form created by button_to
 // - For links using turbo_method, the default click will be re-triggered when confirmed.
 // - For forms, we will submit the form after confirmation.
-export default class extends Controller {
+export default class extends BaseController {
   static values = { message: String }
 
   connect () {
@@ -29,7 +29,7 @@ export default class extends Controller {
         if (!confirmed) return
         // If this is a FORM (button_to), submit it; otherwise submit/navigate explicitly
         if (this.element.tagName === 'FORM') {
-          this.element.requestSubmit ? this.element.requestSubmit() : this.element.submit()
+          this.submitForm(this.element)
         } else {
           this.followLink(this.element)
         }
@@ -93,12 +93,12 @@ export default class extends Controller {
     form.action = href
     form.dataset.turbo = 'true'
 
-    const token = document.querySelector('meta[name="csrf-token"]')
+    const token = this.getCsrfToken()
     if (token) {
       const input = document.createElement('input')
       input.type = 'hidden'
       input.name = 'authenticity_token'
-      input.value = token.content
+      input.value = token
       form.appendChild(input)
     }
 
@@ -114,9 +114,6 @@ export default class extends Controller {
     form.submit()
   }
 
-  escapeHtml (str) {
-    return (str || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-  }
 
   translate (key) {
     const translations = {

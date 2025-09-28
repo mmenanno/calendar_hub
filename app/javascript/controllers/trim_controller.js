@@ -1,7 +1,7 @@
-import { Controller } from "@hotwired/stimulus"
+import BaseController from "./base_controller"
 
 // Trims leading/trailing spaces on blur (and on connect for prefilled values)
-export default class extends Controller {
+export default class extends BaseController {
   static targets = ["field"]
 
   connect() {

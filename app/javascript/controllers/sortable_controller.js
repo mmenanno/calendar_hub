@@ -1,6 +1,6 @@
-import { Controller } from "@hotwired/stimulus"
+import BaseController from "./base_controller"
 
-export default class extends Controller {
+export default class extends BaseController {
   static targets = ["container", "item"]
   static values = { url: String }
 
@@ -53,14 +53,18 @@ export default class extends Controller {
     this.persistOrder()
   }
 
-  persistOrder () {
+  async persistOrder() {
     const order = Array.from(this.containerTarget.querySelectorAll('[data-id]')).map(el => el.dataset.id)
-    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-    fetch(this.urlValue, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
-      body: JSON.stringify({ order })
-    })
+
+    try {
+      await this.fetchWithCsrf(this.urlValue, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order })
+      })
+    } catch (error) {
+      console.error('Failed to persist sort order:', error)
+    }
   }
 }
 

@@ -1,21 +1,9 @@
-<div class="min-h-screen bg-slate-950 text-slate-100">
-  <header class="bg-slate-900/70 backdrop-blur sticky top-0 z-10 border-b border-slate-800">
-    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-      <div class="flex items-center gap-3">
-        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6l4 2" /></svg>
-        </span>
-        <div>
-          <h1 class="text-xl font-semibold"><%= t("ui.settings.header") %></h1>
-          <p class="text-sm text-slate-400"><%= t("ui.settings.subheader") %></p>
-        </div>
-      </div>
-      <%= render "shared/top_nav", active: :settings %>
-    </div>
-  </header>
-
-  <section class="mx-auto w-full max-w-4xl px-6 py-8">
-    <%= render "shared/flashes" %>
+<%= render "shared/page_header",
+      nav_active: :settings,
+      max_width: "max-w-4xl",
+      icon: content_tag(:svg, content_tag(:path, "", "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "1.5", d: "M12 6v6l4 2"), xmlns: "http://www.w3.org/2000/svg", class: "h-6 w-6", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor"),
+      title: t("ui.settings.header"),
+      subtitle: t("ui.settings.subheader") do %>
 
     <div class="grid gap-8 lg:grid-cols-[1.2fr,1fr]">
       <%= form_with model: @settings, url: settings_path, data: { controller: "dirty-form", action: "turbo:submit-end->dirty-form#reset" }, html: { autocomplete: "off", "data-1p-ignore": true, "data-lpignore": true } do |f| %>
@@ -89,7 +77,7 @@
           </div>
         </div>
 
-        <button type="submit" data-dirty-form-target="save" class="hidden fixed bottom-4 right-4 z-20 rounded-full bg-indigo-500 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-400">
+        <button type="submit" data-dirty-form-target="save" class="hidden fixed bottom-4 right-4 z-20 rounded-full <%= primary_button_class.gsub("rounded-lg", "rounded-full") %> px-5 py-3 shadow-lg shadow-indigo-500/20">
           <%= t("ui.settings.save_changes") %>
         </button>
       <% end %>
@@ -121,7 +109,7 @@
                 <p class="text-slate-500"><%= t("ui.settings.credential_key_hint") %></p>
               </div>
               <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-xs text-slate-300">
-                <% opts = UrlOptions.for_links %>
+                <% opts = CalendarHub::UrlOptions.for_links %>
                 <p class="mb-1"><span class="text-slate-400"><%= t("ui.settings.effective_base_url") %></span> <code><%= opts[:protocol] || "http" %>://<%= opts[:host] %><%= opts[:port] ? ":#{opts[:port]}" : "" %></code></p>
                 <p class="mb-1"><span class="text-slate-400"><%= t("ui.settings.rails_env") %></span> <%= Rails.env %>; <span class="text-slate-400"><%= t("ui.settings.ruby") %></span> <%= RUBY_VERSION %>; <span class="text-slate-400"><%= t("ui.settings.rails") %></span> <%= Rails.version %></p>
               </div>
@@ -134,5 +122,4 @@
 
       </div>
     </div>
-  </section>
-</div>
+<% end %>

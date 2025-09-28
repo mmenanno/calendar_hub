@@ -12,7 +12,7 @@ module CalendarHub
       @adapter = mock("EnhancedIcsAdapter")
       @observer = mock("Observer")
 
-      @service = CalendarHub::EnhancedSyncService.new(
+      @service = ::CalendarHub::Sync::EnhancedSyncService.new(
         source: @source,
         apple_client: @apple_client,
         observer: @observer,

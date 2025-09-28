@@ -35,12 +35,12 @@
           </label>
         </div>
         <div class="flex items-end justify-end gap-2">
-          <%= f.submit(t("common.actions.save"), class: "cursor-pointer rounded-lg bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-500") %>
+          <%= f.submit(t("common.actions.save"), class: small_danger_button_class) %>
           <%= link_to(
                 t("common.actions.cancel"),
                 filter_rules_path,
                 data: { turbo_frame: dom_id(filter_rule, :row) },
-                class: "cursor-pointer rounded border border-slate-600 px-3 py-1 text-xs text-slate-300 hover:border-slate-500",
+                class: secondary_button_class + " text-xs px-3 py-1",
               ) %>
         </div>
       <% end %>

@@ -62,7 +62,7 @@
     <div class="md:col-span-2">
       <dt class="font-medium text-slate-500"><%= t("ui.events.direct_link") %></dt>
       <dd>
-        <% opts = UrlOptions.for_links %>
+        <% opts = CalendarHub::UrlOptions.for_links %>
         <% link_url = calendar_event_url(event, **opts) %>
         <div class="flex items-center gap-2">
           <code class="rounded bg-slate-800 px-2 py-1 text-xs"><%= link_url %></code>

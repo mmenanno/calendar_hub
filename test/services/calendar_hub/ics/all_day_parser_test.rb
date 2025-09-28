@@ -3,23 +3,19 @@
 require "test_helper"
 
 class AllDayParserTest < ActiveSupport::TestCase
-  test "parses all-day event with VALUE=DATE parameter" do
-    ics_content = <<~ICS
-      BEGIN:VCALENDAR
-      VERSION:2.0
-      PRODID:-//Test//Test//EN
-      BEGIN:VEVENT
-      UID:all-day-123
-      DTSTAMP:20250926T120000Z
-      DTSTART;VALUE=DATE:20250927
-      DTEND;VALUE=DATE:20250928
-      SUMMARY:All Day Event
-      DESCRIPTION:This is an all-day event
-      END:VEVENT
-      END:VCALENDAR
-    ICS
+  include ICSTestHelpers
 
-    parser = CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "UTC")
+  test "parses all-day event with VALUE=DATE parameter" do
+    event_data = build_all_day_event(
+      uid: "all-day-123",
+      summary: "All Day Event",
+      description: "This is an all-day event",
+      starts_at: Date.parse("2025-09-27"),
+      ends_at: Date.parse("2025-09-28"),
+    )
+    ics_content = build_ics_content(event_data)
+
+    parser = ::CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "UTC")
     events = parser.events
 
     assert_equal(1, events.count)
@@ -33,21 +29,15 @@ class AllDayParserTest < ActiveSupport::TestCase
   end
 
   test "parses all-day event without VALUE=DATE parameter but date-only format" do
-    ics_content = <<~ICS
-      BEGIN:VCALENDAR
-      VERSION:2.0
-      PRODID:-//Test//Test//EN
-      BEGIN:VEVENT
-      UID:all-day-456
-      DTSTAMP:20250926T120000Z
-      DTSTART:20250927
-      DTEND:20250928
-      SUMMARY:Another All Day Event
-      END:VEVENT
-      END:VCALENDAR
-    ICS
+    event_data = build_all_day_event(
+      uid: "all-day-456",
+      summary: "Another All Day Event",
+      starts_at: Date.parse("2025-09-27"),
+      ends_at: Date.parse("2025-09-28"),
+    )
+    ics_content = build_ics_content(event_data).gsub(";VALUE=DATE", "")
 
-    parser = CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "UTC")
+    parser = ::CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "UTC")
     events = parser.events
 
     assert_equal(1, events.count)
@@ -60,21 +50,15 @@ class AllDayParserTest < ActiveSupport::TestCase
   end
 
   test "parses timed event correctly" do
-    ics_content = <<~ICS
-      BEGIN:VCALENDAR
-      VERSION:2.0
-      PRODID:-//Test//Test//EN
-      BEGIN:VEVENT
-      UID:timed-789
-      DTSTAMP:20250926T120000Z
-      DTSTART:20250927T140000Z
-      DTEND:20250927T150000Z
-      SUMMARY:Timed Event
-      END:VEVENT
-      END:VCALENDAR
-    ICS
+    event_data = build_simple_event(
+      uid: "timed-789",
+      summary: "Timed Event",
+      starts_at: Time.utc(2025, 9, 27, 14, 0, 0),
+      ends_at: Time.utc(2025, 9, 27, 15, 0, 0),
+    )
+    ics_content = build_ics_content(event_data)
 
-    parser = CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "UTC")
+    parser = ::CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "UTC")
     events = parser.events
 
     assert_equal(1, events.count)

@@ -21,7 +21,7 @@ class UrlOptionsTest < ActiveSupport::TestCase
 
   test "includes port for localhost when set" do
     @settings.update!(app_host: "localhost", app_protocol: "http", app_port: "3000")
-    opts = UrlOptions.for_links
+    opts = CalendarHub::UrlOptions.for_links
 
     assert_equal("localhost", opts[:host])
     assert_equal("http", opts[:protocol])
@@ -34,7 +34,7 @@ class UrlOptionsTest < ActiveSupport::TestCase
       app_protocol: "https",
       app_port: "443",
     )
-    opts = UrlOptions.for_links
+    opts = CalendarHub::UrlOptions.for_links
 
     assert_equal("example.com", opts[:host])
     assert_equal("https", opts[:protocol])
@@ -45,7 +45,7 @@ class UrlOptionsTest < ActiveSupport::TestCase
     Rails.application.routes.default_url_options[:host] = "default-host.com"
     @settings.update!(app_host: nil, app_protocol: "http", app_port: nil)
 
-    opts = UrlOptions.for_links
+    opts = CalendarHub::UrlOptions.for_links
 
     assert_equal("default-host.com", opts[:host])
     assert_equal("http", opts[:protocol]) # Falls back to ENV default
@@ -59,7 +59,7 @@ class UrlOptionsTest < ActiveSupport::TestCase
     ENV["APP_PORT"] = "8080"
     @settings.update!(app_host: nil, app_protocol: "", app_port: nil) # Empty string, not nil
 
-    opts = UrlOptions.for_links
+    opts = CalendarHub::UrlOptions.for_links
 
     assert_equal("env-host.com", opts[:host])
     assert_equal("https", opts[:protocol])
@@ -73,7 +73,7 @@ class UrlOptionsTest < ActiveSupport::TestCase
     ENV.delete("APP_PORT")
     @settings.update!(app_host: nil, app_protocol: "", app_port: nil) # Empty string to trigger fallback
 
-    opts = UrlOptions.for_links
+    opts = CalendarHub::UrlOptions.for_links
 
     assert_equal("localhost", opts[:host])
     assert_equal("http", opts[:protocol])
@@ -82,7 +82,7 @@ class UrlOptionsTest < ActiveSupport::TestCase
 
   test "handles host with port already included" do
     @settings.update!(app_host: "example.com:8080", app_protocol: "https")
-    opts = UrlOptions.for_links
+    opts = CalendarHub::UrlOptions.for_links
 
     assert_equal("example.com", opts[:host])
     assert_equal("https", opts[:protocol])
@@ -95,7 +95,7 @@ class UrlOptionsTest < ActiveSupport::TestCase
       app_protocol: "https",
       app_port: "9090",
     )
-    opts = UrlOptions.for_links
+    opts = CalendarHub::UrlOptions.for_links
 
     assert_equal("example.com", opts[:host])
     assert_equal("https", opts[:protocol])
@@ -109,7 +109,7 @@ class UrlOptionsTest < ActiveSupport::TestCase
       app_protocol: "http",
       app_port: nil,
     )
-    opts = UrlOptions.for_links
+    opts = CalendarHub::UrlOptions.for_links
 
     assert_equal("example.com", opts[:host])
     assert_equal("http", opts[:protocol])
@@ -122,7 +122,7 @@ class UrlOptionsTest < ActiveSupport::TestCase
       app_protocol: "http",
       app_port: "0",
     )
-    opts = UrlOptions.for_links
+    opts = CalendarHub::UrlOptions.for_links
 
     assert_equal("example.com", opts[:host])
     assert_equal("http", opts[:protocol])
@@ -135,7 +135,7 @@ class UrlOptionsTest < ActiveSupport::TestCase
       app_protocol: "http",
       app_port: "invalid",
     )
-    opts = UrlOptions.for_links
+    opts = CalendarHub::UrlOptions.for_links
 
     assert_equal("example.com", opts[:host])
     assert_equal("http", opts[:protocol])
@@ -145,7 +145,7 @@ class UrlOptionsTest < ActiveSupport::TestCase
   # NOTE: split_host_port is a private method, so we test its behavior indirectly through for_links
   test "handles host with port extraction behavior" do
     @settings.update!(app_host: "example.com:9000", app_protocol: "https", app_port: nil)
-    opts = UrlOptions.for_links
+    opts = CalendarHub::UrlOptions.for_links
 
     assert_equal("example.com", opts[:host])
     assert_equal("https", opts[:protocol])
@@ -154,7 +154,7 @@ class UrlOptionsTest < ActiveSupport::TestCase
 
   test "handles IPv6-like hosts" do
     @settings.update!(app_host: "localhost", app_protocol: "http", app_port: "3000")
-    opts = UrlOptions.for_links
+    opts = CalendarHub::UrlOptions.for_links
 
     assert_equal("localhost", opts[:host])
     assert_equal("http", opts[:protocol])

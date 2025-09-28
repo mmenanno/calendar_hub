@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-class CalendarEventPresenter
-  attr_reader :event, :view
+class CalendarEventPresenter < ApplicationPresenter
+  attr_reader :event
 
   def initialize(event, view_context)
+    super(view_context)
     @event = event
-    @view = view_context
   end
 
   # Returns the mapped title if a mapping rule applies; otherwise the original
@@ -76,11 +76,11 @@ class CalendarEventPresenter
   end
 
   def last_synced_text
-    event.synced_at ? "#{view.time_ago_in_words(event.synced_at)} ago" : I18n.t("common.states.pending")
+    time_ago_text(event.synced_at, I18n.t("common.states.pending"))
   end
 
   def location
-    event.location.presence || "—"
+    presence_or_dash(event.location)
   end
 
   delegate :status, to: :event

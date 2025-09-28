@@ -33,8 +33,8 @@
           </label>
         </div>
         <div class="md:col-span-6 flex items-end justify-end gap-2">
-          <%= f.submit(t("common.actions.save"), class: "rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-400") %>
-          <%= link_to t("common.actions.cancel"), event_mappings_path, data: { turbo_frame: dom_id(mapping) }, class: "rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:border-slate-500" %>
+          <%= f.submit(t("common.actions.save"), class: small_primary_button_class) %>
+          <%= link_to t("common.actions.cancel"), event_mappings_path, data: { turbo_frame: dom_id(mapping) }, class: secondary_button_class + " text-xs px-3 py-1.5" %>
         </div>
       <% end %>
     </td>

@@ -76,31 +76,29 @@ module CalendarHub
 
         adapter = GenericICSAdapter.new(@source)
 
-        error = assert_raises(CalendarHub::Ingestion::Error) do
+        error = assert_raises(::CalendarHub::Ingestion::Error) do
           adapter.fetch_events
         end
 
         assert_match(/the server responded with status 500/, error.message)
       end
 
-      test "fetch_ics_body raises error for unexpected status codes" do
+      test "fetch_events raises error for unexpected HTTP status codes" do
         adapter = GenericICSAdapter.new(@source)
 
-        # Mock the http_client to return a response that bypasses Faraday's raise_error middleware
-        mock_response = mock("response")
-        mock_response.stubs(:status).returns(418) # I'm a teapot - unexpected status
-        mock_response.stubs(:headers).returns({})
+        # Mock the http_client to return an error response
+        mock_http_client = mock("http_client")
+        mock_http_client.expects(:get_with_caching).with(@source.ingestion_url).raises(
+          ::CalendarHub::Ingestion::Error.new("HTTP 418: I'm a teapot"),
+        )
 
-        mock_client = mock("http_client")
-        mock_client.expects(:get).with(@source.ingestion_url).returns(mock_response)
+        adapter.stubs(:http_client).returns(mock_http_client)
 
-        adapter.stubs(:http_client).returns(mock_client)
-
-        error = assert_raises(CalendarHub::Ingestion::Error) do
-          adapter.send(:fetch_ics_body)
+        error = assert_raises(::CalendarHub::Ingestion::Error) do
+          adapter.fetch_events
         end
 
-        assert_match(/Unexpected response status: 418/, error.message)
+        assert_match(/HTTP 418/, error.message)
       ensure
         adapter.unstub(:http_client) if adapter.respond_to?(:unstub)
       end
@@ -110,7 +108,7 @@ module CalendarHub
 
         adapter = GenericICSAdapter.new(@source)
 
-        error = assert_raises(CalendarHub::Ingestion::Error) do
+        error = assert_raises(::CalendarHub::Ingestion::Error) do
           adapter.fetch_events
         end
 

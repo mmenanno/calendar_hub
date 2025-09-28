@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 class FilterRulesController < ApplicationController
+  include Toggleable
+  include Reorderable
+  include Duplicatable
+
   before_action :set_filter_rule, only: [:destroy, :edit, :update, :toggle, :duplicate]
 
   def index
@@ -8,29 +12,11 @@ class FilterRulesController < ApplicationController
   end
 
   def reorder
-    ids = Array(params[:order]).map(&:to_i)
-    ActiveRecord::Base.transaction do
-      ids.each_with_index do |id, idx|
-        if (rule = FilterRule.find_by(id: id))
-          rule.update!(position: idx)
-        end
-      end
-    end
-    head(:ok)
+    reorder_records(FilterRule)
   end
 
   def toggle
-    @filter_rule.update!(active: !@filter_rule.active?)
-
-    respond_to do |format|
-      format.turbo_stream do
-        render(turbo_stream: [
-          turbo_stream.replace(view_context.dom_id(@filter_rule, :row), partial: "filter_rules/row", locals: { filter_rule: @filter_rule }),
-          turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t(@filter_rule.active? ? "flashes.filter_rules.enabled" : "flashes.filter_rules.disabled") }),
-        ])
-      end
-      format.html { redirect_to(filter_rules_path) }
-    end
+    toggle_field(@filter_rule, :active, "flashes.filter_rules", row_partial: "filter_rules/row", locals: { filter_rule: @filter_rule })
   end
 
   def test
@@ -64,10 +50,10 @@ class FilterRulesController < ApplicationController
     @filter_rule = FilterRule.new(filter_rule_params)
     if @filter_rule.save
       if @filter_rule.calendar_source
-        CalendarHub::FilterSyncService.new(source: @filter_rule.calendar_source).sync_filter_rules
+        CalendarHub::Sync::FilterSyncService.new(source: @filter_rule.calendar_source).sync_filter_rules
       else
         CalendarSource.active.find_each do |source|
-          CalendarHub::FilterSyncService.new(source: source).sync_filter_rules
+          CalendarHub::Sync::FilterSyncService.new(source: source).sync_filter_rules
         end
       end
 
@@ -145,22 +131,7 @@ class FilterRulesController < ApplicationController
   end
 
   def duplicate
-    copy = @filter_rule.dup
-    copy.position = FilterRule.maximum(:position).to_i + 1
-    copy.save!
-
-    respond_to do |format|
-      format.turbo_stream do
-        render(turbo_stream: [
-          turbo_stream.after(
-            view_context.dom_id(@filter_rule, :row),
-            render_to_string(partial: "filter_rules/row", locals: { filter_rule: copy }),
-          ),
-          turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t("flashes.filter_rules.duplicated") }),
-        ])
-      end
-      format.html { redirect_to(filter_rules_path, notice: t("flashes.filter_rules.duplicated")) }
-    end
+    duplicate_record(@filter_rule, row_partial: "filter_rules/row", success_message_key: "flashes.filter_rules", locals: { filter_rule: @filter_rule })
   end
 
   private
