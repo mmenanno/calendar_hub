@@ -16,6 +16,9 @@
 !/log/.keep
 !/tmp/.keep
 
+# Ignore coverage reports.
+/coverage/
+
 # Ignore pidfiles, but keep the directory.
 /tmp/pids/*
 !/tmp/pids/

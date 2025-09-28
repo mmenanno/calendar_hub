@@ -41,6 +41,7 @@ end
 
 # System testing and HTTP mocking
 group :test, :ci do
+  gem "simplecov", require: false
   gem "mocha"
   gem "webmock"
 end

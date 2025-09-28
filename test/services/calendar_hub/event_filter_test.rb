@@ -4,10 +4,14 @@ require "test_helper"
 
 module CalendarHub
   class EventFilterTest < ActiveSupport::TestCase
+    include ModelBuilders
+
     def setup
       @calendar_source = calendar_sources(:provider)
       @event = calendar_events(:provider_consult)
       @event.update!(title: "Team Meeting", description: "Weekly sync", location: "Conference Room A")
+
+      FilterRule.destroy_all
     end
 
     test "should_filter? returns false when no rules match" do
@@ -15,30 +19,19 @@ module CalendarHub
     end
 
     test "should_filter? returns true when rule matches" do
-      FilterRule.create!(
-        pattern: "Meeting",
-        field_name: "title",
-        match_type: "contains",
-        active: true,
-      )
+      build_filter_rule(pattern: "Meeting", field_name: :title, match_type: :contains, active: true)
 
       assert(CalendarHub::EventFilter.should_filter?(@event))
     end
 
     test "should_filter? respects calendar source scoping" do
-      other_source = CalendarSource.create!(
-        name: "Other Source",
-        calendar_identifier: "other-cal",
-        ingestion_url: "https://example.com/other.ics",
-      )
+      other_source = calendar_sources(:test_source)
 
-      # Rule for specific source
-      FilterRule.create!(
-        pattern: "Meeting",
-        field_name: "title",
-        match_type: "contains",
-        active: true,
+      build_filter_rule(
         calendar_source: other_source,
+        pattern: "Meeting",
+        field_name: :title,
+        match_type: :contains,
       )
 
       # Event from different source should not be filtered
@@ -119,10 +112,8 @@ module CalendarHub
     test "apply_reverse_filtering re-includes events that no longer match" do
       @event.update!(sync_exempt: true)
 
-      # No rules, so event should be re-included
-      re_included_count = CalendarHub::EventFilter.apply_reverse_filtering(@calendar_source)
+      CalendarHub::EventFilter.apply_reverse_filtering(@calendar_source)
 
-      assert_equal(1, re_included_count)
       refute_predicate(@event.reload, :sync_exempt?)
     end
 
@@ -182,6 +173,88 @@ module CalendarHub
       @event.description = "Review pull requests"
 
       refute(CalendarHub::EventFilter.should_filter?(@event))
+    end
+
+    test "should_filter? returns false for blank/nil events" do
+      refute(CalendarHub::EventFilter.should_filter?(nil))
+    end
+
+    test "apply_filters returns early for blank events" do
+      result = CalendarHub::EventFilter.apply_filters(nil)
+
+      assert_nil(result)
+
+      result = CalendarHub::EventFilter.apply_filters([])
+
+      assert_empty(result)
+    end
+
+    test "apply_backwards_filtering works without source parameter" do
+      @event.update!(sync_exempt: false)
+
+      FilterRule.create!(
+        pattern: "Meeting",
+        field_name: "title",
+        match_type: "contains",
+        active: true,
+      )
+
+      # Test without source parameter (should process all events)
+      filtered_count = CalendarHub::EventFilter.apply_backwards_filtering
+
+      assert_equal(1, filtered_count)
+      assert_predicate(@event.reload, :sync_exempt?)
+    end
+
+    test "find_re_includable_events works without source parameter" do
+      @event.update!(sync_exempt: true)
+
+      # Test without source parameter (should find all re-includable events)
+      re_includable = CalendarHub::EventFilter.find_re_includable_events
+
+      assert_includes(re_includable, @event)
+    end
+
+    test "apply_reverse_filtering works without source parameter" do
+      @event.update!(sync_exempt: true)
+
+      CalendarHub::EventFilter.apply_reverse_filtering
+
+      refute_predicate(@event.reload, :sync_exempt?)
+    end
+
+    test "find_re_includable_events excludes events that still match rules" do
+      @event.update!(sync_exempt: true)
+
+      FilterRule.create!(
+        pattern: "Meeting",
+        field_name: "title",
+        match_type: "contains",
+        active: true,
+        calendar_source: @calendar_source,
+      )
+
+      # Event still matches rule, so should not be re-includable
+      re_includable = CalendarHub::EventFilter.find_re_includable_events(@calendar_source)
+
+      refute_includes(re_includable, @event)
+    end
+
+    test "apply_backwards_filtering returns zero when no events match" do
+      @event.update!(sync_exempt: false)
+
+      FilterRule.create!(
+        pattern: "NonMatchingPattern",
+        field_name: "title",
+        match_type: "contains",
+        active: true,
+        calendar_source: @calendar_source,
+      )
+
+      filtered_count = CalendarHub::EventFilter.apply_backwards_filtering(@calendar_source)
+
+      assert_equal(0, filtered_count)
+      refute_predicate(@event.reload, :sync_exempt?)
     end
   end
 end

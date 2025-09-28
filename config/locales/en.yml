@@ -117,6 +117,13 @@ en:
       reset: "Settings reset to defaults."
       review_errors: "Please review the errors below."
       saved: "Settings saved."
+      credential_key_header: "Credential Key"
+      credential_key_fingerprint: "Fingerprint:"
+      credential_key_created_at: "Created:"
+      credential_key_location: "Location:"
+      rotate_credential_key: "Rotate Key"
+      rotate_credential_key_confirm: "Rotate the credential key? This will re-encrypt all stored credentials."
+      credential_key_hint: "Rotating the key re-encrypts all stored credentials with a new encryption key."
 
   navigation:
     events: "Events"
@@ -130,6 +137,17 @@ en:
     pong: "pong"
 
   ui:
+    help:
+      header: "Help"
+      subheader: "How Calendar Hub works and Apple Calendar tips."
+      how_it_works: "How It Works"
+      add_source: "Add a Source: provide an .ics feed URL and configure sync settings."
+      choose_destination: "Choose where events land: set an Apple Calendar identifier in Settings or per source."
+      enable_auto_sync: "Enable Auto-sync (optional): automatically sync at regular intervals."
+      click_sync: "Click Sync manually or let auto-sync handle it: events are normalized, mapped, and queued in the background."
+      review_events: "Review in Events: filter by source to verify imported items."
+      tip: "Tip: Event mappings can rename titles and are applied before syncing to Apple Calendar."
+
     events:
       all_sources: "All sources"
       direct_link: "Direct Link"

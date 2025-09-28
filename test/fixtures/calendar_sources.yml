@@ -23,3 +23,53 @@ archived_source:
     time_zone: UTC
   active: false
   deleted_at: <%= 1.day.ago %>
+
+inactive_source:
+  name: Inactive Source
+  ingestion_url: https://example.com/inactive.ics
+  calendar_identifier: inactive
+  settings:
+    time_zone: UTC
+  active: false
+
+auto_sync_source:
+  name: Auto Sync Source
+  ingestion_url: https://example.com/autosync.ics
+  calendar_identifier: autosync
+  settings:
+    time_zone: America/New_York
+    default_status: confirmed
+  active: true
+  auto_sync_enabled: true
+  sync_frequency_minutes: 60
+  last_synced_at: <%= 2.hours.ago %>
+
+authenticated_source:
+  name: Authenticated Source
+  ingestion_url: https://example.com/auth.ics
+  calendar_identifier: authenticated
+  settings:
+    time_zone: UTC
+  active: true
+  credentials:
+    http_basic_username: testuser
+    http_basic_password: testpass
+
+sync_window_source:
+  name: Sync Window Source
+  ingestion_url: https://example.com/window.ics
+  calendar_identifier: windowed
+  settings:
+    time_zone: UTC
+  active: true
+  sync_window_start_hour: 9
+  sync_window_end_hour: 17
+
+test_source:
+  name: Test Source
+  ingestion_url: https://example.com/test.ics
+  calendar_identifier: test-123
+  settings:
+    time_zone: UTC
+    default_status: confirmed
+  active: true

@@ -1,0 +1,64 @@
+# frozen_string_literal: true
+
+global_meeting_filter:
+  calendar_source:
+  pattern: "Meeting"
+  field_name: title
+  match_type: contains
+  case_sensitive: false
+  active: true
+  position: 0
+
+provider_standup_filter:
+  calendar_source: provider
+  pattern: "Standup"
+  field_name: title
+  match_type: contains
+  case_sensitive: false
+  active: true
+  position: 1
+
+regex_filter:
+  calendar_source: ics_feed
+  pattern: "^(.*) - (.*)"
+  field_name: title
+  match_type: regex
+  case_sensitive: true
+  active: true
+  position: 2
+
+description_filter:
+  calendar_source: provider
+  pattern: "Internal"
+  field_name: description
+  match_type: contains
+  case_sensitive: false
+  active: true
+  position: 3
+
+location_filter:
+  calendar_source: ics_feed
+  pattern: "Remote"
+  field_name: location
+  match_type: equals
+  case_sensitive: false
+  active: true
+  position: 4
+
+inactive_filter:
+  calendar_source: provider
+  pattern: "Old Pattern"
+  field_name: title
+  match_type: contains
+  case_sensitive: true
+  active: false
+  position: 5
+
+case_sensitive_filter:
+  calendar_source: ics_feed
+  pattern: "URGENT"
+  field_name: title
+  match_type: equals
+  case_sensitive: true
+  active: true
+  position: 6
