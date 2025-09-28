@@ -15,9 +15,9 @@ class PurgeCalendarSourceJobTest < ActiveSupport::TestCase
     # Run purge
     PurgeCalendarSourceJob.perform_now(source.id)
 
-    assert_nil CalendarSource.unscoped.find_by(id: source.id)
-    assert_nil CalendarEvent.find_by(id: event.id)
-    assert_nil SyncAttempt.find_by(id: attempt.id)
+    assert_nil(CalendarSource.unscoped.find_by(id: source.id))
+    assert_nil(CalendarEvent.find_by(id: event.id))
+    assert_nil(SyncAttempt.find_by(id: attempt.id))
   end
 
   test "handles non-existent source gracefully" do

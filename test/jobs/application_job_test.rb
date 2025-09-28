@@ -7,16 +7,16 @@ class ApplicationJobTest < ActiveJob::TestCase
     assert_operator(ApplicationJob, :<, ActiveJob::Base)
   end
 
-  test "has commented retry_on configuration" do
+  test "has retry_on configuration for deadlocks" do
     file_content = Rails.root.join("app/jobs/application_job.rb").read
 
-    assert_match(/# retry_on ActiveRecord::Deadlocked/, file_content)
+    assert_match(/retry_on ActiveRecord::Deadlocked/, file_content)
   end
 
-  test "has commented discard_on configuration" do
+  test "has discard_on configuration for serialization errors" do
     file_content = Rails.root.join("app/jobs/application_job.rb").read
 
-    assert_match(/# discard_on ActiveJob::DeserializationError/, file_content)
+    assert_match(/discard_on ActiveJob::DeserializationError/, file_content)
   end
 
   class TestJob < ApplicationJob
