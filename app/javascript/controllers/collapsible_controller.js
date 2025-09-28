@@ -1,4 +1,4 @@
-import BaseController from "./base_controller"
+import BaseController from "controllers/base_controller"
 
 export default class extends BaseController {
   static targets = ["content", "icon", "label"]
@@ -6,6 +6,8 @@ export default class extends BaseController {
     key: String,
     defaultOpen: { type: Boolean, default: false },
     remember: { type: Boolean, default: true },
+    showLabel: { type: String, default: "Show" },
+    hideLabel: { type: String, default: "Hide" }
   }
 
   connect () {
@@ -27,7 +29,10 @@ export default class extends BaseController {
   render () {
     if (this.hasContentTarget) this.contentTarget.classList.toggle('hidden', !this.open)
     if (this.hasIconTarget) this.iconTarget.style.transform = this.open ? 'rotate(180deg)' : 'rotate(0)'
-    if (this.hasLabelTarget) this.labelTarget.textContent = this.open ? 'Hide' : 'Show'
+    if (this.hasLabelTarget) {
+      this.labelTarget.textContent = this.open ? this.hideLabelValue : this.showLabelValue
+      this.labelTarget.closest('button')?.setAttribute('aria-expanded', String(this.open))
+    }
   }
 
   storageKey () { return `collapsible:${this.keyValue || this.element.id || ''}` }

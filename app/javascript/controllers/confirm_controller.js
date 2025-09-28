@@ -1,4 +1,4 @@
-import BaseController from "./base_controller"
+import BaseController from "controllers/base_controller"
 
 // Usage:
 // - Add data-controller="confirm" and data-confirm-message-value="..." to a link or to the form created by button_to
