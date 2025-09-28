@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 class EventMappingsController < ApplicationController
+  include Toggleable
+  include Reorderable
+  include Duplicatable
+
   before_action :set_mapping, only: [:destroy]
 
   def index
@@ -8,29 +12,12 @@ class EventMappingsController < ApplicationController
   end
 
   def reorder
-    ids = Array(params[:order]).map(&:to_i)
-    ActiveRecord::Base.transaction do
-      ids.each_with_index do |id, idx|
-        if (m = EventMapping.find_by(id: id))
-          m.update!(position: idx)
-        end
-      end
-    end
-    head(:ok)
+    reorder_records(EventMapping)
   end
 
   def toggle
     mapping = EventMapping.find(params[:id])
-    mapping.update!(active: !mapping.active?)
-    respond_to do |format|
-      format.turbo_stream do
-        render(turbo_stream: [
-          turbo_stream.replace(view_context.dom_id(mapping, :row), partial: "event_mappings/row", locals: { mapping: mapping }),
-          turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t(mapping.active? ? "flashes.mappings.enabled" : "flashes.mappings.disabled") }),
-        ])
-      end
-      format.html { redirect_to(event_mappings_path) }
-    end
+    toggle_field(mapping, :active, "flashes.mappings", row_partial: "event_mappings/row", locals: { mapping: mapping })
   end
 
   def test
@@ -60,48 +47,7 @@ class EventMappingsController < ApplicationController
               render_to_string(partial: "event_mappings/row", locals: { mapping: @mapping }),
             ),
             turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t("flashes.mappings.added") }),
-            turbo_stream.replace("new_mapping_form", render_to_string(inline: <<~ERB)
-              <div id="new_mapping_form" class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5" data-controller="collapsible" data-collapsible-key-value="add-rule" data-collapsible-default-open-value="false" data-collapsible-remember-value="false">
-                <div class="mb-3 flex items-center justify-between">
-                  <h2 class="text-lg font-semibold"><%= t("ui.mappings.add_rule") %></h2>
-                  <button type="button" class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-200 hover:border-slate-500" data-action="collapsible#toggle">
-                    <span data-collapsible-target="label"><%= t("common.actions.show") %></span>
-                    <span data-collapsible-target="icon" class="ml-1 inline-block transition-transform">▾</span>
-                  </button>
-                </div>
-                <div data-collapsible-target="content" class="hidden">
-                  <%= form_with model: EventMapping.new, url: event_mappings_path, class: "grid gap-3", data: { controller: "mapping-form" } do |f| %>
-                    <div>
-                      <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.source") %></label>
-                      <div class="select-chevron">
-                        <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: t("common.states.all") }, class: select_class) %>
-                      </div>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.match") %></label>
-                      <div class="select-chevron wide-select">
-                        <%= f.select(:match_type, EventMapping::MATCH_TYPES.values.map { |t| [t.humanize, t] }, {}, class: select_class, data: { mapping_form_target: "match", action: "change->mapping-form#validate" }) %>
-                      </div>
-                    </div>
-                    <div>
-                      <%= f.label(:pattern, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
-                      <%= f.text_field(:pattern, required: true, placeholder: "e.g. In-Person Counselling", class: input_class, data: { mapping_form_target: "pattern", action: "input->mapping-form#validate" }) %>
-                      <p data-mapping-form-target="error" class="mt-1 hidden text-xs text-rose-300"><%= t("ui.mappings.invalid_regex") %></p>
-                    </div>
-                    <div>
-                      <%= f.label(:replacement, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
-                      <%= f.text_field(:replacement, required: true, placeholder: "Client Session - In Person", class: input_class) %>
-                    </div>
-                    <label class="inline-flex items-center gap-2 text-xs text-slate-400">
-                      <%= f.check_box(:case_sensitive) %>
-                      <%= t("ui.mappings.case") %> sensitive
-                    </label>
-                    <%= f.submit(t("ui.mappings.add_mapping"), class: "rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400", data: { mapping_form_target: "submit" }) %>
-                  <% end %>
-                </div>
-              </div>
-            ERB
-            ),
+            turbo_stream.replace("new_mapping_form", render_to_string(partial: "event_mappings/new_form")),
           ])
         end
         format.html { redirect_back(fallback_location: event_mappings_path, notice: t("flashes.mappings.added")) }
@@ -136,21 +82,7 @@ class EventMappingsController < ApplicationController
 
   def duplicate
     original = EventMapping.find(params[:id])
-    copy = original.dup
-    copy.position = EventMapping.maximum(:position).to_i + 1
-    copy.save!
-    respond_to do |format|
-      format.turbo_stream do
-        render(turbo_stream: [
-          turbo_stream.after(
-            view_context.dom_id(original, :row),
-            render_to_string(partial: "event_mappings/row", locals: { mapping: copy }),
-          ),
-          turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t("flashes.mappings.duplicated") }),
-        ])
-      end
-      format.html { redirect_to(event_mappings_path, notice: t("flashes.mappings.duplicated")) }
-    end
+    duplicate_record(original, row_partial: "event_mappings/row", success_message_key: "flashes.mappings", locals: { mapping: original })
   end
 
   def destroy

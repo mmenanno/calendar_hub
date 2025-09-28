@@ -187,44 +187,26 @@ class CalendarSourcesController < ApplicationController
 
   def toggle_active
     @calendar_source.update!(active: !@calendar_source.active?)
-    respond_to do |format|
-      format.turbo_stream do
-        render(turbo_stream: [
-          turbo_stream.replace(
-            view_context.dom_id(@calendar_source, :card),
-            partial: "calendar_sources/source",
-            locals: { source: @calendar_source },
-          ),
-          turbo_stream.append(
-            "toast-anchor",
-            partial: "shared/toast",
-            locals: { message: t("flashes.calendar_sources.status_updated") },
-          ),
-        ])
-      end
-      format.html { redirect_back(fallback_location: calendar_events_path, notice: t("flashes.calendar_sources.status_updated")) }
-    end
+    streams = [
+      turbo_stream.replace(
+        view_context.dom_id(@calendar_source, :card),
+        partial: "calendar_sources/source",
+        locals: { source: @calendar_source },
+      ),
+    ]
+    turbo_success_response(streams, message: t("flashes.calendar_sources.status_updated"), fallback_location: calendar_events_path)
   end
 
   def toggle_auto_sync
     @calendar_source.update!(auto_sync_enabled: !@calendar_source.auto_sync_enabled?)
-    respond_to do |format|
-      format.turbo_stream do
-        render(turbo_stream: [
-          turbo_stream.replace(
-            view_context.dom_id(@calendar_source, :card),
-            partial: "calendar_sources/source",
-            locals: { source: @calendar_source },
-          ),
-          turbo_stream.append(
-            "toast-anchor",
-            partial: "shared/toast",
-            locals: { message: t("flashes.calendar_sources.auto_sync_updated") },
-          ),
-        ])
-      end
-      format.html { redirect_back(fallback_location: calendar_events_path, notice: t("flashes.calendar_sources.auto_sync_updated")) }
-    end
+    streams = [
+      turbo_stream.replace(
+        view_context.dom_id(@calendar_source, :card),
+        partial: "calendar_sources/source",
+        locals: { source: @calendar_source },
+      ),
+    ]
+    turbo_success_response(streams, message: t("flashes.calendar_sources.auto_sync_updated"), fallback_location: calendar_events_path)
   end
 
   def unarchive
