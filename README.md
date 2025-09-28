@@ -66,7 +66,7 @@ docker run -d -p 80:80 \
 Notes:
 
 - Container listens on port 80 by default (Thruster). Override `CMD` if needed.
-- Use a persistent volume for `storage/` if you store uploads.
+- **Important**: Use a persistent volume for `storage/` to preserve auto-generated secrets and data between container restarts.
 
 ### GitHub Container Registry
 
@@ -77,6 +77,7 @@ Notes:
 
 - **Required**: `RAILS_MASTER_KEY`
 - **Optional**:
+  - `SECRET_KEY_BASE` (auto-generated in `storage/` if not provided)
   - `APPLE_READONLY=true` to skip deletes against CalDAV
   - `SOLID_QUEUE_IN_PUMA` (true to run jobs in web process)
   - `WEB_CONCURRENCY`, `JOB_CONCURRENCY` for tuning
