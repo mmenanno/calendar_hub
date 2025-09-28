@@ -17,7 +17,7 @@ module CalendarHub
 
       def base_payload(event)
         {
-          uid: "ch-#{event.calendar_source_id}-#{event.external_id}",
+          uid: ::CalendarHub::Shared::UidGenerator.composite_uid_for(event),
           summary: event.title,
           description: event.description,
           location: event.location,

@@ -1,38 +1,16 @@
 # frozen_string_literal: true
 
-require "net/http"
-require "uri"
-
 module CalendarHub
   module Ingestion
     class EnhancedICSAdapter < CalendarHub::Ingestion::GenericICSAdapter
       def fetch_events_with_change_detection
-        uri = URI(source.ingestion_url)
-        http = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl = uri.scheme == "https"
+        result = http_client.get_with_caching(source.ingestion_url)
 
-        request = Net::HTTP::Get.new(uri.request_uri)
-
-        if source.ics_feed_etag.present?
-          request["If-None-Match"] = source.ics_feed_etag
-        end
-
-        if source.ics_feed_last_modified.present?
-          request["If-Modified-Since"] = source.ics_feed_last_modified
-        end
-
-        response = http.request(request)
-
-        case response.code.to_i
-        when 304
+        case result[:status]
+        when :not_modified
           { changed: false, events: [] }
-        when 200
-          source.update!(
-            ics_feed_etag: response["ETag"],
-            ics_feed_last_modified: response["Last-Modified"],
-          )
-
-          parser = CalendarHub::ICS::Parser.new(response.body, default_time_zone: source.time_zone)
+        when :success
+          parser = ::CalendarHub::ICS::Parser.new(result[:body], default_time_zone: source.time_zone)
           events = parser.events.map { |event| to_fetched_event(event) }
 
           # Filter out events that start before the import_start_date
@@ -42,8 +20,10 @@ module CalendarHub
 
           { changed: true, events: events }
         else
-          raise Ingestion::Error, "HTTP #{response.code}: #{response.message}"
+          raise Ingestion::Error, "Unexpected HTTP response status"
         end
+      rescue CalendarHub::Ingestion::Error
+        raise
       rescue StandardError => e
         raise Ingestion::Error, "Failed to fetch ICS feed: #{e.message}"
       end

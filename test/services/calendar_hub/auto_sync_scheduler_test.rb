@@ -19,7 +19,7 @@ module CalendarHub
       @source1.update!(last_synced_at: 1.hour.ago)
       @source2.update!(last_synced_at: 30.minutes.ago)
 
-      scheduler = CalendarHub::AutoSyncScheduler.new
+      scheduler = ::CalendarHub::AutoSyncScheduler.new
       due_sources = scheduler.find_sources_due_for_sync
 
       assert_equal(1, due_sources.count)
@@ -30,7 +30,7 @@ module CalendarHub
       @source1.update!(last_synced_at: 10.minutes.ago)
       @source2.update!(last_synced_at: 15.minutes.ago)
 
-      scheduler = CalendarHub::AutoSyncScheduler.new
+      scheduler = ::CalendarHub::AutoSyncScheduler.new
       due_sources = scheduler.find_sources_due_for_sync
 
       assert_empty(due_sources)
@@ -40,7 +40,7 @@ module CalendarHub
       @source1.update!(auto_sync_enabled: false, last_synced_at: 1.hour.ago)
       @source2.update!(auto_sync_enabled: false, last_synced_at: 1.hour.ago)
 
-      scheduler = CalendarHub::AutoSyncScheduler.new
+      scheduler = ::CalendarHub::AutoSyncScheduler.new
       due_sources = scheduler.find_sources_due_for_sync
 
       assert_empty(due_sources)
@@ -61,7 +61,7 @@ module CalendarHub
       )
 
       travel_to Time.current.change(hour: 20) do
-        scheduler = CalendarHub::AutoSyncScheduler.new
+        scheduler = ::CalendarHub::AutoSyncScheduler.new
         due_sources = scheduler.find_sources_due_for_sync
 
         assert_empty(due_sources)
@@ -73,7 +73,7 @@ module CalendarHub
       @source2.update!(last_synced_at: 1.hour.ago)
       @source1.sync_attempts.create!(status: :running)
 
-      scheduler = CalendarHub::AutoSyncScheduler.new
+      scheduler = ::CalendarHub::AutoSyncScheduler.new
       due_sources = scheduler.find_sources_due_for_sync
 
       assert_equal(1, due_sources.count)
@@ -85,7 +85,7 @@ module CalendarHub
       @source2.update!(last_synced_at: 1.hour.ago)
 
       assert_enqueued_jobs(2, only: SyncCalendarJob) do
-        scheduler = CalendarHub::AutoSyncScheduler.new
+        scheduler = ::CalendarHub::AutoSyncScheduler.new
         result = scheduler.call
 
         assert_equal(2, result)
@@ -96,7 +96,7 @@ module CalendarHub
       @source1.update!(last_synced_at: 10.minutes.ago)
       @source2.update!(last_synced_at: 15.minutes.ago)
 
-      scheduler = CalendarHub::AutoSyncScheduler.new
+      scheduler = ::CalendarHub::AutoSyncScheduler.new
       result = scheduler.call
 
       assert_equal(0, result)
@@ -118,9 +118,9 @@ module CalendarHub
           @source1.id => frozen_now - 1.second,
           @source2.id => frozen_now + 10.minutes,
         }
-        CalendarHub::DomainOptimizer.stubs(:optimize_sync_schedule).returns(schedule)
+        ::CalendarHub::DomainOptimizer.stubs(:optimize_sync_schedule).returns(schedule)
 
-        scheduler = CalendarHub::AutoSyncScheduler.new
+        scheduler = ::CalendarHub::AutoSyncScheduler.new
         result = scheduler.call
 
         assert_equal(2, result)

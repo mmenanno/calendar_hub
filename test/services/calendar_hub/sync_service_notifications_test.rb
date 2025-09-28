@@ -18,7 +18,7 @@ class SyncServiceNotificationsTest < ActiveSupport::TestCase
       events << [name, payload]
     end
 
-    service = CalendarHub::SyncService.new(source: source, observer: CalendarHub::NullObserver.new, adapter: FakeAdapter.new(source))
+    service = CalendarHub::Sync::SyncService.new(source: source, observer: CalendarHub::Shared::NullObserver.new, adapter: FakeAdapter.new(source))
     service.call
 
     assert_equal(1, events.size)

@@ -12,7 +12,7 @@ module CalendarHub
       sync_result = SyncEventResult.create!(sync_attempt: attempt, external_id: "e1", action: "upsert", success: true, occurred_at: Time.current)
       event_mapping = EventMapping.create!(calendar_source: source, pattern: "title", replacement: "summary", match_type: "contains")
 
-      service = CalendarHub::PurgeService.new(source)
+      service = ::CalendarHub::PurgeService.new(source)
       result = service.call
 
       assert_nil(CalendarSource.unscoped.find_by(id: source.id))
@@ -26,7 +26,7 @@ module CalendarHub
     end
 
     test "handles source that doesn't exist" do
-      service = CalendarHub::PurgeService.new(nil)
+      service = ::CalendarHub::PurgeService.new(nil)
       result = service.call
 
       assert_nil(result)
@@ -34,7 +34,7 @@ module CalendarHub
 
     test "logs purge activity" do
       source = calendar_sources(:ics_feed)
-      service = CalendarHub::PurgeService.new(source)
+      service = ::CalendarHub::PurgeService.new(source)
 
       Rails.logger.expects(:info).with(regexp_matches(/Starting purge for source/))
       Rails.logger.expects(:info).with(regexp_matches(/Completed purge for source/))

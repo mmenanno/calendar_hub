@@ -50,10 +50,10 @@ class FilterRulesController < ApplicationController
     @filter_rule = FilterRule.new(filter_rule_params)
     if @filter_rule.save
       if @filter_rule.calendar_source
-        CalendarHub::FilterSyncService.new(source: @filter_rule.calendar_source).sync_filter_rules
+        CalendarHub::Sync::FilterSyncService.new(source: @filter_rule.calendar_source).sync_filter_rules
       else
         CalendarSource.active.find_each do |source|
-          CalendarHub::FilterSyncService.new(source: source).sync_filter_rules
+          CalendarHub::Sync::FilterSyncService.new(source: source).sync_filter_rules
         end
       end
 

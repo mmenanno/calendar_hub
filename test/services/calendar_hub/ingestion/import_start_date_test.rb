@@ -36,7 +36,7 @@ module CalendarHub
 
       test "import_start_date filtering logic" do
         # Test the filtering logic directly with mock events
-        old_event = CalendarHub::ICS::Event.new(
+        old_event = ::CalendarHub::ICS::Event.new(
           uid: "old-event",
           summary: "Old Event",
           description: nil,
@@ -49,7 +49,7 @@ module CalendarHub
           raw_properties: {},
         )
 
-        recent_event = CalendarHub::ICS::Event.new(
+        recent_event = ::CalendarHub::ICS::Event.new(
           uid: "recent-event",
           summary: "Recent Event",
           description: nil,

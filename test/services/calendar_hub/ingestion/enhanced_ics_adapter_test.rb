@@ -8,7 +8,7 @@ module CalendarHub
     class EnhancedICSAdapterTest < ActiveSupport::TestCase
       setup do
         @source = calendar_sources(:provider)
-        @adapter = CalendarHub::Ingestion::EnhancedICSAdapter.new(@source)
+        @adapter = ::CalendarHub::Ingestion::EnhancedICSAdapter.new(@source)
         WebMock.disable_net_connect!
       end
 
@@ -133,7 +133,7 @@ module CalendarHub
         stub_request(:get, @source.ingestion_url)
           .to_return(status: 500, body: "Internal Server Error")
 
-        assert_raises CalendarHub::Ingestion::Error do
+        assert_raises ::CalendarHub::Ingestion::Error do
           @adapter.fetch_events_with_change_detection
         end
       end
@@ -142,7 +142,7 @@ module CalendarHub
         stub_request(:get, @source.ingestion_url)
           .to_raise(StandardError.new("Network connection failed"))
 
-        error = assert_raises(CalendarHub::Ingestion::Error) do
+        error = assert_raises(::CalendarHub::Ingestion::Error) do
           @adapter.fetch_events_with_change_detection
         end
 
@@ -261,7 +261,7 @@ module CalendarHub
           .to_raise(StandardError.new("Network error"))
 
         # Should propagate the error from fetch_events_with_change_detection
-        assert_raises CalendarHub::Ingestion::Error do
+        assert_raises ::CalendarHub::Ingestion::Error do
           @adapter.has_changes?
         end
       end

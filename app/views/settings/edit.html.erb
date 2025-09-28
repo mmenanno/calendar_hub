@@ -109,7 +109,7 @@
                 <p class="text-slate-500"><%= t("ui.settings.credential_key_hint") %></p>
               </div>
               <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-xs text-slate-300">
-                <% opts = UrlOptions.for_links %>
+                <% opts = CalendarHub::UrlOptions.for_links %>
                 <p class="mb-1"><span class="text-slate-400"><%= t("ui.settings.effective_base_url") %></span> <code><%= opts[:protocol] || "http" %>://<%= opts[:host] %><%= opts[:port] ? ":#{opts[:port]}" : "" %></code></p>
                 <p class="mb-1"><span class="text-slate-400"><%= t("ui.settings.rails_env") %></span> <%= Rails.env %>; <span class="text-slate-400"><%= t("ui.settings.ruby") %></span> <%= RUBY_VERSION %>; <span class="text-slate-400"><%= t("ui.settings.rails") %></span> <%= Rails.version %></p>
               </div>

@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require Rails.root.join("app/services/calendar_hub/sync_service")
+require Rails.root.join("app/services/calendar_hub/sync/sync_service")
 
 module CalendarHub
   class NullObserverTest < ActiveSupport::TestCase
     def setup
-      @observer = CalendarHub::NullObserver.new
+      @observer = ::CalendarHub::Shared::NullObserver.new
       @event = calendar_events(:provider_consult)
       @error = StandardError.new("Test error")
     end
@@ -77,14 +77,14 @@ module CalendarHub
     end
 
     test "can be used as observer replacement" do
-      observer = CalendarHub::NullObserver.new
+      observer = ::CalendarHub::Shared::NullObserver.new
 
       observer.start(total: 2)
       observer.upsert_success(@event)
       observer.delete_success(@event)
       observer.finish(status: :success)
 
-      assert_instance_of(CalendarHub::NullObserver, observer)
+      assert_instance_of(CalendarHub::Shared::NullObserver, observer)
     end
   end
 end

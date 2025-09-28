@@ -16,7 +16,7 @@ module CalendarHub
 
     test "upserts fetched events and syncs with apple" do
       fetched_events = [
-        CalendarHub::ICS::Event.new(
+        ::CalendarHub::ICS::Event.new(
           uid: "prov-999",
           summary: "Therapy",
           description: "Routine",
@@ -35,7 +35,7 @@ module CalendarHub
       apple_client.expects(:upsert_event).once
       apple_client.expects(:delete_event).never
 
-      service = CalendarHub::SyncService.new(source: @source, apple_client: apple_client)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client)
       service.call
 
       event = @source.calendar_events.find_by(external_id: "prov-999")
@@ -59,17 +59,17 @@ module CalendarHub
       apple_client.expects(:upsert_event).never
       apple_client.expects(:delete_event).with(calendar_identifier: any_parameters, uid: regexp_matches(/^ch-\d+-legacy$/)).once
 
-      CalendarHub::SyncService.new(source: @source, apple_client: apple_client).call
+      ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client).call
 
       assert_predicate existing.reload, :cancelled?
     end
 
     test "raises error when no ingestion adapter" do
-      service = CalendarHub::SyncService.new(source: @source, adapter: nil)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, adapter: nil)
       # Force the adapter to be nil after initialization
       service.instance_variable_set(:@adapter, nil)
 
-      error = assert_raises(CalendarHub::Ingestion::Error) do
+      error = assert_raises(::CalendarHub::Ingestion::Error) do
         service.call
       end
 
@@ -80,7 +80,7 @@ module CalendarHub
       @source.calendar_identifier = ""
       @source.save(validate: false) # Skip validation to test the service logic
 
-      service = CalendarHub::SyncService.new(source: @source)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source)
 
       error = assert_raises(ArgumentError) do
         service.call
@@ -91,7 +91,7 @@ module CalendarHub
 
     test "handles upsert errors gracefully" do
       fetched_events = [
-        CalendarHub::ICS::Event.new(
+        ::CalendarHub::ICS::Event.new(
           uid: "error-event",
           summary: "Error Event",
           description: "",
@@ -105,12 +105,12 @@ module CalendarHub
         ),
       ]
 
-      CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns(fetched_events)
+      ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns(fetched_events)
       apple_client = mock("apple_client")
       apple_client.expects(:upsert_event).raises(StandardError, "Network error")
       apple_client.expects(:delete_event).never
 
-      service = CalendarHub::SyncService.new(source: @source, apple_client: apple_client)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client)
       service.call
 
       event = @source.calendar_events.find_by(external_id: "error-event")
@@ -131,12 +131,12 @@ module CalendarHub
         data: {},
       )
 
-      CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns([])
+      ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns([])
       apple_client = mock("apple_client")
       apple_client.expects(:upsert_event).never
       apple_client.expects(:delete_event).raises(StandardError, "Delete error")
 
-      service = CalendarHub::SyncService.new(source: @source, apple_client: apple_client)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client)
       service.call
 
       assert_predicate(existing.reload, :cancelled?)
@@ -144,7 +144,7 @@ module CalendarHub
 
     test "deletes sync_exempt events" do
       fetched_events = [
-        CalendarHub::ICS::Event.new(
+        ::CalendarHub::ICS::Event.new(
           uid: "exempt-event",
           summary: "Exempt Event",
           description: "",
@@ -158,12 +158,12 @@ module CalendarHub
         ),
       ]
 
-      CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns(fetched_events)
+      ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns(fetched_events)
       apple_client = mock("apple_client")
       apple_client.expects(:delete_event).with(calendar_identifier: any_parameters, uid: regexp_matches(/^ch-\d+-exempt-event$/)).once
       apple_client.expects(:upsert_event).never
 
-      service = CalendarHub::SyncService.new(source: @source, apple_client: apple_client)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client)
 
       # Mock the event to be sync_exempt
       CalendarEvent.any_instance.stubs(:sync_exempt?).returns(true)
@@ -179,7 +179,7 @@ module CalendarHub
 
     test "deletes cancelled events" do
       fetched_events = [
-        CalendarHub::ICS::Event.new(
+        ::CalendarHub::ICS::Event.new(
           uid: "cancelled-event",
           summary: "Cancelled Event",
           description: "",
@@ -193,12 +193,12 @@ module CalendarHub
         ),
       ]
 
-      CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns(fetched_events)
+      ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns(fetched_events)
       apple_client = mock("apple_client")
       apple_client.expects(:delete_event).with(calendar_identifier: any_parameters, uid: regexp_matches(/^ch-\d+-cancelled-event$/)).once
       apple_client.expects(:upsert_event).never
 
-      service = CalendarHub::SyncService.new(source: @source, apple_client: apple_client)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client)
       service.call
 
       event = @source.calendar_events.find_by(external_id: "cancelled-event")
@@ -219,12 +219,12 @@ module CalendarHub
         data: {},
       )
 
-      CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns([])
+      ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns([])
       apple_client = mock("apple_client")
       apple_client.expects(:upsert_event).never
       apple_client.expects(:delete_event).never
 
-      service = CalendarHub::SyncService.new(source: @source, apple_client: apple_client)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client)
       service.call
 
       assert_predicate(existing.reload, :cancelled?)
@@ -235,18 +235,18 @@ module CalendarHub
       observer.expects(:start).with(total: 0)
       observer.expects(:finish).with(status: :success)
 
-      CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns([])
+      ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns([])
       apple_client = mock("apple_client")
 
-      service = CalendarHub::SyncService.new(source: @source, apple_client: apple_client, observer: observer)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client, observer: observer)
       service.call
     end
 
     test "uses null observer by default" do
-      CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns([])
+      ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns([])
       apple_client = mock("apple_client")
 
-      service = CalendarHub::SyncService.new(source: @source, apple_client: apple_client)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client)
 
       # Should not raise any errors when calling observer methods
       assert_nothing_raised do
@@ -256,7 +256,7 @@ module CalendarHub
 
     test "calls observer methods during sync" do
       fetched_events = [
-        CalendarHub::ICS::Event.new(
+        ::CalendarHub::ICS::Event.new(
           uid: "observer-event",
           summary: "Observer Event",
           description: "",
@@ -275,11 +275,11 @@ module CalendarHub
       observer.expects(:upsert_success).once
       observer.expects(:finish).with(status: :success)
 
-      CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns(fetched_events)
+      ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns(fetched_events)
       apple_client = mock("apple_client")
       apple_client.expects(:upsert_event).once
 
-      service = CalendarHub::SyncService.new(source: @source, apple_client: apple_client, observer: observer)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client, observer: observer)
       service.call
     end
 
@@ -300,17 +300,17 @@ module CalendarHub
       observer.expects(:delete_success).once
       observer.expects(:finish).with(status: :success)
 
-      CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns([])
+      ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns([])
       apple_client = mock("apple_client")
       apple_client.expects(:delete_event).once
 
-      service = CalendarHub::SyncService.new(source: @source, apple_client: apple_client, observer: observer)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client, observer: observer)
       service.call
     end
 
     test "calls observer error methods when sync fails" do
       fetched_events = [
-        CalendarHub::ICS::Event.new(
+        ::CalendarHub::ICS::Event.new(
           uid: "observer-error",
           summary: "Observer Error",
           description: "",
@@ -329,19 +329,19 @@ module CalendarHub
       observer.expects(:upsert_error).once
       observer.expects(:finish).with(status: :success)
 
-      CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns(fetched_events)
+      ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns(fetched_events)
       apple_client = mock("apple_client")
       apple_client.expects(:upsert_event).raises(StandardError, "Sync error")
 
-      service = CalendarHub::SyncService.new(source: @source, apple_client: apple_client, observer: observer)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client, observer: observer)
       service.call
     end
 
     test "generates sync token" do
-      CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns([])
+      ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns([])
       apple_client = mock("apple_client")
 
-      service = CalendarHub::SyncService.new(source: @source, apple_client: apple_client)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client)
       service.call
 
       @source.reload
@@ -351,7 +351,7 @@ module CalendarHub
     end
 
     test "event_url_for handles routing errors" do
-      service = CalendarHub::SyncService.new(source: @source)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source)
 
       # Mock the url_helpers to raise an error
       Rails.application.routes.url_helpers.stubs(:calendar_event_url).raises(StandardError, "Routing error")
@@ -375,7 +375,7 @@ module CalendarHub
     end
 
     test "composite_uid_for generates correct format" do
-      service = CalendarHub::SyncService.new(source: @source)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source)
 
       event = @source.calendar_events.create!(
         external_id: "test-uid",

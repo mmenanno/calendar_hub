@@ -19,7 +19,7 @@ class AllDayParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "UTC")
+    parser = ::CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "UTC")
     events = parser.events
 
     assert_equal(1, events.count)
@@ -47,7 +47,7 @@ class AllDayParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "UTC")
+    parser = ::CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "UTC")
     events = parser.events
 
     assert_equal(1, events.count)
@@ -74,7 +74,7 @@ class AllDayParserTest < ActiveSupport::TestCase
       END:VCALENDAR
     ICS
 
-    parser = CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "UTC")
+    parser = ::CalendarHub::ICS::Parser.new(ics_content, default_time_zone: "UTC")
     events = parser.events
 
     assert_equal(1, events.count)

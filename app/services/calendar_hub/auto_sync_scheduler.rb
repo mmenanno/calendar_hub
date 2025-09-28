@@ -21,7 +21,7 @@ module CalendarHub
       return 0 if sources.empty?
 
       # Optimize scheduling by domain to reduce connection overhead
-      schedule = CalendarHub::DomainOptimizer.optimize_sync_schedule(sources)
+      schedule = ::CalendarHub::DomainOptimizer.optimize_sync_schedule(sources)
       scheduled_count = 0
 
       schedule.each do |source_id, scheduled_at|

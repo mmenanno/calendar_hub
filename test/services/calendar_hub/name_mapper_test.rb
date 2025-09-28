@@ -19,11 +19,11 @@ module CalendarHub
         active: true,
       )
 
-      result = CalendarHub::NameMapper.apply("Test Title", source: @source)
+      result = ::CalendarHub::NameMapper.apply("Test Title", source: @source)
 
       assert_equal("Cached Test", result)
 
-      result2 = CalendarHub::NameMapper.apply("Test Title", source: @source)
+      result2 = ::CalendarHub::NameMapper.apply("Test Title", source: @source)
 
       assert_equal("Cached Test", result2)
     end
@@ -37,13 +37,13 @@ module CalendarHub
         active: true,
       )
 
-      result1 = CalendarHub::NameMapper.apply("Test Title", source: @source)
+      result1 = ::CalendarHub::NameMapper.apply("Test Title", source: @source)
 
       assert_equal("Original", result1)
 
       mapping.update!(replacement: "Updated")
 
-      result2 = CalendarHub::NameMapper.apply("Test Title", source: @source)
+      result2 = ::CalendarHub::NameMapper.apply("Test Title", source: @source)
 
       assert_equal("Updated", result2)
     end
@@ -57,21 +57,21 @@ module CalendarHub
         active: true,
       )
 
-      result1 = CalendarHub::NameMapper.apply("Test Title", source: @source)
+      result1 = ::CalendarHub::NameMapper.apply("Test Title", source: @source)
 
       assert_equal("To Be Deleted", result1)
 
       mapping.destroy!
 
-      result2 = CalendarHub::NameMapper.apply("Test Title", source: @source)
+      result2 = ::CalendarHub::NameMapper.apply("Test Title", source: @source)
 
       assert_equal("Test Title", result2)
     end
 
     test "returns original title when blank" do
-      assert_nil(CalendarHub::NameMapper.apply(nil, source: @source))
-      assert_equal("", CalendarHub::NameMapper.apply("", source: @source))
-      assert_equal("   ", CalendarHub::NameMapper.apply("   ", source: @source))
+      assert_nil(::CalendarHub::NameMapper.apply(nil, source: @source))
+      assert_equal("", ::CalendarHub::NameMapper.apply("", source: @source))
+      assert_equal("   ", ::CalendarHub::NameMapper.apply("   ", source: @source))
     end
 
     test "equals match type with case sensitivity" do
@@ -88,8 +88,8 @@ module CalendarHub
         active: true,
       )
 
-      assert_equal("Replaced Exact", CalendarHub::NameMapper.apply("Exact Match", source: @source))
-      assert_equal("exact match", CalendarHub::NameMapper.apply("exact match", source: @source)) # Different case, no match
+      assert_equal("Replaced Exact", ::CalendarHub::NameMapper.apply("Exact Match", source: @source))
+      assert_equal("exact match", ::CalendarHub::NameMapper.apply("exact match", source: @source)) # Different case, no match
 
       EventMapping.where(calendar_source: @source).destroy_all
       Rails.cache.clear
@@ -104,8 +104,8 @@ module CalendarHub
         active: true,
       )
 
-      assert_equal("Case Replaced", CalendarHub::NameMapper.apply("case test", source: @source))
-      assert_equal("Case Replaced", CalendarHub::NameMapper.apply("CASE TEST", source: @source))
+      assert_equal("Case Replaced", ::CalendarHub::NameMapper.apply("case test", source: @source))
+      assert_equal("Case Replaced", ::CalendarHub::NameMapper.apply("CASE TEST", source: @source))
     end
 
     test "contains match type with case sensitivity" do
@@ -122,8 +122,8 @@ module CalendarHub
         active: true,
       )
 
-      assert_equal("Conference", CalendarHub::NameMapper.apply("Team Meeting Today", source: @source))
-      assert_equal("team meeting today", CalendarHub::NameMapper.apply("team meeting today", source: @source)) # Different case, no match
+      assert_equal("Conference", ::CalendarHub::NameMapper.apply("Team Meeting Today", source: @source))
+      assert_equal("team meeting today", ::CalendarHub::NameMapper.apply("team meeting today", source: @source)) # Different case, no match
 
       EventMapping.where(calendar_source: @source).destroy_all
       Rails.cache.clear
@@ -138,8 +138,8 @@ module CalendarHub
         active: true,
       )
 
-      assert_equal("Priority", CalendarHub::NameMapper.apply("URGENT: Fix bug", source: @source))
-      assert_equal("Priority", CalendarHub::NameMapper.apply("This is urgent", source: @source))
+      assert_equal("Priority", ::CalendarHub::NameMapper.apply("URGENT: Fix bug", source: @source))
+      assert_equal("Priority", ::CalendarHub::NameMapper.apply("This is urgent", source: @source))
     end
 
     test "regex match type with successful replacement" do
@@ -157,7 +157,7 @@ module CalendarHub
         active: true,
       )
 
-      assert_equal("Meeting at [TIME]", CalendarHub::NameMapper.apply("Meeting at 15:30", source: @source))
+      assert_equal("Meeting at [TIME]", ::CalendarHub::NameMapper.apply("Meeting at 15:30", source: @source))
 
       # Clean up and create new mapping
       EventMapping.where(calendar_source: @source).destroy_all
@@ -173,7 +173,7 @@ module CalendarHub
         active: true,
       )
 
-      result = CalendarHub::NameMapper.apply("Team MEETING today", source: @source)
+      result = ::CalendarHub::NameMapper.apply("Team MEETING today", source: @source)
 
       assert_equal("Team Session today", result)
     end
@@ -192,27 +192,27 @@ module CalendarHub
       )
 
       # Should return original title when regex is invalid
-      assert_equal("Test Title", CalendarHub::NameMapper.apply("Test Title", source: @source))
+      assert_equal("Test Title", ::CalendarHub::NameMapper.apply("Test Title", source: @source))
     end
 
     test "compare? method with equals mode and case sensitivity" do
-      assert(CalendarHub::NameMapper.compare?("Hello", "Hello", case_sensitive: true, mode: :equals))
-      refute(CalendarHub::NameMapper.compare?("Hello", "hello", case_sensitive: true, mode: :equals))
-      assert(CalendarHub::NameMapper.compare?("Hello", "hello", case_sensitive: false, mode: :equals))
-      refute(CalendarHub::NameMapper.compare?("Hello", "hello!", case_sensitive: false, mode: :equals))
+      assert(::CalendarHub::NameMapper.compare?("Hello", "Hello", case_sensitive: true, mode: :equals))
+      refute(::CalendarHub::NameMapper.compare?("Hello", "hello", case_sensitive: true, mode: :equals))
+      assert(::CalendarHub::NameMapper.compare?("Hello", "hello", case_sensitive: false, mode: :equals))
+      refute(::CalendarHub::NameMapper.compare?("Hello", "hello!", case_sensitive: false, mode: :equals))
     end
 
     test "compare? method with contains mode and case sensitivity" do
-      assert(CalendarHub::NameMapper.compare?("Hello World", "World", case_sensitive: true, mode: :contains))
-      refute(CalendarHub::NameMapper.compare?("Hello World", "world", case_sensitive: true, mode: :contains))
-      assert(CalendarHub::NameMapper.compare?("Hello World", "world", case_sensitive: false, mode: :contains))
-      assert(CalendarHub::NameMapper.compare?("HelloWorld", "world", case_sensitive: false, mode: :contains))
+      assert(::CalendarHub::NameMapper.compare?("Hello World", "World", case_sensitive: true, mode: :contains))
+      refute(::CalendarHub::NameMapper.compare?("Hello World", "world", case_sensitive: true, mode: :contains))
+      assert(::CalendarHub::NameMapper.compare?("Hello World", "world", case_sensitive: false, mode: :contains))
+      assert(::CalendarHub::NameMapper.compare?("HelloWorld", "world", case_sensitive: false, mode: :contains))
     end
 
     test "compare? method with invalid mode returns false" do
-      refute(CalendarHub::NameMapper.compare?("Hello", "Hello", case_sensitive: true, mode: :invalid))
-      refute(CalendarHub::NameMapper.compare?("Hello", "Hello", case_sensitive: true, mode: :invalid_mode))
-      refute(CalendarHub::NameMapper.compare?("Hello", "Hello", case_sensitive: false, mode: :unknown))
+      refute(::CalendarHub::NameMapper.compare?("Hello", "Hello", case_sensitive: true, mode: :invalid))
+      refute(::CalendarHub::NameMapper.compare?("Hello", "Hello", case_sensitive: true, mode: :invalid_mode))
+      refute(::CalendarHub::NameMapper.compare?("Hello", "Hello", case_sensitive: false, mode: :unknown))
     end
 
     test "caching works for global mappings" do
@@ -228,19 +228,19 @@ module CalendarHub
       )
 
       # Test with nil source (should use global mappings)
-      result1 = CalendarHub::NameMapper.apply("Global Meeting", source: nil)
+      result1 = ::CalendarHub::NameMapper.apply("Global Meeting", source: nil)
 
       assert_equal("Worldwide", result1)
 
       # Test caching is working - the cached_active_mappings method should have populated the cache
       # Let's verify the cache was populated by checking if the method was called
-      result2 = CalendarHub::NameMapper.apply("Global Meeting", source: nil)
+      result2 = ::CalendarHub::NameMapper.apply("Global Meeting", source: nil)
 
       assert_equal("Worldwide", result2)
 
       # Verify that the mapping is actually being used (this tests the caching indirectly)
       mapping.update!(replacement: "Changed")
-      result3 = CalendarHub::NameMapper.apply("Global Meeting", source: nil)
+      result3 = ::CalendarHub::NameMapper.apply("Global Meeting", source: nil)
 
       assert_equal("Changed", result3) # Should get new value since cache was cleared on update
     end
@@ -269,7 +269,7 @@ module CalendarHub
       )
 
       # Should apply the first matching rule
-      result = CalendarHub::NameMapper.apply("Team Meeting Today", source: @source)
+      result = ::CalendarHub::NameMapper.apply("Team Meeting Today", source: @source)
 
       assert_equal("First Match", result)
     end
@@ -289,12 +289,12 @@ module CalendarHub
       )
 
       # Test with uppercase - should match due to case insensitivity
-      result = CalendarHub::NameMapper.apply("URGENT task", source: @source)
+      result = ::CalendarHub::NameMapper.apply("URGENT task", source: @source)
 
       assert_equal("Priority task", result)
 
       # Test with lowercase - should also match
-      result2 = CalendarHub::NameMapper.apply("urgent task", source: @source)
+      result2 = ::CalendarHub::NameMapper.apply("urgent task", source: @source)
 
       assert_equal("Priority task", result2)
 
@@ -312,12 +312,12 @@ module CalendarHub
       )
 
       # Test with exact case - should match
-      result3 = CalendarHub::NameMapper.apply("urgent task", source: @source)
+      result3 = ::CalendarHub::NameMapper.apply("urgent task", source: @source)
 
       assert_equal("Exact Match task", result3)
 
       # Test with different case - should not match
-      result4 = CalendarHub::NameMapper.apply("URGENT task", source: @source)
+      result4 = ::CalendarHub::NameMapper.apply("URGENT task", source: @source)
 
       assert_equal("URGENT task", result4) # Original unchanged
     end
@@ -347,7 +347,7 @@ module CalendarHub
       )
 
       # Source-specific should take priority due to lower position
-      result = CalendarHub::NameMapper.apply("Global Meeting", source: @source)
+      result = ::CalendarHub::NameMapper.apply("Global Meeting", source: @source)
 
       assert_equal("Source Match", result)
 
@@ -355,7 +355,7 @@ module CalendarHub
       EventMapping.where(calendar_source: @source).destroy_all
       Rails.cache.clear
 
-      result2 = CalendarHub::NameMapper.apply("Global Meeting", source: @source)
+      result2 = ::CalendarHub::NameMapper.apply("Global Meeting", source: @source)
 
       assert_equal("Global Match", result2)
     end
@@ -375,7 +375,7 @@ module CalendarHub
       )
 
       # Inactive mapping should not be applied since it's not active
-      result1 = CalendarHub::NameMapper.apply("Disabled Test", source: @source)
+      result1 = ::CalendarHub::NameMapper.apply("Disabled Test", source: @source)
 
       assert_equal("Disabled Test", result1)
 
@@ -396,12 +396,12 @@ module CalendarHub
       )
 
       # Active mapping should be applied
-      result2 = CalendarHub::NameMapper.apply("Enabled Test", source: @source)
+      result2 = ::CalendarHub::NameMapper.apply("Enabled Test", source: @source)
 
       assert_equal("Applied", result2)
 
       # Inactive mapping should still not be applied
-      result3 = CalendarHub::NameMapper.apply("Disabled Test", source: @source)
+      result3 = ::CalendarHub::NameMapper.apply("Disabled Test", source: @source)
 
       assert_equal("Disabled Test", result3)
     end
