@@ -70,6 +70,8 @@ en:
     admin:
       metrics_cleared: "Sync metrics cleared"
 
+    database_busy: "Database is busy. Please try again in a moment."
+
     calendar_sources:
       archived: "Source archived"
       auto_sync_updated: "Auto-sync setting updated."
@@ -91,6 +93,9 @@ en:
 
     filter_rules:
       created: "Filter rule created successfully"
+      created_with_sync: "Filter rule created successfully. Syncing events in background..."
+      creation_failed: "Failed to create filter rule. Please try again."
+      database_busy: "Database is busy. Please try again in a moment."
       deleted: "Filter rule deleted successfully"
       disabled: "Filter rule disabled"
       duplicated: "Filter rule duplicated"

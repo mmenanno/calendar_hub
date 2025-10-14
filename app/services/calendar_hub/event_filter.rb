@@ -30,10 +30,14 @@ module CalendarHub
 
         filtered_count = 0
 
-        scope.find_each do |event|
-          if should_filter?(event)
-            event.update!(sync_exempt: true)
-            filtered_count += 1
+        scope.in_batches(of: 1000) do |batch|
+          ActiveRecord::Base.transaction do
+            batch.each do |event|
+              if should_filter?(event)
+                event.update!(sync_exempt: true)
+                filtered_count += 1
+              end
+            end
           end
         end
 
@@ -56,13 +60,23 @@ module CalendarHub
       end
 
       def apply_reverse_filtering(source = nil)
-        re_includable = find_re_includable_events(source)
+        scope = CalendarEvent.where(sync_exempt: true)
+        scope = scope.where(calendar_source: source) if source
 
-        re_includable.each do |event|
-          event.update!(sync_exempt: false)
+        re_included_count = 0
+
+        scope.in_batches(of: 1000) do |batch|
+          ActiveRecord::Base.transaction do
+            batch.each do |event|
+              unless should_filter?(event)
+                event.update!(sync_exempt: false)
+                re_included_count += 1
+              end
+            end
+          end
         end
 
-        re_includable.count
+        re_included_count
       end
     end
   end

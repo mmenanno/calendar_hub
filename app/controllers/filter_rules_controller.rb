@@ -48,24 +48,19 @@ class FilterRulesController < ApplicationController
 
   def create
     @filter_rule = FilterRule.new(filter_rule_params)
+
     if @filter_rule.save
-      if @filter_rule.calendar_source
-        CalendarHub::Sync::FilterSyncService.new(source: @filter_rule.calendar_source).sync_filter_rules
-      else
-        CalendarSource.active.find_each do |source|
-          CalendarHub::Sync::FilterSyncService.new(source: source).sync_filter_rules
-        end
-      end
+      SyncFilterRulesJob.perform_later(@filter_rule.id)
 
       respond_to do |format|
         format.turbo_stream do
           render(turbo_stream: [
             turbo_stream.prepend("filter_rules_list", partial: "filter_rules/row", locals: { filter_rule: @filter_rule }),
             turbo_stream.replace("new_filter_rule_form", partial: "filter_rules/form", locals: { filter_rule: FilterRule.new }),
-            turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t("flashes.filter_rules.created") }),
+            turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t("flashes.filter_rules.created_with_sync") }),
           ])
         end
-        format.html { redirect_to(filter_rules_path, notice: t("flashes.filter_rules.created")) }
+        format.html { redirect_to(filter_rules_path, notice: t("flashes.filter_rules.created_with_sync")) }
       end
     else
       respond_to do |format|
@@ -79,6 +74,15 @@ class FilterRulesController < ApplicationController
         format.html { render(:index, status: :unprocessable_entity) }
       end
     end
+  rescue ArgumentError
+    # Let ArgumentError bubble up for enum validation errors (used by tests)
+    raise
+  rescue => e
+    Rails.logger.error("[FilterRulesController] Unexpected error during filter rule creation: #{e.message}")
+    turbo_error_response(
+      message: t("flashes.filter_rules.creation_failed"),
+      fallback_location: filter_rules_path,
+    )
   end
 
   def update

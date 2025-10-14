@@ -14,14 +14,34 @@ module CalendarHub
       def sync_filter_rules
         return { filtered: 0, re_included: 0 } if source.blank?
 
-        filtered_count = ::CalendarHub::EventFilter.apply_backwards_filtering(source)
-        re_included_count = ::CalendarHub::EventFilter.apply_reverse_filtering(source)
+        retries = 0
+        max_retries = 3
 
-        if filtered_count > 0 || re_included_count > 0
-          trigger_apple_sync
+        begin
+          filtered_count = ::CalendarHub::EventFilter.apply_backwards_filtering(source)
+          re_included_count = ::CalendarHub::EventFilter.apply_reverse_filtering(source)
+
+          if filtered_count > 0 || re_included_count > 0
+            trigger_apple_sync
+          end
+
+          Rails.logger.info("[FilterSyncService] source=#{source.id} filtered=#{filtered_count} re_included=#{re_included_count}")
+          { filtered: filtered_count, re_included: re_included_count }
+        rescue ActiveRecord::StatementTimeout, SQLite3::BusyException => e
+          retries += 1
+          if retries <= max_retries
+            wait_time = 2**retries # Exponential backoff: 2s, 4s, 8s
+            Rails.logger.warn("[FilterSyncService] Database timeout/lock (attempt #{retries}/#{max_retries}), retrying in #{wait_time}s: #{e.message}")
+            sleep(wait_time)
+            retry
+          else
+            Rails.logger.error("[FilterSyncService] Database timeout/lock after #{max_retries} retries for source=#{source.id}: #{e.message}")
+            raise
+          end
+        rescue => e
+          Rails.logger.error("[FilterSyncService] Unexpected error during filter sync for source=#{source.id}: #{e.message}")
+          raise
         end
-
-        { filtered: filtered_count, re_included: re_included_count }
       end
 
       def sync_event_filter_status(event)
