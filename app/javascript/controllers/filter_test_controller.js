@@ -1,4 +1,4 @@
-import DebouncedFormController from "./debounced_form_controller"
+import DebouncedFormController from "./debounced_form_controller.js"
 
 export default class extends DebouncedFormController {
   static targets = ["source", "input"]
