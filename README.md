@@ -126,7 +126,7 @@ Notes:
   - `CALENDAR_HUB_KEY_STORE_PATH` – custom path for the combined key store (defaults to `storage/key_store.json`).
   - `CALENDAR_HUB_CREDENTIAL_KEY_PATH` – legacy path override for the credential key; still honored for compatibility.
   - `APPLE_READONLY=true` – sync without issuing CalDAV deletes.
-  - `SOLID_QUEUE_IN_PUMA=true` – run jobs in the web process instead of a separate worker.
+  - `SOLID_QUEUE_SEPARATE_WORKER=true` – run jobs in a separate worker process instead of the web process (by default jobs run inside Puma).
   - `WEB_CONCURRENCY`, `JOB_CONCURRENCY`, `RAILS_MAX_THREADS` – tune Puma and Solid Queue concurrency.
   - `RAILS_LOG_LEVEL` – set log verbosity (`info` by default).
   - `WARM_CACHE_ON_STARTUP=false` – opt out of cache warming (defaults to `true` in production, `false` elsewhere).
