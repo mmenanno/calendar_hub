@@ -62,8 +62,7 @@ bin/dev
 ### Credential encryption & persistent storage
 
 - On first boot the app generates:
-  - `storage/credential_key` – AES-256 key used to encrypt CalDAV and per-source credentials.
-  - `storage/secret_key_base` – Rails secret for sessions and signed cookies.
+  - `storage/key_store.json` – JSON document containing the credential encryption key and `secret_key_base`.
 - Rotate the credential key from Settings → *Rotate Credential Key*. Rotation re-encrypts all stored credentials in-place.
 - Override the key location with `CALENDAR_HUB_CREDENTIAL_KEY_PATH` if you need to store it outside the repository path.
 - Persist the entire `storage/` directory (and optionally `log/`) between deployments or container restarts to retain credentials, secret keys, and SQLite databases.
@@ -106,7 +105,7 @@ docker run -d \
 
 Notes:
 
-- No master key is required. `SECRET_KEY_BASE` is optional; when absent the container writes `storage/secret_key_base` on first boot.
+- No master key is required. `SECRET_KEY_BASE` is optional; when absent the container writes both keys into `storage/key_store.json` on first boot.
 - `bin/docker-entrypoint` runs `bin/rails db:prepare` before starting the Thruster server listening on port 80.
 - Map `storage/` to a persistent volume to keep encrypted credentials, secret keys, and SQLite databases.
 - Override `CMD` or `PORT` if your platform expects a different process or port.
@@ -123,8 +122,9 @@ Notes:
   - `APP_HOST`, `APP_PROTOCOL`, `APP_PORT` – canonical host/protocol/port for generated URLs.
   - `PORT` – override default Thruster port (80 in Docker, 3000 locally if you run `rails server`).
 - **Optional operational knobs:**
-  - `SECRET_KEY_BASE` – supply your own secret; otherwise generated at `storage/secret_key_base`.
-  - `CALENDAR_HUB_CREDENTIAL_KEY_PATH` – custom path for the credential encryption key.
+  - `SECRET_KEY_BASE` – supply your own secret; otherwise generated inside `storage/key_store.json`.
+  - `CALENDAR_HUB_KEY_STORE_PATH` – custom path for the combined key store (defaults to `storage/key_store.json`).
+  - `CALENDAR_HUB_CREDENTIAL_KEY_PATH` – legacy path override for the credential key; still honored for compatibility.
   - `APPLE_READONLY=true` – sync without issuing CalDAV deletes.
   - `SOLID_QUEUE_IN_PUMA=true` – run jobs in the web process instead of a separate worker.
   - `WEB_CONCURRENCY`, `JOB_CONCURRENCY`, `RAILS_MAX_THREADS` – tune Puma and Solid Queue concurrency.
