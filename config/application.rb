@@ -3,6 +3,7 @@
 require_relative "boot"
 
 require "rails/all"
+require_relative "../app/services/calendar_hub/key_store"
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
@@ -12,18 +13,14 @@ module CalendarHub
   class Application < Rails::Application
     class << self
       def generate_or_load_secret_key_base
-        secret_file = Rails.root.join("storage/secret_key_base")
+        store = CalendarHub::KeyStore.instance
+        existing = store.secret_key_base
+        return existing if existing.present?
 
-        if secret_file.exist?
-          secret_file.read.strip
-        else
-          require "securerandom"
-          new_secret = SecureRandom.hex(64)
-          secret_file.dirname.mkpath
-          secret_file.write(new_secret)
-          secret_file.chmod(0o600) # Secure permissions
-          new_secret
-        end
+        require "securerandom"
+        new_secret = SecureRandom.hex(64)
+        store.write_secret_key_base!(new_secret)
+        new_secret
       end
     end
     # Initialize configuration defaults for originally generated Rails version.

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "digest"
-require "fileutils"
 
 module CalendarHub
   module CredentialEncryption
@@ -59,11 +58,8 @@ module CalendarHub
 
       mutex.synchronize do
         unless instance_variable_defined?(:@current_key) && @current_key.present?
-          next_key = if key_path.exist?
-            read_key
-          else
-            generate_and_store_key
-          end
+          next_key = key_store.credential_key
+          next_key = generate_and_store_key unless valid_key?(next_key)
           @current_key = next_key
           @current_encryptor = build_encryptor(@current_key)
         end
@@ -84,18 +80,21 @@ module CalendarHub
     def key_status
       ensure_key!
       path = key_path
+      generated_at = key_store.credential_key_generated_at
+      generated_at ||= path.exist? ? path.stat.mtime : nil
       {
         fingerprint: key_fingerprint,
         path: path.to_s,
-        created_at: path.exist? ? path.stat.mtime : nil,
+        created_at: generated_at,
       }
     end
 
     def reset!
       mutex.synchronize do
         reset_cached_encryptor!
-        remove_instance_variable(:@key_path) if instance_variable_defined?(:@key_path)
         remove_instance_variable(:@legacy_encryptor) if instance_variable_defined?(:@legacy_encryptor)
+        remove_instance_variable(:@key_store) if instance_variable_defined?(:@key_store)
+        CalendarHub::KeyStore.reset!
       end
     end
 
@@ -259,24 +258,18 @@ module CalendarHub
     def write_key(key)
       raise ArgumentError, "Invalid key length" unless valid_key?(key)
 
-      path = key_path
-      FileUtils.mkdir_p(path.dirname)
-      File.write(path, key)
-      File.chmod(0o600, path) unless Gem.win_platform?
+      key_store.write_credential_key!(key)
     end
 
     def read_key
-      key = key_path.read.strip
+      key = key_store.credential_key
       raise ArgumentError, "Invalid key length" unless valid_key?(key)
 
       key
     end
 
     def key_path
-      @key_path ||= begin
-        configured = ENV.fetch("CALENDAR_HUB_CREDENTIAL_KEY_PATH", Rails.root.join("storage/credential_key").to_s)
-        Pathname.new(configured).expand_path
-      end
+      key_store.store_path
     end
 
     def generate_key
@@ -289,6 +282,10 @@ module CalendarHub
 
     def mutex
       @mutex ||= Mutex.new
+    end
+
+    def key_store
+      @key_store ||= CalendarHub::KeyStore.instance
     end
   end
 end
