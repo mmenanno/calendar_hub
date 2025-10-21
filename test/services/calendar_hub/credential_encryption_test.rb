@@ -6,9 +6,9 @@ module CalendarHub
   class CredentialEncryptionTest < ActiveSupport::TestCase
     def setup
       super
-      @original_path = ENV["CALENDAR_HUB_CREDENTIAL_KEY_PATH"]
-      @tmp_key_path = Rails.root.join("tmp", "credential_key_test_#{SecureRandom.hex(4)}")
-      ENV["CALENDAR_HUB_CREDENTIAL_KEY_PATH"] = @tmp_key_path.to_s
+      @original_path = ENV["CALENDAR_HUB_KEY_STORE_PATH"]
+      @tmp_key_path = Rails.root.join("tmp", "key_store_test_#{SecureRandom.hex(4)}.json")
+      ENV["CALENDAR_HUB_KEY_STORE_PATH"] = @tmp_key_path.to_s
       CredentialEncryption.reset!
     end
 
@@ -18,9 +18,9 @@ module CalendarHub
         File.delete(@tmp_key_path)
       end
       if @original_path
-        ENV["CALENDAR_HUB_CREDENTIAL_KEY_PATH"] = @original_path
+        ENV["CALENDAR_HUB_KEY_STORE_PATH"] = @original_path
       else
-        ENV.delete("CALENDAR_HUB_CREDENTIAL_KEY_PATH")
+        ENV.delete("CALENDAR_HUB_KEY_STORE_PATH")
       end
       super
     end
@@ -342,7 +342,7 @@ module CalendarHub
       location = CredentialEncryption.key_location
 
       assert_kind_of(String, location)
-      assert_includes(location, "credential_key")
+      assert_includes(location, "key_store")
     end
 
     test "reencrypt_calendar_sources skips sources with blank credentials" do

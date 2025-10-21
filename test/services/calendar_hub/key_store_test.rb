@@ -43,40 +43,12 @@ module CalendarHub
       assert_equal(secret, @store.secret_key_base)
     end
 
-    test "credential_key imports from legacy file when store empty" do
-      legacy_key = SecureRandom.hex(32)
-      legacy_path = Rails.root.join("tmp", "legacy_credential_key_#{SecureRandom.hex(4)}")
-      File.write(legacy_path, legacy_key)
-
-      begin
-        @store.reset_cache!
-        File.delete(@store_path) if File.exist?(@store_path)
-        @store.stubs(:legacy_credential_key_path).returns(legacy_path)
-
-        assert_equal(legacy_key, @store.credential_key)
-        assert_path_exists(@store_path, "expected key store to be persisted")
-      ensure
-        @store.unstub(:legacy_credential_key_path)
-        File.delete(legacy_path) if File.exist?(legacy_path)
-      end
+    test "credential_key returns nil when not set" do
+      assert_nil(@store.credential_key)
     end
 
-    test "secret_key_base imports from legacy file when store empty" do
-      legacy_secret = SecureRandom.hex(64)
-      legacy_path = Rails.root.join("tmp", "legacy_secret_key_base_#{SecureRandom.hex(4)}")
-      File.write(legacy_path, legacy_secret)
-
-      begin
-        @store.reset_cache!
-        File.delete(@store_path) if File.exist?(@store_path)
-        @store.stubs(:legacy_secret_key_base_path).returns(legacy_path)
-
-        assert_equal(legacy_secret, @store.secret_key_base)
-        assert_path_exists(@store_path, "expected key store to be persisted")
-      ensure
-        @store.unstub(:legacy_secret_key_base_path)
-        File.delete(legacy_path) if File.exist?(legacy_path)
-      end
+    test "secret_key_base returns nil when not set" do
+      assert_nil(@store.secret_key_base)
     end
   end
 end

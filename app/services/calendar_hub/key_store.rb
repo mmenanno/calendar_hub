@@ -9,7 +9,7 @@ module CalendarHub
   # KeyStore persists the application secrets (credential key and secret_key_base)
   # in a single JSON document to support rotation and metadata tracking.
   class KeyStore
-    STORE_ENV_KEYS = ["CALENDAR_HUB_KEY_STORE_PATH", "CALENDAR_HUB_CREDENTIAL_KEY_PATH"].freeze
+    STORE_ENV_KEY = "CALENDAR_HUB_KEY_STORE_PATH"
     DEFAULT_FILENAME = "key_store.json"
     CREDENTIAL_KEY_LENGTH = 64
     SECRET_KEY_BASE_LENGTH = 128
@@ -33,10 +33,7 @@ module CalendarHub
     end
 
     def credential_key
-      value = read_value("credential_key")
-      return value if value
-
-      import_legacy_credential_key!
+      read_value("credential_key")
     end
 
     def credential_key_generated_at
@@ -44,10 +41,7 @@ module CalendarHub
     end
 
     def secret_key_base
-      value = read_value("secret_key_base")
-      return value if value
-
-      import_legacy_secret_key_base!
+      read_value("secret_key_base")
     end
 
     def write_credential_key!(hex_key)
@@ -69,10 +63,7 @@ module CalendarHub
     private
 
     def resolve_store_path
-      explicit = STORE_ENV_KEYS.filter_map { |env| ENV[env].presence }.first
-      return explicit if explicit.present?
-
-      Rails.root.join("storage", DEFAULT_FILENAME).to_s
+      ENV[STORE_ENV_KEY].presence || Rails.root.join("storage", DEFAULT_FILENAME).to_s
     end
 
     def load_store
@@ -93,17 +84,7 @@ module CalendarHub
       parsed = JSON.parse(trimmed)
       parsed.is_a?(Hash) ? parsed : {}
     rescue JSON::ParserError
-      interpret_legacy_content(trimmed)
-    end
-
-    def interpret_legacy_content(trimmed)
-      data = {}
-      if valid_hex?(trimmed, CREDENTIAL_KEY_LENGTH)
-        data["credential_key"] = { "value" => trimmed }
-      elsif valid_hex?(trimmed, SECRET_KEY_BASE_LENGTH)
-        data["secret_key_base"] = { "value" => trimmed }
-      end
-      data
+      {}
     end
 
     def read_value(key_name)
@@ -135,50 +116,6 @@ module CalendarHub
         persist_store
       end
       value
-    end
-
-    def import_legacy_credential_key!
-      legacy = read_legacy_credential_key
-      return unless legacy
-
-      write_value("credential_key", legacy, include_timestamp: true)
-    end
-
-    def import_legacy_secret_key_base!
-      legacy = read_legacy_secret_key_base
-      return unless legacy
-
-      write_value("secret_key_base", legacy, include_timestamp: true)
-    end
-
-    def read_legacy_credential_key
-      path = legacy_credential_key_path
-      return unless path&.exist?
-
-      trimmed = path.read.to_s.strip
-      trimmed if valid_hex?(trimmed, CREDENTIAL_KEY_LENGTH)
-    end
-
-    def read_legacy_secret_key_base
-      path = legacy_secret_key_base_path
-      return unless path.exist?
-
-      trimmed = path.read.to_s.strip
-      trimmed if valid_hex?(trimmed, SECRET_KEY_BASE_LENGTH)
-    end
-
-    def legacy_credential_key_path
-      configured = ENV["CALENDAR_HUB_CREDENTIAL_KEY_PATH"]
-      path = if configured.present?
-        Pathname.new(configured)
-      else
-        Rails.root.join("storage/credential_key")
-      end
-      path.expand_path
-    end
-
-    def legacy_secret_key_base_path
-      Rails.root.join("storage/secret_key_base").expand_path
     end
 
     def persist_store
