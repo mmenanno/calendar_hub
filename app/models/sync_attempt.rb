@@ -17,6 +17,12 @@ class SyncAttempt < ApplicationRecord
 
   after_commit :broadcast_snapshot
 
+  # Stale attempts are those stuck in queued/running for too long
+  scope :stale, ->(threshold: 2.hours) {
+    where(status: ["queued", "running"])
+      .where(created_at: ...(Time.current - threshold))
+  }
+
   def start(total: 0)
     update!(status: :running, total_events: total, started_at: Time.current)
   end
@@ -43,6 +49,10 @@ class SyncAttempt < ApplicationRecord
 
   def finish(status: :success, message: nil)
     update!(status: status, finished_at: Time.current, message: message)
+  end
+
+  def stale?(threshold: 2.hours)
+    (queued? || running?) && created_at < Time.current - threshold
   end
 
   def stream_name

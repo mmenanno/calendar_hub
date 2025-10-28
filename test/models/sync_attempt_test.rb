@@ -218,4 +218,132 @@ class SyncAttemptTest < ActiveSupport::TestCase
 
     assert_equal(0, SyncEventResult.where(sync_attempt_id: @sync_attempt.id).count)
   end
+
+  test "stale scope returns queued attempts older than threshold" do
+    stale_queued = SyncAttempt.create!(
+      calendar_source: @calendar_source,
+      status: :queued,
+      created_at: 3.hours.ago,
+    )
+    recent_queued = SyncAttempt.create!(
+      calendar_source: @calendar_source,
+      status: :queued,
+      created_at: 30.minutes.ago,
+    )
+
+    stale_attempts = SyncAttempt.stale(threshold: 2.hours)
+
+    assert_includes(stale_attempts, stale_queued)
+    refute_includes(stale_attempts, recent_queued)
+  end
+
+  test "stale scope returns running attempts older than threshold" do
+    stale_running = SyncAttempt.create!(
+      calendar_source: @calendar_source,
+      status: :running,
+      created_at: 3.hours.ago,
+      started_at: 3.hours.ago,
+    )
+    recent_running = SyncAttempt.create!(
+      calendar_source: @calendar_source,
+      status: :running,
+      created_at: 30.minutes.ago,
+      started_at: 30.minutes.ago,
+    )
+
+    stale_attempts = SyncAttempt.stale(threshold: 2.hours)
+
+    assert_includes(stale_attempts, stale_running)
+    refute_includes(stale_attempts, recent_running)
+  end
+
+  test "stale scope does not return completed attempts" do
+    old_success = SyncAttempt.create!(
+      calendar_source: @calendar_source,
+      status: :success,
+      created_at: 3.hours.ago,
+      finished_at: 3.hours.ago,
+    )
+    old_failed = SyncAttempt.create!(
+      calendar_source: @calendar_source,
+      status: :failed,
+      created_at: 3.hours.ago,
+      finished_at: 3.hours.ago,
+    )
+
+    stale_attempts = SyncAttempt.stale(threshold: 2.hours)
+
+    refute_includes(stale_attempts, old_success)
+    refute_includes(stale_attempts, old_failed)
+  end
+
+  test "stale scope respects custom threshold" do
+    attempt = SyncAttempt.create!(
+      calendar_source: @calendar_source,
+      status: :queued,
+      created_at: 90.minutes.ago,
+    )
+
+    # Not stale with 2 hour threshold
+    refute_includes(SyncAttempt.stale(threshold: 2.hours), attempt)
+
+    # Stale with 1 hour threshold
+    assert_includes(SyncAttempt.stale(threshold: 1.hour), attempt)
+  end
+
+  test "stale? returns true for old queued attempts" do
+    stale_attempt = SyncAttempt.create!(
+      calendar_source: @calendar_source,
+      status: :queued,
+      created_at: 3.hours.ago,
+    )
+
+    assert_predicate(stale_attempt, :stale?)
+  end
+
+  test "stale? returns true for old running attempts" do
+    stale_attempt = SyncAttempt.create!(
+      calendar_source: @calendar_source,
+      status: :running,
+      created_at: 3.hours.ago,
+      started_at: 3.hours.ago,
+    )
+
+    assert_predicate(stale_attempt, :stale?)
+  end
+
+  test "stale? returns false for recent queued attempts" do
+    recent_attempt = SyncAttempt.create!(
+      calendar_source: @calendar_source,
+      status: :queued,
+      created_at: 30.minutes.ago,
+    )
+
+    refute_predicate(recent_attempt, :stale?)
+  end
+
+  test "stale? returns false for completed attempts" do
+    completed_attempt = SyncAttempt.create!(
+      calendar_source: @calendar_source,
+      status: :success,
+      created_at: 3.hours.ago,
+      finished_at: 3.hours.ago,
+    )
+
+    refute_predicate(completed_attempt, :stale?)
+  end
+
+  test "stale? respects custom threshold" do
+    attempt = SyncAttempt.create!(
+      calendar_source: @calendar_source,
+      status: :queued,
+      created_at: 90.minutes.ago,
+    )
+
+    # Not stale with 2 hour threshold
+    refute(attempt.stale?(threshold: 2.hours))
+
+    # Stale with 1 hour threshold
+    assert(attempt.stale?(threshold: 1.hour))
+  end
 end
