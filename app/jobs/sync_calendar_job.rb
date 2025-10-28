@@ -10,10 +10,24 @@ class SyncCalendarJob < ApplicationJob
   retry_on ActiveRecord::StatementTimeout, wait: :exponentially_longer, attempts: 5
   retry_on ActiveRecord::Deadlocked, wait: :exponentially_longer, attempts: 3
 
-  # Handle SQLite busy exceptions specifically
-  # ActiveRecord::StatementInvalid with "database is locked" message
-  retry_on ActiveRecord::StatementInvalid, wait: :exponentially_longer, attempts: 5 do |_job, exception|
-    exception.message.include?("database is locked")
+  # Rescue and conditionally retry SQLite busy exceptions
+  rescue_from ActiveRecord::StatementInvalid do |exception|
+    if exception.message.include?("database is locked") || exception.message.include?("BusyException")
+      # Log the retry attempt
+      logger.warn("[SyncCalendarJob] SQLite lock detected, will retry (attempt #{executions}/5)")
+
+      # Retry with exponential backoff for SQLite lock errors (1s, 4s, 9s, 16s, 25s)
+      if executions < 5
+        retry_job(wait: executions**2, queue: queue_name, priority: priority)
+      else
+        # Max retries exhausted, let it fail
+        logger.error("[SyncCalendarJob] Max retries exhausted for SQLite lock")
+        raise
+      end
+    else
+      # Re-raise other StatementInvalid errors
+      raise
+    end
   end
 
   def perform(calendar_source_id, **options)
@@ -28,9 +42,17 @@ class SyncCalendarJob < ApplicationJob
         attempt = locked_attempt
       end
     end
-  rescue ActiveRecord::StatementTimeout, ActiveRecord::Deadlocked => e
+  rescue ActiveRecord::StatementTimeout, ActiveRecord::Deadlocked, ActiveRecord::StatementInvalid => e
     # These will be retried automatically, but update attempt if we have one
-    attempt&.update(message: "Lock timeout, will retry: #{e.message}") if attempt && !attempt.finished_at
+    if attempt && !attempt.finished_at
+      retry_msg = if e.is_a?(ActiveRecord::StatementInvalid) &&
+          (e.message.include?("database is locked") || e.message.include?("BusyException"))
+        "SQLite lock, will retry"
+      else
+        "Lock timeout, will retry"
+      end
+      attempt.update(message: "#{retry_msg}: #{e.message.truncate(200)}")
+    end
     raise
   rescue => e
     attempt&.finish(status: :failed, message: e.message) unless attempt&.finished_at
