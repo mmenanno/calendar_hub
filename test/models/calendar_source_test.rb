@@ -119,6 +119,39 @@ class CalendarSourceTest < ActiveSupport::TestCase
     assert_nil(source.schedule_sync)
   end
 
+  test "schedule_sync allows new sync when queued attempt is stale" do
+    source = calendar_sources(:provider)
+    # Create a stale queued attempt
+    SyncAttempt.create!(
+      calendar_source: source,
+      status: :queued,
+      created_at: 3.hours.ago,
+    )
+
+    # Should be able to schedule a new sync since the existing one is stale
+    new_attempt = source.schedule_sync
+
+    refute_nil(new_attempt)
+    assert_equal("queued", new_attempt.status)
+  end
+
+  test "schedule_sync allows new sync when running attempt is stale" do
+    source = calendar_sources(:provider)
+    # Create a stale running attempt
+    SyncAttempt.create!(
+      calendar_source: source,
+      status: :running,
+      created_at: 3.hours.ago,
+      started_at: 3.hours.ago,
+    )
+
+    # Should be able to schedule a new sync since the existing one is stale
+    new_attempt = source.schedule_sync
+
+    refute_nil(new_attempt)
+    assert_equal("queued", new_attempt.status)
+  end
+
   test "schedule_sync returns nil when outside sync window" do
     source = calendar_sources(:provider)
     source.update!(sync_window_start_hour: 9, sync_window_end_hour: 17, time_zone: "UTC")

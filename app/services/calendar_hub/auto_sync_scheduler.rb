@@ -14,7 +14,10 @@ module CalendarHub
     def find_sources_due_for_sync
       CalendarSource.active.auto_sync_enabled
         .select { |source| source.sync_due?(now: @now) && source.within_sync_window?(now: @now) }
-        .reject { |source| source.sync_attempts.exists?(status: ["queued", "running"]) }
+        .reject do |source|
+        source.sync_attempts.where(status: ["queued", "running"])
+          .exists?(["created_at >= ?", 2.hours.ago])
+      end
     end
 
     def schedule_syncs(sources)

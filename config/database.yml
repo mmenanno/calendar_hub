@@ -7,7 +7,20 @@
 default: &default
   adapter: sqlite3
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  timeout: 5000
+  timeout: 30000
+  pragmas:
+    # Enable Write-Ahead Logging (WAL) mode for better concurrent access
+    # WAL allows multiple readers and one writer simultaneously, reducing lock contention
+    journal_mode: wal
+    # Set synchronous mode to NORMAL for better performance with WAL
+    # NORMAL is safe with WAL mode and provides good performance
+    synchronous: normal
+    # Set a reasonable cache size (negative value = KB, positive = pages)
+    cache_size: -64000  # 64MB cache
+    # Enable memory-mapped I/O for better read performance (bytes)
+    mmap_size: 134217728  # 128MB
+    # Increase busy timeout (milliseconds) - how long to retry when locked
+    busy_timeout: 30000  # 30 seconds
 
 development:
   primary:

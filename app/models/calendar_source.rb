@@ -31,7 +31,9 @@ class CalendarSource < ApplicationRecord
   def schedule_sync(force: false)
     return unless syncable?
     # Avoid double-queueing if an attempt is already queued or running
-    return if sync_attempts.exists?(status: ["queued", "running"])
+    # Only consider attempts that are not stale (created within last 2 hours)
+    return if sync_attempts.where(status: ["queued", "running"])
+      .exists?(["created_at >= ?", 2.hours.ago])
     return unless force || within_sync_window?
 
     attempt = SyncAttempt.create!(calendar_source: self, status: :queued)
