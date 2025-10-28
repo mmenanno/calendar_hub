@@ -36,11 +36,11 @@ class SyncCalendarJob < ApplicationJob
     attempt = nil
 
     with_error_tracking(context: "sync calendar_source_id=#{calendar_source_id}") do
-      # Use with_lock to prevent concurrent syncs of the same source
-      # SQLite WAL mode handles this much better than rollback journal mode
-      acquire_lock_and_sync(source, sync_options) do |locked_attempt|
-        attempt = locked_attempt
-      end
+      # No pessimistic locking needed - schedule_sync already checks for running attempts
+      # This prevents blocking other database writes during long-running syncs
+      attempt = find_or_create_sync_attempt(source, sync_options[:attempt_id])
+      execute_sync(source, attempt, sync_options)
+      attempt.finish(status: :success)
     end
   rescue ActiveRecord::StatementTimeout, ActiveRecord::Deadlocked, ActiveRecord::StatementInvalid => e
     # These will be retried automatically, but update attempt if we have one
@@ -60,16 +60,6 @@ class SyncCalendarJob < ApplicationJob
   end
 
   private
-
-  def acquire_lock_and_sync(source, sync_options)
-    source.with_lock do
-      attempt = find_or_create_sync_attempt(source, sync_options[:attempt_id])
-      yield(attempt) if block_given?
-      execute_sync(source, attempt, sync_options)
-      attempt.finish(status: :success)
-      attempt
-    end
-  end
 
   def build_sync_options(options)
     {
