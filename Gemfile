@@ -36,7 +36,7 @@ group :development, :test, :ci do
   gem "rubocop-minitest", require: false
   gem "rubocop-thread_safety", require: false
   gem "erb_lint", require: false
-  gem "toys", "~> 0.15.6"
+  gem "toys", "~> 0.16.0"
 end
 
 # System testing and HTTP mocking
