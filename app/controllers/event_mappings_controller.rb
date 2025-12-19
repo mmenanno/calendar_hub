@@ -50,14 +50,14 @@ class EventMappingsController < ApplicationController
             turbo_stream.replace("new_mapping_form", render_to_string(partial: "event_mappings/new_form")),
           ])
         end
-        format.html { redirect_back(fallback_location: event_mappings_path, notice: t("flashes.mappings.added")) }
+        format.html { redirect_back_or_to(event_mappings_path, notice: t("flashes.mappings.added")) }
       end
     else
       respond_to do |format|
         format.turbo_stream do
-          render(turbo_stream: turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: @mapping.errors.full_messages.to_sentence, variant: :error }), status: :unprocessable_entity)
+          render(turbo_stream: turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: @mapping.errors.full_messages.to_sentence, variant: :error }), status: :unprocessable_content)
         end
-        format.html { redirect_back(fallback_location: event_mappings_path, alert: @mapping.errors.full_messages.to_sentence) }
+        format.html { redirect_back_or_to(event_mappings_path, alert: @mapping.errors.full_messages.to_sentence) }
       end
     end
   end
@@ -76,7 +76,7 @@ class EventMappingsController < ApplicationController
         format.html { redirect_to(event_mappings_path) }
       end
     else
-      render(partial: "event_mappings/form_row", locals: { mapping: @mapping }, status: :unprocessable_entity)
+      render(partial: "event_mappings/form_row", locals: { mapping: @mapping }, status: :unprocessable_content)
     end
   end
 
@@ -96,7 +96,7 @@ class EventMappingsController < ApplicationController
           turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t("flashes.mappings.removed") }),
         ])
       end
-      format.html { redirect_back(fallback_location: event_mappings_path, notice: t("flashes.mappings.removed")) }
+      format.html { redirect_back_or_to(event_mappings_path, notice: t("flashes.mappings.removed")) }
     end
   end
 

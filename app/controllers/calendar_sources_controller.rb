@@ -50,10 +50,10 @@ class CalendarSourcesController < ApplicationController
               "new_source_form",
               render_to_string(partial: "calendar_sources/form", locals: { calendar_source: @calendar_source }),
             ),
-            status: :unprocessable_entity,
+            status: :unprocessable_content,
           )
         end
-        format.html { render(:new, status: :unprocessable_entity) }
+        format.html { render(:new, status: :unprocessable_content) }
       end
     end
   end
@@ -77,7 +77,7 @@ class CalendarSourcesController < ApplicationController
         format.html { redirect_to(calendar_events_path(source_id: @calendar_source.id), notice: t("flashes.calendar_sources.updated")) }
       end
     else
-      render(:edit, status: :unprocessable_entity)
+      render(:edit, status: :unprocessable_content)
     end
   end
 
@@ -134,7 +134,7 @@ class CalendarSourcesController < ApplicationController
       t("flashes.calendar_sources.sync_skipped")
     end
 
-    redirect_back(fallback_location: calendar_events_path, notice: message)
+    redirect_back_or_to(calendar_events_path, notice: message)
   end
 
   def sync
@@ -148,10 +148,10 @@ class CalendarSourcesController < ApplicationController
             locals: { attempt: attempt },
           ))
         end
-        format.html { redirect_back(fallback_location: calendar_events_path(source_id: @calendar_source.id), notice: t("flashes.calendar_sources.sync_scheduled", count: 1)) }
+        format.html { redirect_back_or_to(calendar_events_path(source_id: @calendar_source.id), notice: t("flashes.calendar_sources.sync_scheduled", count: 1)) }
       else
-        format.turbo_stream { head(:unprocessable_entity) }
-        format.html { redirect_back(fallback_location: calendar_events_path(source_id: @calendar_source.id), alert: t("flashes.calendar_sources.sync_inactive")) }
+        format.turbo_stream { head(:unprocessable_content) }
+        format.html { redirect_back_or_to(calendar_events_path(source_id: @calendar_source.id), alert: t("flashes.calendar_sources.sync_inactive")) }
       end
     end
   end
@@ -167,10 +167,10 @@ class CalendarSourcesController < ApplicationController
             locals: { attempt: attempt },
           ))
         end
-        format.html { redirect_back(fallback_location: calendar_events_path(source_id: @calendar_source.id), notice: t("flashes.calendar_sources.sync_scheduled", count: 1)) }
+        format.html { redirect_back_or_to(calendar_events_path(source_id: @calendar_source.id), notice: t("flashes.calendar_sources.sync_scheduled", count: 1)) }
       else
-        format.turbo_stream { head(:unprocessable_entity) }
-        format.html { redirect_back(fallback_location: calendar_events_path(source_id: @calendar_source.id), alert: t("flashes.calendar_sources.sync_inactive")) }
+        format.turbo_stream { head(:unprocessable_content) }
+        format.html { redirect_back_or_to(calendar_events_path(source_id: @calendar_source.id), alert: t("flashes.calendar_sources.sync_inactive")) }
       end
     end
   end
@@ -179,10 +179,10 @@ class CalendarSourcesController < ApplicationController
     client = AppleCalendar::Client.new
     url = client.send(:discover_calendar_url, @calendar_source.calendar_identifier)
     notice = t("ui.sources.confirm.dest_found", path: URI.parse(url).request_uri)
-    redirect_back(fallback_location: calendar_sources_path, notice: notice)
+    redirect_back_or_to(calendar_sources_path, notice: notice)
   rescue => e
     alert = t("ui.sources.confirm.dest_error", error: e.message)
-    redirect_back(fallback_location: calendar_sources_path, alert: alert)
+    redirect_back_or_to(calendar_sources_path, alert: alert)
   end
 
   def toggle_active

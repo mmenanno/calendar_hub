@@ -27,11 +27,11 @@ class SettingsController < ApplicationController
     else
       respond_to do |format|
         format.turbo_stream do
-          render(:edit, status: :unprocessable_entity)
+          render(:edit, status: :unprocessable_content)
         end
         format.html do
           flash.now[:alert] = t("flashes.settings.review_errors")
-          render(:edit, status: :unprocessable_entity)
+          render(:edit, status: :unprocessable_content)
         end
       end
     end

@@ -71,7 +71,7 @@ class FilterRulesController < ApplicationController
             locals: { filter_rule: @filter_rule },
           ))
         end
-        format.html { render(:index, status: :unprocessable_entity) }
+        format.html { render(:index, status: :unprocessable_content) }
       end
     end
   rescue ArgumentError
@@ -107,7 +107,7 @@ class FilterRulesController < ApplicationController
             locals: { filter_rule: @filter_rule },
           ))
         end
-        format.html { render(:edit, status: :unprocessable_entity) }
+        format.html { render(:edit, status: :unprocessable_content) }
       end
     end
   end
