@@ -2,8 +2,6 @@
 
 source "https://rubygems.org"
 
-ruby "3.4.5"
-
 # Core framework and platform integrations
 gem "rails", "~> 8.0.4"
 gem "propshaft"
