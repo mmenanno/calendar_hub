@@ -202,7 +202,7 @@ GEM
       racc (~> 1.4)
     ostruct (0.6.3)
     parallel (1.27.0)
-    parser (3.3.10.1)
+    parser (3.3.10.2)
       ast (~> 2.4.1)
       racc
     pp (0.6.3)
@@ -291,6 +291,15 @@ GEM
       lint_roller (~> 1.1)
       rubocop (>= 1.75.0, < 2.0)
       rubocop-ast (>= 1.38.0, < 2.0)
+    rubocop-mmenanno (0.1.5)
+      lint_roller (~> 1.1)
+      rubocop (>= 1.75, < 3.0)
+      rubocop-minitest (~> 0.37)
+      rubocop-performance (~> 1.24)
+      rubocop-thread_safety (~> 0.6)
+    rubocop-mmenanno-rails (0.1.5)
+      rubocop-mmenanno (= 0.1.5)
+      rubocop-rails (~> 2.30)
     rubocop-performance (1.26.1)
       lint_roller (~> 1.1)
       rubocop (>= 1.75.0, < 2.0)
@@ -301,8 +310,6 @@ GEM
       rack (>= 1.1)
       rubocop (>= 1.75.0, < 2.0)
       rubocop-ast (>= 1.44.0, < 2.0)
-    rubocop-shopify (2.18.0)
-      rubocop (~> 1.62)
     rubocop-thread_safety (0.7.3)
       lint_roller (~> 1.1)
       rubocop (~> 1.72, >= 1.72.1)
@@ -392,12 +399,7 @@ DEPENDENCIES
   propshaft
   puma (>= 5.0)
   rails (~> 8.0.4)
-  rubocop
-  rubocop-minitest
-  rubocop-performance
-  rubocop-rails
-  rubocop-shopify
-  rubocop-thread_safety
+  rubocop-mmenanno-rails
   simplecov
   solid_cable
   solid_cache

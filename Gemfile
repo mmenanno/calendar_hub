@@ -27,12 +27,7 @@ gem "bootsnap", require: false
 group :development, :test, :ci do
   gem "debug", platforms: [:mri], require: "debug/prelude"
   gem "brakeman", require: false
-  gem "rubocop", require: false
-  gem "rubocop-rails", require: false
-  gem "rubocop-shopify", require: false
-  gem "rubocop-performance", require: false
-  gem "rubocop-minitest", require: false
-  gem "rubocop-thread_safety", require: false
+  gem "rubocop-mmenanno-rails", require: false
   gem "erb_lint", require: false
   gem "toys", "~> 0.19.1"
 end
