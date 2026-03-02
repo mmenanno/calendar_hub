@@ -25,6 +25,8 @@ class FilterRule < ApplicationRecord
   validates :field_name, inclusion: { in: FIELD_NAMES.values }
   validates :pattern, presence: true
 
+  after_commit :schedule_filter_sync
+
   def matches?(event)
     return false unless active?
 
@@ -76,5 +78,24 @@ class FilterRule < ApplicationRecord
     else
       false
     end
+  end
+
+  def schedule_filter_sync
+    return if only_position_changed?
+
+    if destroyed?
+      # Skip if the source itself was destroyed (cascading delete)
+      return if calendar_source_id && !CalendarSource.exists?(calendar_source_id)
+
+      SyncFilterRulesJob.perform_later(calendar_source_id: calendar_source_id)
+    else
+      SyncFilterRulesJob.perform_later(id)
+    end
+  end
+
+  def only_position_changed?
+    return false if destroyed?
+
+    saved_changes.except("position", "updated_at").empty?
   end
 end

@@ -4,6 +4,7 @@ require "test_helper"
 
 class FilterRuleTest < ActiveSupport::TestCase
   include ModelBuilders
+  include ActiveJob::TestHelper
 
   def setup
     @calendar_source = calendar_sources(:provider)
@@ -325,5 +326,59 @@ class FilterRuleTest < ActiveSupport::TestCase
 
     assert(case_insensitive_rule.matches?(event_matching_case))
     assert(case_insensitive_rule.matches?(event_wrong_case))
+  end
+
+  # after_commit callback tests
+
+  test "create enqueues SyncFilterRulesJob" do
+    assert_enqueued_with(job: SyncFilterRulesJob) do
+      FilterRule.create!(
+        pattern: "Callback Test",
+        field_name: "title",
+        match_type: "contains",
+      )
+    end
+  end
+
+  test "update enqueues SyncFilterRulesJob" do
+    rule = filter_rules(:global_meeting_filter)
+
+    assert_enqueued_with(job: SyncFilterRulesJob) do
+      rule.update!(pattern: "Updated Callback Test")
+    end
+  end
+
+  test "position-only update does not enqueue SyncFilterRulesJob" do
+    rule = filter_rules(:global_meeting_filter)
+
+    assert_no_enqueued_jobs(only: SyncFilterRulesJob) do
+      rule.update!(position: 99)
+    end
+  end
+
+  test "active toggle enqueues SyncFilterRulesJob" do
+    rule = filter_rules(:global_meeting_filter)
+
+    assert_enqueued_with(job: SyncFilterRulesJob) do
+      rule.update!(active: !rule.active?)
+    end
+  end
+
+  test "destroy enqueues SyncFilterRulesJob with calendar_source_id" do
+    source = @calendar_source
+    rule = FilterRule.create!(
+      pattern: "Destroy Test",
+      field_name: "title",
+      match_type: "contains",
+      calendar_source: source,
+    )
+
+    # Clear jobs enqueued by create
+    queue_adapter = ActiveJob::Base.queue_adapter
+    queue_adapter.enqueued_jobs.clear
+
+    assert_enqueued_with(job: SyncFilterRulesJob, args: [{ calendar_source_id: source.id }]) do
+      rule.destroy!
+    end
   end
 end

@@ -713,4 +713,41 @@ class FilterRulesControllerTest < ActionDispatch::IntegrationTest
     assert_equal(1, @filter_rule.position)
     assert_equal(0, rule2.position)
   end
+
+  # Sync trigger tests
+
+  test "update enqueues SyncFilterRulesJob" do
+    assert_enqueued_with(job: SyncFilterRulesJob) do
+      patch filter_rule_url(@filter_rule),
+        params: { filter_rule: { pattern: "Sync Updated" } }
+    end
+  end
+
+  test "toggle enqueues SyncFilterRulesJob" do
+    assert_enqueued_with(job: SyncFilterRulesJob) do
+      patch toggle_filter_rule_url(@filter_rule)
+    end
+  end
+
+  test "duplicate enqueues SyncFilterRulesJob" do
+    assert_enqueued_with(job: SyncFilterRulesJob) do
+      post duplicate_filter_rule_url(@filter_rule), as: :turbo_stream
+    end
+  end
+
+  test "reorder does not enqueue SyncFilterRulesJob" do
+    rule2 = FilterRule.create!(
+      pattern: "Reorder Sync Test",
+      field_name: "title",
+      match_type: "contains",
+      position: 1,
+    )
+
+    # Clear jobs enqueued by rule2 create
+    ActiveJob::Base.queue_adapter.enqueued_jobs.clear
+
+    assert_no_enqueued_jobs(only: SyncFilterRulesJob) do
+      post reorder_filter_rules_url, params: { order: [rule2.id, @filter_rule.id] }
+    end
+  end
 end

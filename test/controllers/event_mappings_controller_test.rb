@@ -618,4 +618,62 @@ class EventMappingsControllerTest < ActionDispatch::IntegrationTest
     assert_match "turbo-stream", response.body
     assert_match "mapping_test_result", response.body
   end
+
+  # Sync trigger tests
+
+  test "create enqueues SyncCalendarJob" do
+    assert_enqueued_with(job: SyncCalendarJob) do
+      post event_mappings_path,
+        params: {
+          event_mapping: {
+            calendar_source_id: calendar_sources(:provider).id,
+            match_type: "contains",
+            pattern: "Sync Test",
+            replacement: "Sync Replaced",
+          },
+        }
+    end
+  end
+
+  test "update enqueues SyncCalendarJob" do
+    mapping = event_mappings(:basic_mapping)
+
+    assert_enqueued_with(job: SyncCalendarJob) do
+      patch event_mapping_path(mapping),
+        params: { event_mapping: { pattern: "Sync Updated" } }
+    end
+  end
+
+  test "toggle enqueues SyncCalendarJob" do
+    mapping = event_mappings(:basic_mapping)
+
+    assert_enqueued_with(job: SyncCalendarJob) do
+      patch toggle_event_mapping_path(mapping)
+    end
+  end
+
+  test "duplicate enqueues SyncCalendarJob" do
+    original = event_mappings(:basic_mapping)
+
+    assert_enqueued_with(job: SyncCalendarJob) do
+      post duplicate_event_mapping_path(original)
+    end
+  end
+
+  test "destroy enqueues SyncCalendarJob" do
+    mapping = event_mappings(:basic_mapping)
+
+    assert_enqueued_with(job: SyncCalendarJob) do
+      delete event_mapping_path(mapping)
+    end
+  end
+
+  test "reorder does not enqueue SyncCalendarJob" do
+    mapping1 = event_mappings(:basic_mapping)
+    mapping2 = event_mappings(:regex_mapping)
+
+    assert_no_enqueued_jobs(only: SyncCalendarJob) do
+      post reorder_event_mappings_path, params: { order: [mapping2.id, mapping1.id] }
+    end
+  end
 end
