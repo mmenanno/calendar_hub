@@ -21,6 +21,7 @@ export default class BaseController extends Controller {
    */
   async fetchWithCsrf(url, options = {}) {
     const token = this.getCsrfToken()
+    const { headers: customHeaders, ...restOptions } = options
     const defaultHeaders = {
       'X-CSRF-Token': token || '',
       'Accept': 'text/vnd.turbo-stream.html'
@@ -28,8 +29,8 @@ export default class BaseController extends Controller {
 
     return fetch(url, {
       credentials: 'same-origin',
-      headers: { ...defaultHeaders, ...options.headers },
-      ...options
+      ...restOptions,
+      headers: { ...defaultHeaders, ...customHeaders },
     })
   }
 
