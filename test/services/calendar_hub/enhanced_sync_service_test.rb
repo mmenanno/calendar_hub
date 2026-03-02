@@ -23,11 +23,38 @@ module CalendarHub
     test "skips sync when no changes detected" do
       @adapter.expects(:respond_to?).with(:has_changes?).returns(true)
       @adapter.expects(:has_changes?).returns(false)
+      @source.expects(:mark_synced!).with(token: anything, timestamp: anything)
       @observer.expects(:finish).with(status: :success)
 
       result = @service.call
 
       assert_empty result
+    end
+
+    test "updates last_synced_at even when no changes detected" do
+      source = calendar_sources(:provider)
+      source.update_columns(last_synced_at: 3.days.ago, sync_token: "old-token") # rubocop:disable Rails/SkipsModelValidations
+
+      adapter = mock("EnhancedIcsAdapter")
+      adapter.expects(:respond_to?).with(:has_changes?).returns(true)
+      adapter.expects(:has_changes?).returns(false)
+
+      observer = mock("Observer")
+      observer.expects(:finish).with(status: :success)
+
+      service = ::CalendarHub::Sync::EnhancedSyncService.new(
+        source: source,
+        apple_client: @apple_client,
+        observer: observer,
+        adapter: adapter,
+      )
+
+      result = service.call
+
+      assert_empty result
+      source.reload
+
+      assert_in_delta Time.current, source.last_synced_at, 5.seconds
     end
 
     test "performs full sync when changes detected" do

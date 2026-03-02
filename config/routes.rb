@@ -7,6 +7,7 @@ Rails.application.routes.draw do
     member do
       post :sync
       post :force_sync
+      post :push_state
       get :check_destination
       patch :toggle_active
       patch :toggle_auto_sync

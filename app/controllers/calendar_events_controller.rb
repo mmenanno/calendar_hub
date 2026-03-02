@@ -14,14 +14,12 @@ class CalendarEventsController < ApplicationController
 
     @events = scope.includes(:calendar_source).limit(200)
 
-    if params[:q].present?
-      @events = filter_events_by_search(@events, params[:q].strip)
-    end
+    @events = filter_events_by_search(@events, params[:q].strip) if params[:q].present?
     @show_excluded = show_excluded
 
-    if turbo_frame_request_id == "events-list"
-      render(partial: "events_list", locals: { events: @events, selected_source: @selected_source })
-    end
+    return unless turbo_frame_request_id == "events-list"
+
+    render(partial: "events_list", locals: { events: @events, selected_source: @selected_source })
   end
 
   def show
@@ -31,6 +29,7 @@ class CalendarEventsController < ApplicationController
   def toggle_sync
     @event = CalendarEvent.find(params[:id])
     @event.update!(sync_exempt: !@event.sync_exempt?)
+    SyncEventToAppleJob.perform_later(@event.id)
     respond_to do |format|
       msg = @event.sync_exempt? ? t("flashes.events.excluded") : t("flashes.events.included")
       format.turbo_stream do

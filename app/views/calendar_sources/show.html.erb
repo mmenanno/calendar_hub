@@ -23,7 +23,7 @@
         </div>
         <div>
           <dt class="font-medium text-slate-500"><%= t("common.fields.last_synced") %></dt>
-          <dd><%= @calendar_source.last_synced_at ? time_ago_in_words(@calendar_source.last_synced_at) + " ago" : t("common.states.never") %></dd>
+          <dd><%= @calendar_source.last_synced_at ? "#{time_ago_in_words(@calendar_source.last_synced_at)} ago" : t("common.states.never") %></dd>
         </div>
         <% if @calendar_source.auto_sync_enabled? %>
           <div>

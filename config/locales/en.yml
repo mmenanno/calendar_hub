@@ -79,6 +79,7 @@ en:
       purge_scheduled: "Purge scheduled"
       removed: "Calendar source removed."
       status_updated: "Source status updated."
+      push_state_scheduled: "Push state scheduled."
       sync_inactive: "Source is paused or lacks a fetch adapter."
       sync_scheduled:
         one: "Sync scheduled for %{count} source."
@@ -325,6 +326,7 @@ en:
         dest_error: "Apple Calendar problem: %{error}"
         dest_found: "Apple Calendar reachable. Destination found: %{path}"
         force_sync: "Force sync for %{name} (ignores window)?"
+        push_state: "Push all event state to Apple Calendar for %{name}? This will update every event in the destination calendar."
         purge: "Permanently delete %{name}? This cannot be undone."
         sync_now: "Schedule sync now?"
       default_frequency_suffix: "(default)"
@@ -340,6 +342,7 @@ en:
         one: "Every minute"
         other: "Every %{count} minutes"
       force_sync: "Force Sync"
+      push_state: "Push State"
       header: "Sources"
       http_basic: "HTTP Basic Credentials (optional)"
       ingestion_url: "Ingestion URL"
