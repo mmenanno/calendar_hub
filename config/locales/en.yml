@@ -302,6 +302,7 @@ en:
       reset_defaults: "Reset to Defaults"
       ruby: "Ruby:"
       save_changes: "Save Changes"
+      version: "Version:"
       subheader: "Defaults and Apple Calendar destination."
       test_connection: "Test Connection"
       used_when_missing_tz: "Used when a source doesn't specify a time zone."
