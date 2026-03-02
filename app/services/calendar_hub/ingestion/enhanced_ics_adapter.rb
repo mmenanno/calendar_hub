@@ -28,16 +28,11 @@ module CalendarHub
         raise Ingestion::Error, "Failed to fetch ICS feed: #{e.message}"
       end
 
+      # Checks only local configuration state (mappings, settings).
+      # Feed-level change detection (ETag/304) is handled separately by
+      # fetch_events_with_change_detection in the sync service.
       def has_changes?
-        current_hash = source.generate_change_hash
-        stored_hash = source.last_change_hash
-
-        return true if stored_hash.nil?
-
-        feed_result = fetch_events_with_change_detection
-        return true if feed_result[:changed]
-
-        current_hash != stored_hash
+        source.last_change_hash.nil? || source.generate_change_hash != source.last_change_hash
       end
     end
   end

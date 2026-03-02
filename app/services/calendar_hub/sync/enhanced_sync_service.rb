@@ -12,20 +12,17 @@ module CalendarHub
         raise Ingestion::Error, "No ingestion adapter configured" if adapter.nil?
         raise ArgumentError, "Calendar identifier is required" if source.calendar_identifier.blank?
 
-        # Check for changes before doing expensive operations
-        unless adapter.respond_to?(:has_changes?) && adapter.has_changes?
-          Rails.logger.info("[CalendarSync] No changes detected for source=#{source.id}, skipping sync")
-          source.mark_synced!(token: source.sync_token || generate_sync_token, timestamp: Time.current)
-          observer&.finish(status: :success)
-          return []
-        end
-
         started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
-        # Fetch events with change detection
+        # Fetch events with change detection (handles HTTP caching via ETag/304)
         if adapter.respond_to?(:fetch_events_with_change_detection)
           result = adapter.fetch_events_with_change_detection
-          return [] unless result[:changed]
+          unless result[:changed]
+            Rails.logger.info("[CalendarSync] No changes detected for source=#{source.id}, skipping sync")
+            source.mark_synced!(token: source.sync_token || generate_sync_token, timestamp: Time.current)
+            observer&.finish(status: :success)
+            return []
+          end
 
           fetched_events = result[:events]
         else

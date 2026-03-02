@@ -20,9 +20,9 @@ module CalendarHub
       )
     end
 
-    test "skips sync when no changes detected" do
-      @adapter.expects(:respond_to?).with(:has_changes?).returns(true)
-      @adapter.expects(:has_changes?).returns(false)
+    test "skips sync when feed returns not modified" do
+      @adapter.expects(:respond_to?).with(:fetch_events_with_change_detection).returns(true)
+      @adapter.expects(:fetch_events_with_change_detection).returns({ changed: false, events: [] })
       @source.expects(:mark_synced!).with(token: anything, timestamp: anything)
       @observer.expects(:finish).with(status: :success)
 
@@ -31,13 +31,13 @@ module CalendarHub
       assert_empty result
     end
 
-    test "updates last_synced_at even when no changes detected" do
+    test "updates last_synced_at when feed returns not modified" do
       source = calendar_sources(:provider)
       source.update_columns(last_synced_at: 3.days.ago, sync_token: "old-token") # rubocop:disable Rails/SkipsModelValidations
 
       adapter = mock("EnhancedIcsAdapter")
-      adapter.expects(:respond_to?).with(:has_changes?).returns(true)
-      adapter.expects(:has_changes?).returns(false)
+      adapter.expects(:respond_to?).with(:fetch_events_with_change_detection).returns(true)
+      adapter.expects(:fetch_events_with_change_detection).returns({ changed: false, events: [] })
 
       observer = mock("Observer")
       observer.expects(:finish).with(status: :success)
@@ -57,7 +57,7 @@ module CalendarHub
       assert_in_delta Time.current, source.last_synced_at, 5.seconds
     end
 
-    test "performs full sync when changes detected" do
+    test "performs full sync when feed has changes" do
       events_data = [
         MockEvent.new(
           "event1",
@@ -72,8 +72,6 @@ module CalendarHub
         ),
       ]
 
-      @adapter.expects(:respond_to?).with(:has_changes?).returns(true)
-      @adapter.expects(:has_changes?).returns(true)
       @adapter.expects(:respond_to?).with(:fetch_events_with_change_detection).returns(true)
       @adapter.expects(:fetch_events_with_change_detection).returns({ changed: true, events: events_data })
 
@@ -107,8 +105,6 @@ module CalendarHub
         ),
       ]
 
-      @adapter.expects(:respond_to?).with(:has_changes?).returns(true)
-      @adapter.expects(:has_changes?).returns(true)
       @adapter.expects(:respond_to?).with(:fetch_events_with_change_detection).returns(false)
       @adapter.expects(:fetch_events).returns(events_data)
 
@@ -125,17 +121,6 @@ module CalendarHub
       result = @service.call
 
       assert_equal 1, result.count
-    end
-
-    test "handles feed not modified response" do
-      @adapter.expects(:respond_to?).with(:has_changes?).returns(true)
-      @adapter.expects(:has_changes?).returns(true)
-      @adapter.expects(:respond_to?).with(:fetch_events_with_change_detection).returns(true)
-      @adapter.expects(:fetch_events_with_change_detection).returns({ changed: false, events: [] })
-
-      result = @service.call
-
-      assert_empty result
     end
   end
 end

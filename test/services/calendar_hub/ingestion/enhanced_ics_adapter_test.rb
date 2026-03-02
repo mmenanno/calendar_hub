@@ -98,33 +98,17 @@ module CalendarHub
         assert_predicate @adapter, :has_changes?
       end
 
-      test "has_changes detects feed changes" do
+      test "has_changes detects local config changes" do
         @source.update!(last_change_hash: @source.generate_change_hash)
 
-        ics_content = <<~ICS
-          BEGIN:VCALENDAR
-          VERSION:2.0
-          PRODID:test
-          BEGIN:VEVENT
-          UID:test-event-1
-          DTSTART:20250925T100000Z
-          DTEND:20250925T110000Z
-          SUMMARY:Test Event
-          END:VEVENT
-          END:VCALENDAR
-        ICS
-
-        stub_request(:get, @source.ingestion_url)
-          .to_return(status: 200, body: ics_content, headers: { "ETag" => '"new-etag"' })
+        # Changing a setting that affects the hash should be detected
+        @source.sync_window_start_hour = 8
 
         assert_predicate @adapter, :has_changes?
       end
 
-      test "has_changes returns false when nothing changed" do
+      test "has_changes returns false when local config unchanged" do
         @source.update!(last_change_hash: @source.generate_change_hash)
-
-        stub_request(:get, @source.ingestion_url)
-          .to_return(status: 304)
 
         refute_predicate @adapter, :has_changes?
       end
@@ -151,10 +135,6 @@ module CalendarHub
 
       test "has_changes returns true when last_change_hash is nil" do
         @source.update!(last_change_hash: nil)
-
-        # Mock the feed check to return not changed
-        stub_request(:get, @source.ingestion_url)
-          .to_return(status: 304)
 
         assert_predicate @adapter, :has_changes?
       end
@@ -254,16 +234,11 @@ module CalendarHub
         assert_empty result[:events]
       end
 
-      test "has_changes handles errors in fetch_events_with_change_detection" do
-        @source.update!(last_change_hash: "some-hash")
+      test "has_changes does not make HTTP requests" do
+        @source.update!(last_change_hash: @source.generate_change_hash)
 
-        stub_request(:get, @source.ingestion_url)
-          .to_raise(StandardError.new("Network error"))
-
-        # Should propagate the error from fetch_events_with_change_detection
-        assert_raises ::CalendarHub::Ingestion::Error do
-          @adapter.has_changes?
-        end
+        # No HTTP stubs — has_changes? should not make any HTTP calls
+        refute_predicate @adapter, :has_changes?
       end
     end
   end
