@@ -6,8 +6,6 @@
 %>
 <% variant = local_assigns[:variant] || :default %>
 <% card_classes = case variant.to_sym
-   when :light
-     "bg-slate-900/60"
    when :lighter
      "bg-slate-900/70"
    else

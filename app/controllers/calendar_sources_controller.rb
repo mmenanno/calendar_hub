@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class CalendarSourcesController < ApplicationController
-  before_action :set_calendar_source, only: [:show, :edit, :update, :destroy, :sync, :force_sync, :check_destination, :toggle_active, :toggle_auto_sync, :purge, :unarchive]
+  before_action :set_calendar_source, only: [:show, :edit, :update, :destroy, :sync, :force_sync, :push_state, :check_destination, :toggle_active, :toggle_auto_sync, :purge, :unarchive]
 
   def index
     @calendar_sources = CalendarSource.includes(:sync_attempts, :calendar_events).order(:name)
@@ -175,12 +175,27 @@ class CalendarSourcesController < ApplicationController
     end
   end
 
+  def push_state
+    attempt = SyncAttempt.create!(calendar_source: @calendar_source, status: :queued)
+    PushStateJob.perform_later(@calendar_source.id, attempt_id: attempt.id)
+    respond_to do |format|
+      format.turbo_stream do
+        render(turbo_stream: turbo_stream.replace(
+          "sync_status_source_#{@calendar_source.id}",
+          partial: "calendar_sources/sync_status",
+          locals: { attempt: attempt },
+        ))
+      end
+      format.html { redirect_back_or_to(calendar_events_path(source_id: @calendar_source.id), notice: t("flashes.calendar_sources.push_state_scheduled")) }
+    end
+  end
+
   def check_destination
     client = AppleCalendar::Client.new
     url = client.send(:discover_calendar_url, @calendar_source.calendar_identifier)
     notice = t("ui.sources.confirm.dest_found", path: URI.parse(url).request_uri)
     redirect_back_or_to(calendar_sources_path, notice: notice)
-  rescue => e
+  rescue StandardError => e
     alert = t("ui.sources.confirm.dest_error", error: e.message)
     redirect_back_or_to(calendar_sources_path, alert: alert)
   end
@@ -279,9 +294,7 @@ class CalendarSourcesController < ApplicationController
     sanitized.transform_values! { |v| v.is_a?(String) ? v.strip.presence : v }
     sanitized.compact!
 
-    if sanitized[:http_basic_password].blank? && source.persisted?
-      sanitized[:http_basic_password] = source.credentials&.dig("http_basic_password")
-    end
+    sanitized[:http_basic_password] = source.credentials&.dig("http_basic_password") if sanitized[:http_basic_password].blank? && source.persisted?
 
     return if sanitized.blank?
 

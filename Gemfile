@@ -3,19 +3,19 @@
 source "https://rubygems.org"
 
 # Core framework and platform integrations
-gem "rails", "~> 8.0.4"
-gem "propshaft"
-gem "sqlite3", ">= 2.1"
-gem "puma", ">= 5.0"
 gem "importmap-rails"
-gem "turbo-rails"
+gem "propshaft"
+gem "puma", ">= 5.0"
+gem "rails", "~> 8.1"
+gem "sqlite3", ">= 2.1"
 gem "stimulus-rails"
 gem "tailwindcss-rails"
+gem "turbo-rails"
 
 # Background processing, caching, and realtime
+gem "solid_cable"
 gem "solid_cache"
 gem "solid_queue"
-gem "solid_cable"
 
 # Deployment and server
 gem "thruster", require: false
@@ -25,24 +25,24 @@ gem "bootsnap", require: false
 
 # Diagnostics, tooling, and quality
 group :development, :test, :ci do
-  gem "debug", platforms: [:mri], require: "debug/prelude"
   gem "brakeman", require: false
-  gem "rubocop-mmenanno-rails", require: false
+  gem "debug", platforms: [:mri], require: "debug/prelude"
   gem "erb_lint", require: false
+  gem "rubocop-mmenanno-rails", require: false
   gem "toys", "~> 0.19.1"
 end
 
 # System testing and HTTP mocking
 group :test, :ci do
-  gem "simplecov", require: false
   gem "mocha"
+  gem "simplecov", require: false
   gem "webmock"
 end
 
 # Jobs and maintenance
 gem "activejob-uniqueness"
-gem "mission_control-jobs"
 gem "maintenance_tasks"
+gem "mission_control-jobs"
 
 # Networking and parsing
 gem "faraday"

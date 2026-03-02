@@ -15,6 +15,7 @@ module CalendarHub
         # Check for changes before doing expensive operations
         unless adapter.respond_to?(:has_changes?) && adapter.has_changes?
           Rails.logger.info("[CalendarSync] No changes detected for source=#{source.id}, skipping sync")
+          source.mark_synced!(token: source.sync_token || generate_sync_token, timestamp: Time.current)
           observer&.finish(status: :success)
           return []
         end
@@ -50,7 +51,7 @@ module CalendarHub
         )
         Rails.logger.info(
           "[CalendarSync] source=#{source.id} fetched=#{fetched_events.size} upserts=#{apply_counts[:upserts]} " \
-            "deletes=#{apply_counts[:deletes] + cancel_counts[:canceled]} canceled=#{cancel_counts[:canceled]} duration_ms=#{duration_ms}",
+          "deletes=#{apply_counts[:deletes] + cancel_counts[:canceled]} canceled=#{cancel_counts[:canceled]} duration_ms=#{duration_ms}",
         )
         processed_events
       end
