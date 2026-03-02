@@ -75,9 +75,9 @@ class CalendarSource < ApplicationRecord
   end
 
   def generate_change_hash
-    mappings_hash = event_mappings.active.order(:position).pluck(:pattern, :replacement, :match_type, :case_sensitive).hash
-    settings_hash = [sync_frequency_minutes, sync_window_start_hour, sync_window_end_hour, time_zone].hash
-    [mappings_hash, settings_hash].hash.to_s
+    mappings_data = event_mappings.active.order(:position).pluck(:pattern, :replacement, :match_type, :case_sensitive)
+    settings_data = [sync_frequency_minutes, sync_window_start_hour, sync_window_end_hour, time_zone]
+    Digest::SHA256.hexdigest([mappings_data, settings_data].inspect)
   end
 
   def mark_synced!(token:, timestamp: Time.current)
