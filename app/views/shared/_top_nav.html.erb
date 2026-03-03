@@ -1,11 +1,65 @@
-<nav class="flex items-center gap-3 text-sm">
-  <%= link_to t("navigation.events"), calendar_events_path, class: navigation_link_class(active: local_assigns[:active] == :events) %>
-  <%= link_to t("navigation.sources"), calendar_sources_path, class: navigation_link_class(active: local_assigns[:active] == :sources) %>
-  <%= link_to t("navigation.mappings"), event_mappings_path, class: navigation_link_class(active: local_assigns[:active] == :mappings) %>
-  <%= link_to "Filters", filter_rules_path, class: navigation_link_class(active: local_assigns[:active] == :filter_rules) %>
-  <%= link_to t("navigation.settings"), edit_settings_path, class: navigation_link_class(active: local_assigns[:active] == :settings) %>
-  <%= link_to t("navigation.jobs"), admin_jobs_path, class: navigation_link_class(active: local_assigns[:active] == :jobs) %>
-  <%= link_to help_path, class: navigation_link_class(active: local_assigns[:active] == :help) do %>
-    <span class="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-700 text-slate-300">?</span>
-  <% end %>
+<nav data-controller="mobile-nav" class="flex items-center">
+  <%# Desktop navigation - hidden on mobile %>
+  <div class="hidden md:flex items-center gap-3 text-sm">
+    <%= link_to t("navigation.events"), root_path, class: navigation_link_class(active: local_assigns[:active] == :events) %>
+    <%= link_to t("navigation.sources"), calendar_sources_path, class: navigation_link_class(active: local_assigns[:active] == :sources) %>
+    <%= link_to t("navigation.mappings"), event_mappings_path, class: navigation_link_class(active: local_assigns[:active] == :mappings) %>
+    <%= link_to "Filters", filter_rules_path, class: navigation_link_class(active: local_assigns[:active] == :filter_rules) %>
+    <%= link_to t("navigation.settings"), edit_settings_path, class: navigation_link_class(active: local_assigns[:active] == :settings) %>
+    <details class="nav-dropdown relative">
+      <summary class="cursor-pointer list-none <%= navigation_link_class(active: local_assigns[:active] == :help || local_assigns[:active] == :jobs) %>">
+        <span class="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-700 text-slate-300">?</span>
+      </summary>
+      <div class="absolute right-0 top-full mt-1 min-w-[10rem] rounded-lg border border-slate-700 bg-slate-900 py-1 shadow-lg shadow-slate-950/40 z-50">
+        <%= link_to t("ui.help.header"), help_path, class: "block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition" %>
+        <%= link_to t("navigation.jobs"), admin_jobs_path, class: "block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition" %>
+      </div>
+    </details>
+  </div>
+
+  <%# Mobile hamburger button - visible only on mobile %>
+  <button type="button"
+          class="md:hidden inline-flex items-center justify-center rounded-lg p-2 text-slate-300 hover:bg-slate-800 hover:text-white transition"
+          data-mobile-nav-target="openButton"
+          data-action="mobile-nav#open"
+          aria-label="Open navigation menu">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  </button>
+
+  <%# Mobile slide-out menu %>
+  <div data-mobile-nav-target="menu" class="hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Navigation menu">
+    <%# Backdrop %>
+    <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" data-action="click->mobile-nav#close"></div>
+
+    <%# Menu panel %>
+    <div class="absolute right-0 top-0 h-full w-64 border-l border-slate-800 bg-slate-900 p-6 shadow-xl">
+      <div class="mb-6 flex items-center justify-between">
+        <span class="text-sm font-semibold text-slate-300">Menu</span>
+        <button type="button"
+                class="rounded-lg p-1 text-slate-400 hover:text-white transition"
+                data-mobile-nav-target="closeButton"
+                data-action="mobile-nav#close"
+                aria-label="Close navigation menu">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <%= link_to t("navigation.events"), root_path, class: "#{navigation_link_class(active: local_assigns[:active] == :events)} block" %>
+        <%= link_to t("navigation.sources"), calendar_sources_path, class: "#{navigation_link_class(active: local_assigns[:active] == :sources)} block" %>
+        <%= link_to t("navigation.mappings"), event_mappings_path, class: "#{navigation_link_class(active: local_assigns[:active] == :mappings)} block" %>
+        <%= link_to "Filters", filter_rules_path, class: "#{navigation_link_class(active: local_assigns[:active] == :filter_rules)} block" %>
+        <%= link_to t("navigation.settings"), edit_settings_path, class: "#{navigation_link_class(active: local_assigns[:active] == :settings)} block" %>
+
+        <hr class="my-2 border-slate-800">
+
+        <%= link_to t("ui.help.header"), help_path, class: "#{navigation_link_class(active: local_assigns[:active] == :help)} block" %>
+        <%= link_to t("navigation.jobs"), admin_jobs_path, class: "#{navigation_link_class(active: local_assigns[:active] == :jobs)} block" %>
+      </div>
+    </div>
+  </div>
 </nav>

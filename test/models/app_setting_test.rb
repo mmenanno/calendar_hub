@@ -5,6 +5,7 @@ require "test_helper"
 class AppSettingTest < ActiveSupport::TestCase
   def setup
     super
+    AppSetting.reset_instance!
     @original_path = ENV["CALENDAR_HUB_CREDENTIAL_KEY_PATH"]
     @tmp_key_path = Rails.root.join("tmp", "test_credential_key_#{SecureRandom.hex(4)}")
     ENV["CALENDAR_HUB_CREDENTIAL_KEY_PATH"] = @tmp_key_path.to_s
@@ -13,6 +14,7 @@ class AppSettingTest < ActiveSupport::TestCase
   end
 
   def teardown
+    AppSetting.reset_instance!
     CalendarHub::CredentialEncryption.reset!
     File.delete(@tmp_key_path) if @tmp_key_path && File.exist?(@tmp_key_path)
     if @original_path
@@ -248,6 +250,42 @@ class AppSettingTest < ActiveSupport::TestCase
     assert_equal(existing.id, settings.id)
     assert_equal("America/New_York", settings.default_time_zone)
     assert_equal(30, settings.default_sync_frequency_minutes)
+  end
+
+  test "singleton_guard prevents duplicate rows at database level" do
+    AppSetting.delete_all
+
+    AppSetting.create!(default_time_zone: "UTC", default_sync_frequency_minutes: 60)
+
+    assert_raises(ActiveRecord::RecordNotUnique) do
+      # Bypass model validations to test the DB constraint directly
+      AppSetting.connection.execute(
+        "INSERT INTO app_settings (default_time_zone, default_sync_frequency_minutes, singleton_guard, created_at, updated_at) " \
+        "VALUES ('UTC', 60, 0, datetime('now'), datetime('now'))",
+      )
+    end
+  end
+
+  test "concurrent calls to instance only create one row" do
+    AppSetting.delete_all
+
+    threads = 5.times.map do
+      Thread.new { AppSetting.instance }
+    end
+    threads.each(&:join)
+
+    assert_equal(1, AppSetting.count)
+  end
+
+  test "singleton_guard rejects non-zero values" do
+    setting = AppSetting.new(
+      default_time_zone: "UTC",
+      default_sync_frequency_minutes: 60,
+      singleton_guard: 1,
+    )
+
+    refute_predicate(setting, :valid?)
+    assert_includes(setting.errors[:singleton_guard], "is not included in the list")
   end
 
   test "credential_key_fingerprint returns correct fingerprint" do
@@ -489,6 +527,44 @@ class AppSettingTest < ActiveSupport::TestCase
     # When attribute_present? returns false, the legacy attributes shouldn't be cleared
     assert_equal("legacy_user", settings[:apple_username])
     assert_equal("legacy_pass", settings[:apple_app_password])
+  end
+
+  test "instance is memoized across repeated calls" do
+    AppSetting.delete_all
+    AppSetting.reset_instance!
+
+    first_call = AppSetting.instance
+    second_call = AppSetting.instance
+
+    # Both calls should return the exact same object (memoized)
+    assert_same(first_call, second_call)
+  end
+
+  test "reset_instance! invalidates the memoized cache" do
+    AppSetting.delete_all
+    AppSetting.reset_instance!
+
+    first_call = AppSetting.instance
+    AppSetting.reset_instance!
+    second_call = AppSetting.instance
+
+    # After reset, a new object should be fetched from DB
+    assert_equal(first_call.id, second_call.id)
+    refute_same(first_call, second_call)
+  end
+
+  test "saving AppSetting invalidates the instance cache" do
+    settings = AppSetting.instance
+    cached = AppSetting.instance
+
+    assert_same(settings, cached)
+
+    settings.update!(default_time_zone: "America/Chicago")
+
+    # After save + after_commit, cache should be invalidated
+    refreshed = AppSetting.instance
+
+    assert_equal("America/Chicago", refreshed.default_time_zone)
   end
 
   test "persist_credentials with mixed sanitized values" do

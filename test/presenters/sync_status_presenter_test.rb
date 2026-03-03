@@ -112,11 +112,16 @@ class SyncStatusPresenterTest < ActiveSupport::TestCase
   end
 
   test "status_label handles different statuses" do
-    statuses = [:queued, :running, :success, :failed]
+    sources = [
+      calendar_sources(:provider),
+      calendar_sources(:ics_feed),
+      calendar_sources(:auto_sync_source),
+      calendar_sources(:sync_window_source),
+    ]
 
-    statuses.each do |status|
+    [:queued, :running, :success, :failed].each_with_index do |status, i|
       attempt = SyncAttempt.create!(
-        calendar_source: @source,
+        calendar_source: sources[i],
         status: status,
         started_at: 1.hour.ago,
         finished_at: (status.in?([:success, :failed]) ? 1.hour.ago : nil),

@@ -84,4 +84,49 @@ class SyncCalendarJobTest < ActiveJob::TestCase
     # Should create a new attempt since attempt_id is nil
     assert(source.sync_attempts.exists?(status: "success"))
   end
+
+  # FEAT-006: Sync failure tracking
+
+  test "records sync success and resets consecutive_sync_failures" do
+    source = calendar_sources(:provider)
+    source.update_column(:consecutive_sync_failures, 3)
+
+    # Mock a successful sync with no errors
+    attempt_mock = mock("attempt")
+    attempt_mock.stubs(:id).returns(nil)
+    attempt_mock.stubs(:errors_count).returns(0)
+    attempt_mock.expects(:finish).with(status: :success)
+    attempt_mock.stubs(:finished_at).returns(nil)
+    attempt_mock.stubs(:started_at).returns(nil)
+    attempt_mock.stubs(:started_at=)
+    attempt_mock.stubs(:update!)
+    attempt_mock.stubs(:save!)
+    attempt_mock.stubs(:status).returns("running")
+
+    service_mock = mock("service")
+    service_mock.expects(:call)
+
+    CalendarHub::Sync::EnhancedSyncService.expects(:new).returns(service_mock)
+    SyncAttempt.stubs(:find_by).returns(nil)
+    SyncAttempt.stubs(:create!).returns(attempt_mock)
+
+    SyncCalendarJob.perform_now(source.id)
+
+    assert_equal(0, source.reload.consecutive_sync_failures)
+  end
+
+  test "records sync failure and increments consecutive_sync_failures" do
+    source = calendar_sources(:provider)
+    source.update_column(:consecutive_sync_failures, 0)
+
+    service_mock = mock("service")
+    service_mock.expects(:call).raises(StandardError.new("Network error"))
+    CalendarHub::Sync::EnhancedSyncService.expects(:new).returns(service_mock)
+
+    assert_raises(StandardError) do
+      SyncCalendarJob.perform_now(source.id)
+    end
+
+    assert_equal(1, source.reload.consecutive_sync_failures)
+  end
 end

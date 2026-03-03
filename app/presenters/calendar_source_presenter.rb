@@ -3,9 +3,10 @@
 class CalendarSourcePresenter < ApplicationPresenter
   attr_reader :source
 
-  def initialize(source, view_context)
+  def initialize(source, view_context, pending_count: nil)
     super(view_context)
     @source = source
+    @preloaded_pending_count = pending_count
   end
 
   delegate :name, to: :source
@@ -19,10 +20,12 @@ class CalendarSourcePresenter < ApplicationPresenter
   end
 
   def pending_count
-    source.pending_events_count
+    @preloaded_pending_count || source.pending_events_count
   end
 
   def next_sync_text
+    return I18n.t("ui.sources.sync_paused") unless source.active?
+
     if source.within_sync_window?
       I18n.t("ui.sources.now")
     else
@@ -91,6 +94,26 @@ class CalendarSourcePresenter < ApplicationPresenter
     end
   end
 
+  # Health indicator methods (FEAT-008)
+  def health_badge_visible?
+    source.consecutive_sync_failures.to_i > 0
+  end
+
+  def health_badge_class
+    badge_classes(health_badge_variant)
+  end
+
+  def health_dot_class
+    dot_classes(health_badge_variant)
+  end
+
+  def health_badge_label
+    count = source.consecutive_sync_failures.to_i
+    return I18n.t("ui.sources.health.healthy") if count.zero?
+
+    I18n.t("ui.sources.health.failures", count: count)
+  end
+
   private
 
   def active_badge_variant
@@ -106,6 +129,17 @@ class CalendarSourcePresenter < ApplicationPresenter
       source.sync_due? ? :warning : :info
     else
       :default
+    end
+  end
+
+  def health_badge_variant
+    case source.health_status
+    when :warning
+      :warning
+    when :error
+      :danger
+    else
+      :success
     end
   end
 end

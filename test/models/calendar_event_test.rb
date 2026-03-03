@@ -54,6 +54,61 @@ class CalendarEventTest < ActiveSupport::TestCase
     refute_nil(@event.calendar_source.deleted_at)
   end
 
+  test "calendar_source returns eager loaded record without extra queries" do
+    events = CalendarEvent.where(id: @event.id).includes(:calendar_source).to_a
+    event = events.first
+
+    assert_predicate event.association(:calendar_source), :loaded?
+
+    query_count = 0
+    counter = ->(_name, _start, _finish, _id, payload) { query_count += 1 unless payload[:name] == "SCHEMA" }
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
+      source = event.calendar_source
+      refute_nil(source)
+      assert_equal(@event.calendar_source_id, source.id)
+    end
+
+    assert_equal(0, query_count, "Expected no additional queries when association is eager loaded")
+  end
+
+  test "calendar_source uses unscoped query when not eager loaded" do
+    event = CalendarEvent.find(@event.id)
+
+    refute_predicate event.association(:calendar_source), :loaded?
+
+    source = event.calendar_source
+    refute_nil(source)
+    assert_equal(@event.calendar_source_id, source.id)
+  end
+
+  test "calendar_source raises RecordNotFound when source is hard-deleted" do
+    # Simulate a hard-deleted source by stubbing find_by to return nil
+    # for the source lookup while the event still holds a valid source_id
+    event = CalendarEvent.find(@event.id)
+    source_id = event.calendar_source_id
+
+    CalendarSource.stubs(:unscoped).returns(
+      stub(find_by: nil),
+    )
+
+    error = assert_raises(ActiveRecord::RecordNotFound) do
+      event.calendar_source
+    end
+
+    assert_includes(error.message, "CalendarSource id=#{source_id} not found")
+    assert_includes(error.message, "hard-deleted")
+  ensure
+    CalendarSource.unstub(:unscoped)
+  end
+
+  test "calendar_source returns nil gracefully when calendar_source_id is nil" do
+    # Use a new unsaved event with nil calendar_source_id to test the nil path
+    event = CalendarEvent.new(calendar_source_id: nil)
+
+    # Should return nil without raising (no source to look up)
+    assert_nil(event.calendar_source)
+  end
+
   test "duration calculates correctly" do
     @event.starts_at = Time.zone.parse("2025-09-22 10:00")
     @event.ends_at = Time.zone.parse("2025-09-22 11:30")
@@ -277,6 +332,46 @@ class CalendarEventTest < ActiveSupport::TestCase
     refute_nil(@event.fingerprint)
   end
 
+  test "refresh_fingerprint is deterministic regardless of data key insertion order" do
+    @event.data = { "zebra" => "z", "alpha" => "a", "nested" => { "beta" => 2, "alpha" => 1 } }
+    @event.send(:refresh_fingerprint)
+    fingerprint_a = @event.fingerprint
+
+    # Build identical data with different key insertion order
+    @event.data = { "alpha" => "a", "nested" => { "alpha" => 1, "beta" => 2 }, "zebra" => "z" }
+    @event.send(:refresh_fingerprint)
+    fingerprint_b = @event.fingerprint
+
+    assert_equal(fingerprint_a, fingerprint_b,
+      "Fingerprints should be identical for semantically equal data regardless of key order")
+  end
+
+  test "refresh_fingerprint changes when data value changes" do
+    @event.data = { "key" => "value1" }
+    @event.send(:refresh_fingerprint)
+    fingerprint_before = @event.fingerprint
+
+    @event.data = { "key" => "value2" }
+    @event.send(:refresh_fingerprint)
+    fingerprint_after = @event.fingerprint
+
+    refute_equal(fingerprint_before, fingerprint_after,
+      "Fingerprints should differ when actual data values change")
+  end
+
+  test "canonical_json sorts keys recursively and produces stable output" do
+    obj = { "z" => [{ "b" => 2, "a" => 1 }], "a" => "hello" }
+    result = @event.send(:canonical_json, obj)
+
+    assert_equal('{"a":"hello","z":[{"a":1,"b":2}]}', result)
+  end
+
+  test "canonical_json handles nil and empty data" do
+    assert_equal("null", @event.send(:canonical_json, nil))
+    assert_equal("{}", @event.send(:canonical_json, {}))
+    assert_equal("[]", @event.send(:canonical_json, []))
+  end
+
   test "broadcast methods are private" do
     # These methods are private, so we test they exist by checking if they're defined
     assert_includes(@event.private_methods, :broadcast_change)
@@ -429,5 +524,32 @@ class CalendarEventTest < ActiveSupport::TestCase
 
     # Should have commit callbacks configured
     refute_empty(create_callbacks, "Should have commit callbacks configured")
+  end
+
+  test "suppress_broadcasts suppresses broadcast_change during block" do
+    event = build_event(calendar_source: @event.calendar_source)
+    event.expects(:broadcast_replace_later_to).never
+
+    CalendarEvent.suppress_broadcasts do
+      event.update!(title: "Suppressed Update")
+    end
+  end
+
+  test "suppress_broadcasts re-enables broadcasts after block completes" do
+    CalendarEvent.suppress_broadcasts do
+      assert_predicate CalendarEvent, :broadcasts_suppressed?
+    end
+
+    refute_predicate CalendarEvent, :broadcasts_suppressed?
+  end
+
+  test "suppress_broadcasts re-enables broadcasts even on error" do
+    assert_raises(RuntimeError) do
+      CalendarEvent.suppress_broadcasts do
+        raise "boom"
+      end
+    end
+
+    refute_predicate CalendarEvent, :broadcasts_suppressed?
   end
 end

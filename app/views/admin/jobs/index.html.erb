@@ -1,3 +1,4 @@
+<% content_for :title, t("navigation.jobs") %>
 <%= render "shared/page_header",
       nav_active: :jobs,
       icon: content_tag(:svg, content_tag(:path, "", d: "M9 3a2 2 0 00-2 2v1H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-2V5a2 2 0 00-2-2H9zm0 3V5h6v1H9z"), xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "currentColor", class: "h-6 w-6"),
@@ -58,7 +59,7 @@
       </div>
     </div>
 
-    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+    <div id="sync-attempts" class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
       <h2 class="mb-2 text-lg font-semibold"><%= t("ui.jobs.recent_attempts") %></h2>
       <div class="overflow-auto">
         <table class="w-full text-left text-sm">
@@ -96,16 +97,24 @@
           </tbody>
         </table>
       </div>
+      <% if @has_more_attempts %>
+        <div class="mt-3 text-center">
+          <%= link_to t("ui.jobs.load_more"), admin_jobs_path(before: @recent_attempts.last.created_at.iso8601(6), anchor: "sync-attempts"), class: "inline-flex items-center gap-1 rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white" %>
+        </div>
+      <% end %>
     </div>
 
     <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
       <div class="mb-2 flex items-center justify-between">
-        <h2 class="text-lg font-semibold"><%= t("ui.jobs.recent_metrics") %></h2>
+        <div>
+          <h2 class="text-lg font-semibold"><%= t("ui.jobs.recent_metrics") %></h2>
+          <p class="text-xs text-slate-400"><%= t("ui.jobs.clear_metrics_hint") %></p>
+        </div>
         <%= button_to t("ui.jobs.clear_metrics"),
               clear_metrics_admin_jobs_path,
               method: :post,
               form: { data: { controller: "confirm", confirm_message_value: t("ui.jobs.confirm_clear_metrics") } },
-              class: "cursor-pointer rounded border border-slate-700 px-3 py-1 text-xs text-slate-200 hover:border-slate-500" %>
+              class: "cursor-pointer rounded border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:border-slate-500 hover:text-slate-100" %>
       </div>
       <% if @recent_metrics.any? %>
         <div class="overflow-auto">
@@ -130,7 +139,7 @@
                   <td class="px-3 py-2"><%= m[:upserts] %></td>
                   <td class="px-3 py-2"><%= m[:deletes] %></td>
                   <td class="px-3 py-2"><%= m[:canceled] %></td>
-                  <td class="px-3 py-2"><%= m[:duration_ms] %> ms</td>
+                  <td class="px-3 py-2"><%= format_duration_ms(m[:duration_ms]) %></td>
                 </tr>
               <% end %>
             </tbody>

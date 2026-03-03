@@ -38,6 +38,17 @@ module AppleCalendar
       uid
     end
 
+    # Discover all available calendars via CalDAV.
+    # Returns an array of hashes: [{ displayname: "Work", identifier: "Work" }, ...]
+    def discover_calendars
+      raise ArgumentError, "username required" if credentials[:username].blank?
+      raise ArgumentError, "app_specific_password required" if credentials[:app_specific_password].blank?
+
+      principal_url = follow_well_known
+      home_set = fetch_calendar_home_set(principal_url)
+      list_all_calendars(home_set)
+    end
+
     def delete_event(calendar_identifier:, uid:)
       return uid if ActiveModel::Type::Boolean.new.cast(ENV["APPLE_READONLY"])
 
@@ -134,6 +145,20 @@ module AppleCalendar
       parse_calendar_home_set(resp.body)
     end
 
+    def list_all_calendars(home_set_url)
+      body = <<~XML
+        <d:propfind xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
+          <d:prop>
+            <d:displayname/>
+            <d:resourcetype/>
+            <cal:supported-calendar-component-set/>
+          </d:prop>
+        </d:propfind>
+      XML
+      resp = request(:propfind, home_set_url, headers: { "Depth" => "1", "Content-Type" => "application/xml" }, body: body)
+      parse_all_calendar_collections(resp.body)
+    end
+
     def find_calendar_collection(home_set_url, displayname)
       body = <<~XML
         <d:propfind xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
@@ -159,6 +184,26 @@ module AppleCalendar
       URI.join(base_url, node.text).to_s
     end
 
+    def parse_all_calendar_collections(xml)
+      doc = Nokogiri::XML(xml)
+      ns = { "d" => "DAV:", "cal" => "urn:ietf:params:xml:ns:caldav" }
+      calendars = []
+      doc.xpath("//d:response", ns).each do |resp|
+        display = resp.at_xpath(".//d:displayname", ns)&.text
+        next if display.blank?
+
+        types = resp.xpath(".//d:resourcetype/*", ns).map(&:name)
+        next if types.exclude?("collection") || types.exclude?("calendar")
+
+        # Only include calendars that support VEVENT (skip Reminders/VTODO-only)
+        components = resp.xpath(".//cal:supported-calendar-component-set/cal:comp/@name", ns).map(&:text)
+        next if components.any? && components.exclude?("VEVENT")
+
+        calendars << { displayname: display, identifier: display }
+      end
+      calendars.sort_by { |c| c[:displayname].downcase }
+    end
+
     def parse_collections_for_displayname(xml, desired, home_set_url)
       doc = Nokogiri::XML(xml)
       ns = { "d" => "DAV:", "cal" => "urn:ietf:params:xml:ns:caldav" }
@@ -180,10 +225,31 @@ module AppleCalendar
     end
 
     # --- HTTP --------------------------------------------------------------
+
+    # Returns a persistent Net::HTTP connection for the given host/port,
+    # reusing an existing started session when available. This avoids
+    # opening a new TCP + TLS handshake for every CalDAV request.
+    def persistent_http(host, port, use_ssl)
+      @connections ||= {}
+      key = "#{host}:#{port}"
+      http = @connections[key]
+
+      if http.nil? || !http.started?
+        http = Net::HTTP.new(host, port)
+        http.use_ssl = use_ssl
+        http.open_timeout = 10
+        http.read_timeout = 30
+        http.keep_alive_timeout = 30
+        http.start
+        @connections[key] = http
+      end
+
+      http
+    end
+
     def request(method, url, headers: {}, body: nil)
       uri = URI.parse(url)
-      http = Net::HTTP.new(uri.host, uri.port)
-      http.use_ssl = uri.scheme == "https"
+      http = persistent_http(uri.host, uri.port, uri.scheme == "https")
 
       klass = Net::HTTPGenericRequest
       req = klass.new(method.to_s.upcase, !body.nil?, true, uri.request_uri)
@@ -201,6 +267,19 @@ module AppleCalendar
       res
     end
 
+    RETRYABLE_ERRORS = [
+      Faraday::Error,
+      Net::OpenTimeout,
+      Net::ReadTimeout,
+      Errno::ECONNRESET,
+      Errno::ECONNREFUSED,
+      Errno::ETIMEDOUT,
+      Timeout::Error,
+      IOError,
+      SocketError,
+      RuntimeError, # raised internally for 429/503 retry
+    ].freeze
+
     def perform_with_retries(http, req, uri)
       attempts = 0
       begin
@@ -212,18 +291,33 @@ module AppleCalendar
           raise "retry" if attempts < 4
         end
         res
-      rescue
+      rescue *RETRYABLE_ERRORS
         raise if attempts >= 3
 
+        # Re-establish the persistent connection on retryable errors
+        reconnect!(uri)
         sleep(0.2 * attempts)
         retry
+      end
+    end
+
+    # Drop and re-establish a persistent connection for the given URI's host.
+    def reconnect!(uri)
+      key = "#{uri.host}:#{uri.port}"
+      if @connections&.key?(key)
+        @connections[key].finish rescue nil # rubocop:disable Style/RescueModifier
+        @connections.delete(key)
       end
     end
 
     def head_etag(url)
       res = request(:head, url)
       res["ETag"]
-    rescue
+    rescue Faraday::ConnectionFailed, Faraday::TimeoutError,
+           Net::OpenTimeout, Net::ReadTimeout,
+           Errno::ECONNRESET, Errno::ECONNREFUSED, Errno::ETIMEDOUT,
+           Timeout::Error, IOError, SocketError => e
+      Rails.logger.warn("[AppleCal] head_etag connection error for #{url}: #{e.message}")
       nil
     end
 
@@ -238,7 +332,7 @@ module AppleCalendar
     end
 
     def build_ics(payload)
-      uid = payload[:uid]
+      uid = sanitize_uid(payload[:uid])
       all_day = payload[:all_day] || false
 
       # Format dates differently for all-day events
@@ -282,6 +376,12 @@ module AppleCalendar
 
     def escape_ics(text)
       text.to_s.gsub(/\\|;|,|\n/, "\\\\" => "\\\\", ";" => "\\;", "," => "\\,", "\n" => "\\n")
+    end
+
+    # Sanitize UID to prevent ICS injection via embedded newlines or control characters.
+    # UIDs should be opaque identifiers without whitespace or control chars.
+    def sanitize_uid(uid)
+      uid.to_s.gsub(/[\r\n\t\0]/, "").strip
     end
   end
 end

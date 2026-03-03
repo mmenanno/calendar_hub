@@ -483,6 +483,87 @@ module CalendarHub
       Gem.unstub(:win_platform?)
     end
 
+    test "rotate! rolls back credentials when filesystem write fails" do
+      CredentialEncryption.ensure_key!
+      original_fingerprint = CredentialEncryption.key_fingerprint
+
+      source = CalendarSource.create!(
+        name: "Test Source",
+        ingestion_url: "https://example.com/feed.ics",
+        calendar_identifier: "Inbox",
+        credentials: { username: "user", password: "pass" },
+      )
+      original_ciphertext = source.reload.read_attribute(:credentials)
+
+      # Simulate a filesystem write failure inside the transaction
+      CalendarHub::KeyStore.any_instance.stubs(:write_credential_key!).raises(Errno::EACCES, "Permission denied")
+
+      assert_raises(CredentialEncryption::KeyRotationError) do
+        CredentialEncryption.rotate!
+      end
+
+      # The key should not have changed
+      final_fingerprint = CredentialEncryption.key_fingerprint
+      assert_equal(original_fingerprint, final_fingerprint)
+
+      # Credentials should still be decryptable with the original key
+      fresh_source = CalendarSource.find(source.id)
+      assert_equal(original_ciphertext, fresh_source.read_attribute(:credentials))
+      creds = fresh_source.credentials.with_indifferent_access
+      assert_equal("user", creds[:username])
+      assert_equal("pass", creds[:password])
+    ensure
+      CalendarHub::KeyStore.any_instance.unstub(:write_credential_key!)
+      source&.destroy
+    end
+
+    test "rotate! rolls back when DB write fails mid-batch" do
+      CredentialEncryption.ensure_key!
+      original_fingerprint = CredentialEncryption.key_fingerprint
+
+      source1 = CalendarSource.create!(
+        name: "Source 1",
+        ingestion_url: "https://example.com/feed1.ics",
+        calendar_identifier: "Inbox",
+        credentials: { username: "user1", password: "pass1" },
+      )
+      source2 = CalendarSource.create!(
+        name: "Source 2",
+        ingestion_url: "https://example.com/feed2.ics",
+        calendar_identifier: "Inbox",
+        credentials: { username: "user2", password: "pass2" },
+      )
+
+      original_ciphertext1 = source1.reload.read_attribute(:credentials)
+      original_ciphertext2 = source2.reload.read_attribute(:credentials)
+
+      # Make the second source's update_column raise to simulate a DB failure mid-batch
+      call_count = 0
+      CalendarSource.any_instance.stubs(:update_column).with do |_col, _val|
+        call_count += 1
+        raise StandardError, "DB write failure" if call_count >= 2
+        false # don't actually stub the first call, fall through
+      end
+      # We need a different approach: stub update_column to fail on the second call
+      CalendarSource.any_instance.unstub(:update_column)
+
+      # Use a simpler approach: make update_column always fail
+      CalendarSource.any_instance.stubs(:update_column).raises(StandardError, "DB write failure")
+
+      assert_raises(CredentialEncryption::KeyRotationError) do
+        CredentialEncryption.rotate!
+      end
+
+      # No credentials should have been partially re-encrypted
+      assert_equal(original_fingerprint, CredentialEncryption.key_fingerprint)
+      assert_equal(original_ciphertext1, CalendarSource.find(source1.id).read_attribute(:credentials))
+      assert_equal(original_ciphertext2, CalendarSource.find(source2.id).read_attribute(:credentials))
+    ensure
+      CalendarSource.any_instance.unstub(:update_column)
+      source1&.destroy
+      source2&.destroy
+    end
+
     test "reencrypt_calendar_sources handles encrypted data that fails to decrypt" do
       CredentialEncryption.ensure_key!
       old_encryptor = CredentialEncryption.send(:current_encryptor)

@@ -1,0 +1,22 @@
+<% failing_sources = CalendarSource.failing.order(:name) %>
+<% if failing_sources.any? %>
+  <div id="sync-failure-alerts" class="mx-auto max-w-6xl px-6 pt-4 space-y-2" data-controller="dismissible">
+    <% failing_sources.each do |source| %>
+      <% failure_count = source.consecutive_sync_failures.to_i %>
+      <% banner_class = failure_count >= 3 ? "border-rose-800 bg-rose-950/40 text-rose-200" : "border-yellow-700 bg-yellow-950/40 text-yellow-200" %>
+      <div class="rounded-lg border px-4 py-3 text-sm flex items-start justify-between gap-3 <%= banner_class %>"
+           data-dismissible-target="banner"
+           data-source-id="<%= source.id %>"
+           data-failure-count="<%= failure_count %>">
+        <div>
+          <strong><%= source.name %></strong>
+          <%= t("ui.sources.health.alert_message", count: failure_count) %>
+          <%= link_to t("common.actions.view"), calendar_source_path(source), class: "underline font-medium hover:no-underline ml-1" %>
+        </div>
+        <button type="button" class="shrink-0 text-current opacity-60 hover:opacity-100" data-action="click->dismissible#dismiss" aria-label="<%= t("common.actions.close") %>">
+          &times;
+        </button>
+      </div>
+    <% end %>
+  </div>
+<% end %>

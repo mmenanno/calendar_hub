@@ -258,4 +258,99 @@ class CalendarEventsControllerTest < ActionDispatch::IntegrationTest
     assert_response(:success)
     # Should handle gracefully when source_id is empty
   end
+
+  test "selected source is derived from preloaded sources without extra query" do
+    source = calendar_sources(:ics_feed)
+
+    query_count = 0
+    counter = ->(_name, _start, _finish, _id, payload) {
+      # Count only CalendarSource SELECT queries (not SCHEMA or other tables)
+      query_count += 1 if payload[:sql]&.include?("calendar_sources") && payload[:name] != "SCHEMA"
+    }
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
+      get calendar_events_path, params: { source_id: source.id }
+    end
+
+    assert_response(:success)
+    # Should load calendar_sources in at most 2 queries (sources + sync_attempts eager load),
+    # not an additional find_by query
+    # Sources query + sync_attempts eager load + possible sidebar rendering = up to 3 queries
+    assert_operator query_count, :<=, 3, "Expected at most 3 CalendarSource queries (sources + eager load + rendering), got #{query_count}"
+  end
+
+  # PAST EVENTS TOGGLE TESTS (FEAT-004)
+  test "index defaults to upcoming events" do
+    # Give the past event a unique title to avoid matching the toggle text "Past"
+    past = calendar_events(:past_event)
+    past.update!(title: "Yesterday Completed Checkup")
+
+    get calendar_events_path
+
+    assert_response :success
+    assert_select "h2", text: "Upcoming Events"
+    # Past event should not appear in upcoming view
+    refute_match "Yesterday Completed Checkup", response.body
+  end
+
+  test "index shows past events when show_past is true" do
+    get calendar_events_path(show_past: "true")
+
+    assert_response :success
+    assert_select "h2", text: "Past Events"
+    assert_match calendar_events(:past_event).title, response.body
+  end
+
+  test "past events view does not show future events" do
+    get calendar_events_path(show_past: "true")
+
+    assert_response :success
+    refute_match calendar_events(:future_event).title, response.body
+  end
+
+  test "past events view respects source filter" do
+    source = calendar_events(:past_event).calendar_source
+    get calendar_events_path(show_past: "true", source_id: source.id)
+
+    assert_response :success
+    assert_match calendar_events(:past_event).title, response.body
+  end
+
+  test "past events view respects search filter" do
+    get calendar_events_path(show_past: "true", q: calendar_events(:past_event).title)
+
+    assert_response :success
+    assert_match calendar_events(:past_event).title, response.body
+  end
+
+  test "past events view respects show_excluded filter" do
+    past = calendar_events(:past_event)
+    past.update!(sync_exempt: true, title: "Unique Past Excluded Visit")
+
+    # Default: excluded hidden
+    get calendar_events_path(show_past: "true")
+
+    assert_response :success
+    refute_match "Unique Past Excluded Visit", response.body
+
+    # With show_excluded: true
+    get calendar_events_path(show_past: "true", show_excluded: "true")
+
+    assert_response :success
+    assert_match "Unique Past Excluded Visit", response.body
+  end
+
+  test "upcoming/past toggle links are present on index" do
+    get calendar_events_path
+
+    assert_response :success
+    assert_match "Upcoming", response.body
+    assert_match "Past", response.body
+  end
+
+  test "show_past param is preserved in URL" do
+    get calendar_events_path(show_past: "true")
+
+    assert_response :success
+    assert_match "show_past", response.body
+  end
 end

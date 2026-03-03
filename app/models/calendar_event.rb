@@ -14,9 +14,20 @@ class CalendarEvent < ApplicationRecord
 
   belongs_to :calendar_source, inverse_of: :calendar_events
 
-  # Override the association to bypass soft-delete scope
+  # Override the association to bypass soft-delete scope, but respect eager loading.
+  # Raises ActiveRecord::RecordNotFound when the source has been hard-deleted so
+  # callers get a clear error instead of a confusing NoMethodError on nil.
   def calendar_source
-    CalendarSource.unscoped.find_by(id: calendar_source_id)
+    if association(:calendar_source).loaded?
+      super
+    else
+      source = CalendarSource.unscoped.find_by(id: calendar_source_id)
+      if source.nil? && calendar_source_id.present?
+        raise ActiveRecord::RecordNotFound,
+          "CalendarSource id=#{calendar_source_id} not found (hard-deleted?)"
+      end
+      source
+    end
   end
 
   enum :status, STATUS_VALUES
@@ -31,9 +42,23 @@ class CalendarEvent < ApplicationRecord
   validate :ensure_all_day_times_are_valid
 
   before_validation :assign_default_time_zone
+  before_validation :sanitize_external_id
   before_save :refresh_fingerprint
-  after_commit :broadcast_change, on: [:create, :update]
-  after_commit :broadcast_removal, on: :destroy
+  after_commit :broadcast_change, on: [:create, :update], unless: -> { self.class.broadcasts_suppressed? }
+  after_commit :broadcast_removal, on: :destroy, unless: -> { self.class.broadcasts_suppressed? }
+
+  # Suppress per-event Turbo broadcasts during bulk operations (e.g., sync).
+  # Callers should fire a single source-level broadcast after the batch completes.
+  def self.suppress_broadcasts
+    Thread.current[:suppress_calendar_event_broadcasts] = true
+    yield
+  ensure
+    Thread.current[:suppress_calendar_event_broadcasts] = false
+  end
+
+  def self.broadcasts_suppressed?
+    Thread.current[:suppress_calendar_event_broadcasts] == true
+  end
   after_create_commit { audit!(:created) }
   after_update_commit { audit!(:updated) }
   after_destroy_commit { audit!(:deleted) }
@@ -78,6 +103,14 @@ class CalendarEvent < ApplicationRecord
     self.time_zone = calendar_source&.time_zone || "UTC" if time_zone.blank?
   end
 
+  # Strip newlines, tabs, and null bytes from external_id at ingestion time
+  # to prevent ICS injection when the value is later used as a UID.
+  def sanitize_external_id
+    return if external_id.blank?
+
+    self.external_id = external_id.gsub(/[\r\n\t\0]/, "").strip
+  end
+
   def ensure_end_after_start
     return if ends_at.blank? || starts_at.blank?
 
@@ -108,9 +141,26 @@ class CalendarEvent < ApplicationRecord
       starts_at.utc.iso8601,
       ends_at.utc.iso8601,
       status,
-      data.to_s.encode("UTF-8", invalid: :replace, undef: :replace),
+      canonical_json(data),
     ].join("--")
     self.fingerprint = Digest::SHA256.hexdigest(payload)
+  end
+
+  # Produce a stable JSON string with recursively sorted keys so that
+  # semantically identical data always generates the same fingerprint
+  # regardless of key insertion order or Ruby version.
+  def canonical_json(obj)
+    case obj
+    when Hash
+      sorted = obj.sort_by { |k, _| k.to_s }.map { |k, v| [k, canonical_json(v)] }
+      "{#{sorted.map { |k, v| "#{k.to_json}:#{v}" }.join(",")}}"
+    when Array
+      "[#{obj.map { |v| canonical_json(v) }.join(",")}]"
+    when nil
+      "null"
+    else
+      obj.to_json
+    end
   end
 
   def broadcast_change

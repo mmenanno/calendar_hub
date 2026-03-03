@@ -143,4 +143,26 @@ class ApplicationHelperTest < ActiveSupport::TestCase
       @helper.image_tag_calls.size,
     )
   end
+
+  def test_format_duration_ms_under_one_second
+    assert_equal("847 ms", @helper.format_duration_ms(847))
+    assert_equal("0 ms", @helper.format_duration_ms(0))
+    assert_equal("999 ms", @helper.format_duration_ms(999))
+  end
+
+  def test_format_duration_ms_seconds_range
+    assert_equal("1.0 s", @helper.format_duration_ms(1000))
+    assert_equal("45.5 s", @helper.format_duration_ms(45_500))
+    assert_equal("59.9 s", @helper.format_duration_ms(59_900))
+  end
+
+  def test_format_duration_ms_minutes_range
+    assert_equal("1m 0s", @helper.format_duration_ms(60_000))
+    assert_equal("1m 14s", @helper.format_duration_ms(74_114))
+    assert_equal("5m 0s", @helper.format_duration_ms(300_000))
+  end
+
+  def test_format_duration_ms_nil
+    assert_equal("\u2014", @helper.format_duration_ms(nil))
+  end
 end

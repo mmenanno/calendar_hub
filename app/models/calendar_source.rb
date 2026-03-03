@@ -3,11 +3,14 @@
 class CalendarSource < ApplicationRecord
   has_many :calendar_events, dependent: :destroy
   has_many :sync_attempts, dependent: :destroy
+  has_one :latest_sync_attempt, -> { order(created_at: :desc) }, class_name: "SyncAttempt"
+  has_many :sync_metrics, dependent: :destroy
   has_many :event_mappings, dependent: :destroy
   has_many :filter_rules, dependent: :destroy
 
   scope :active, -> { where(active: true) }
   scope :auto_sync_enabled, -> { where(auto_sync_enabled: true) }
+  scope :failing, -> { where("consecutive_sync_failures >= 1") }
   default_scope -> { where(deleted_at: nil) }
 
   store_accessor :settings, :time_zone, :default_status
@@ -30,15 +33,23 @@ class CalendarSource < ApplicationRecord
 
   def schedule_sync(force: false)
     return unless syncable?
-    # Avoid double-queueing if an attempt is already queued or running
-    # Only consider attempts that are not stale (created within last 2 hours)
-    return if sync_attempts.where(status: ["queued", "running"])
-      .exists?(["created_at >= ?", 2.hours.ago])
     return unless force || within_sync_window?
 
+    # Mark stale active attempts as failed so they don't block new syncs
+    sync_attempts
+      .where(status: ["queued", "running"])
+      .where("created_at < ?", 2.hours.ago)
+      .update_all(status: "failed", finished_at: Time.current, message: "Marked failed: stale attempt")
+
+    # Rely on the DB unique partial index (idx_unique_active_sync_attempt_per_source)
+    # to prevent duplicate active attempts. If another thread already created one,
+    # the insert will raise RecordNotUnique and we safely return nil.
     attempt = SyncAttempt.create!(calendar_source: self, status: :queued)
     SyncCalendarJob.perform_later(id, attempt_id: attempt.id)
     attempt
+  rescue ActiveRecord::RecordNotUnique
+    # Another worker already has an active sync for this source -- that's fine.
+    nil
   end
 
   def translator
@@ -132,6 +143,31 @@ class CalendarSource < ApplicationRecord
 
   def pending_events_count
     calendar_events.needs_sync.count
+  end
+
+  def record_sync_success!
+    update!(consecutive_sync_failures: 0)
+  end
+
+  def record_sync_failure!
+    self.consecutive_sync_failures ||= 0
+    increment!(:consecutive_sync_failures)
+  end
+
+  def healthy?
+    consecutive_sync_failures.to_i.zero?
+  end
+
+  def health_status
+    count = consecutive_sync_failures.to_i
+    case count
+    when 0
+      :healthy
+    when 1..2
+      :warning
+    else
+      :error
+    end
   end
 
   def credentials=(value)

@@ -46,6 +46,7 @@
 <% else %>
   <div class="min-h-screen bg-slate-950 text-slate-100">
     <div class="mx-auto w-full max-w-3xl px-6 py-10">
+      <%= render "shared/breadcrumb", breadcrumbs: [[t("ui.mappings.header"), event_mappings_path], [t("ui.mappings.edit_mapping")]] %>
       <h1 class="mb-6 text-2xl font-semibold"><%= t("ui.mappings.edit_mapping") %></h1>
       <%= render partial: "event_mappings/form_row", locals: { mapping: @mapping } %>
     </div>

@@ -9,12 +9,13 @@
      data-controller="collapsible"
      data-collapsible-key-value="<%= local_assigns[:key] %>"
      data-collapsible-default-open-value="<%= local_assigns[:default_open] || false %>"
+     data-collapsible-show-label-value="<%= local_assigns[:title] %>"
+     data-collapsible-hide-label-value="<%= local_assigns[:title] %>"
      data-collapsible-remember-value="false">
   <div class="mb-3 flex items-center justify-between">
-    <h2 class="text-lg font-semibold"><%= local_assigns[:title] %></h2>
-    <button type="button" class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-200 hover:border-slate-500" data-action="collapsible#toggle">
-      <span data-collapsible-target="label"><%= t("common.actions.show") %></span>
-      <span data-collapsible-target="icon" class="ml-1 inline-block transition-transform">▾</span>
+    <button type="button" class="cursor-pointer inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-slate-500 transition" data-action="collapsible#toggle" aria-expanded="false">
+      <span data-collapsible-target="label"><%= local_assigns[:title] %></span>
+      <span data-collapsible-target="icon" class="inline-block transition-transform">▾</span>
     </button>
   </div>
   <div data-collapsible-target="content" class="hidden">

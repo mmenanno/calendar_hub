@@ -1,0 +1,25 @@
+<%# Compact source row for the Events page sidebar %>
+<% sp = CalendarSourcePresenter.new(source, self) %>
+<div class="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-slate-800/50 transition">
+  <div class="flex items-center gap-2 min-w-0">
+    <span class="inline-flex items-center gap-1 shrink-0">
+      <span class="h-2 w-2 rounded-full <%= sp.active_dot_class %>" title="<%= sp.active_label %>"></span>
+    </span>
+    <span class="text-sm text-slate-200 truncate"><%= sp.name %></span>
+    <% if source.latest_sync_attempt&.status.in?(%w[running queued]) %>
+      <span class="inline-flex items-center gap-1 text-[11px] text-indigo-300">
+        <svg class="h-3 w-3 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+        </svg>
+        Syncing
+      </span>
+    <% end %>
+  </div>
+  <div class="flex items-center gap-2 shrink-0">
+    <span class="inline-flex items-center rounded-full px-1.5 py-0.5 text-[11px] <%= sp.active_badge_class %>">
+      <%= sp.active_label %>
+    </span>
+    <%= link_to t("common.actions.manage"), edit_calendar_source_path(source), data: { turbo_frame: "modal" }, class: "text-xs text-indigo-300 hover:text-indigo-200" %>
+  </div>
+</div>

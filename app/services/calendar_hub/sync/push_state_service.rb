@@ -12,11 +12,23 @@ module CalendarHub
       end
 
       def call
-        events = source.calendar_events.upcoming
-        observer.start(total: events.size)
-        counts = apple_syncer.sync_events_batch(events, observer: observer)
+        relation = source.calendar_events.upcoming
+        total = relation.count
+        observer.start(total: total)
+
+        upserts = 0
+        deletes = 0
+
+        relation.find_each(batch_size: 500) do |event|
+          result = apple_syncer.sync_event(event, observer: observer)
+          case result
+          when :upserted then upserts += 1
+          when :deleted then deletes += 1
+          end
+        end
+
         observer.finish(status: :success)
-        counts
+        { upserts: upserts, deletes: deletes }
       end
     end
   end

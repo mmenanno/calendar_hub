@@ -39,9 +39,8 @@ module CalendarHub
         ActiveRecord::Base.transaction do
           reencrypt_calendar_sources(old_encryptor, new_encryptor)
           reencrypt_app_settings(old_encryptor, new_encryptor)
+          write_key(new_key) # Must be inside transaction so a filesystem failure rolls back re-encrypted credentials
         end
-
-        write_key(new_key)
         @current_key = new_key
         @current_encryptor = new_encryptor
       end

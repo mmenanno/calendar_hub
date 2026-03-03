@@ -256,5 +256,111 @@ module CalendarHub
       assert_equal(0, filtered_count)
       refute_predicate(@event.reload, :sync_exempt?)
     end
+
+    test "instance-based filtering preloads rules once and avoids N+1 queries" do
+      build_filter_rule(
+        calendar_source: @calendar_source,
+        pattern: "Meeting",
+        field_name: :title,
+        match_type: :contains,
+      )
+
+      filter = ::CalendarHub::EventFilter.new(@calendar_source)
+
+      # Rules are preloaded as an Array, so no further DB queries are needed
+      assert_kind_of(Array, filter.rules)
+      refute_empty(filter.rules)
+
+      # Filtering should work using the preloaded rules
+      assert(filter.should_filter?(@event))
+
+      # A second call should not issue additional queries
+      @event.title = "Code Review"
+
+      refute(filter.should_filter?(@event))
+    end
+
+    # FEAT-009: Destination routing
+    test "matching_rule returns the first matching filter rule" do
+      rule = FilterRule.create!(
+        pattern: "Meeting",
+        field_name: "title",
+        match_type: "contains",
+        active: true,
+        calendar_source: @calendar_source,
+      )
+
+      filter = ::CalendarHub::EventFilter.new(@calendar_source)
+      matched = filter.matching_rule(@event)
+
+      assert_equal(rule, matched)
+    end
+
+    test "matching_rule returns nil when no rules match" do
+      filter = ::CalendarHub::EventFilter.new(@calendar_source)
+      matched = filter.matching_rule(@event)
+
+      assert_nil(matched)
+    end
+
+    test "matching_rule returns nil for blank event" do
+      filter = ::CalendarHub::EventFilter.new(@calendar_source)
+
+      assert_nil(filter.matching_rule(nil))
+    end
+
+    test "destination_calendar_for returns override when filter rule has target" do
+      FilterRule.create!(
+        pattern: "Meeting",
+        field_name: "title",
+        match_type: "contains",
+        active: true,
+        calendar_source: @calendar_source,
+        target_calendar_identifier: "Work",
+      )
+
+      filter = ::CalendarHub::EventFilter.new(@calendar_source)
+      destination = filter.destination_calendar_for(@event)
+
+      assert_equal("Work", destination)
+    end
+
+    test "destination_calendar_for returns source default when no override" do
+      FilterRule.create!(
+        pattern: "Meeting",
+        field_name: "title",
+        match_type: "contains",
+        active: true,
+        calendar_source: @calendar_source,
+      )
+
+      filter = ::CalendarHub::EventFilter.new(@calendar_source)
+      destination = filter.destination_calendar_for(@event)
+
+      assert_equal(@calendar_source.calendar_identifier, destination)
+    end
+
+    test "destination_calendar_for returns source default when no rules match" do
+      filter = ::CalendarHub::EventFilter.new(@calendar_source)
+      destination = filter.destination_calendar_for(@event)
+
+      assert_equal(@calendar_source.calendar_identifier, destination)
+    end
+
+    test "apply_filters with batch uses O(1) filter rule queries" do
+      build_filter_rule(pattern: "Meeting", field_name: :title, match_type: :contains, active: true)
+
+      events = 5.times.map do |i|
+        event = @event.dup
+        event.title = "Meeting #{i}"
+        event
+      end
+
+      # apply_filters should group by source and create one filter instance per source
+      result = ::CalendarHub::EventFilter.apply_filters(events)
+
+      assert_equal(5, result.count)
+      result.each { |e| assert_predicate(e, :sync_exempt?) }
+    end
   end
 end

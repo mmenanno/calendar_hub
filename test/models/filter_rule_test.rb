@@ -328,6 +328,42 @@ class FilterRuleTest < ActiveSupport::TestCase
     assert(case_insensitive_rule.matches?(event_wrong_case))
   end
 
+  # FEAT-009: Destination override
+
+  test "has_destination_override? returns false when target_calendar_identifier is blank" do
+    filter_rule = FilterRule.create!(
+      pattern: "Meeting",
+      field_name: "title",
+      match_type: "contains",
+    )
+
+    refute_predicate(filter_rule, :has_destination_override?)
+  end
+
+  test "has_destination_override? returns true when target_calendar_identifier is present" do
+    filter_rule = FilterRule.create!(
+      pattern: "Meeting",
+      field_name: "title",
+      match_type: "contains",
+      target_calendar_identifier: "Work",
+    )
+
+    assert_predicate(filter_rule, :has_destination_override?)
+  end
+
+  test "target_calendar_display_name is optional" do
+    filter_rule = FilterRule.create!(
+      pattern: "Meeting",
+      field_name: "title",
+      match_type: "contains",
+      target_calendar_identifier: "Work",
+      target_calendar_display_name: "Work Calendar",
+    )
+
+    assert_equal("Work", filter_rule.target_calendar_identifier)
+    assert_equal("Work Calendar", filter_rule.target_calendar_display_name)
+  end
+
   # after_commit callback tests
 
   test "create enqueues SyncFilterRulesJob" do

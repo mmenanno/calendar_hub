@@ -85,10 +85,16 @@ class CleanupStaleSyncAttemptsJobTest < ActiveJob::TestCase
     assert_equal("failed", attempt.reload.status)
   end
 
-  test "handles multiple stale attempts" do
-    3.times do
+  test "handles multiple stale attempts across sources" do
+    sources = [
+      calendar_sources(:provider),
+      calendar_sources(:ics_feed),
+      calendar_sources(:auto_sync_source),
+    ]
+
+    stale_attempts = sources.map do |source|
       SyncAttempt.create!(
-        calendar_source: @source,
+        calendar_source: source,
         status: :queued,
         created_at: 3.hours.ago,
       )
@@ -96,8 +102,9 @@ class CleanupStaleSyncAttemptsJobTest < ActiveJob::TestCase
 
     CleanupStaleSyncAttemptsJob.perform_now
 
-    assert_equal(0, @source.sync_attempts.where(status: "queued").count)
-    assert_equal(3, @source.sync_attempts.where(status: "failed").count)
+    stale_attempts.each do |attempt|
+      assert_equal("failed", attempt.reload.status)
+    end
   end
 
   test "does nothing when no stale attempts exist" do
@@ -111,5 +118,55 @@ class CleanupStaleSyncAttemptsJobTest < ActiveJob::TestCase
     assert_nothing_raised do
       CleanupStaleSyncAttemptsJob.perform_now
     end
+  end
+
+  test "find_failed_job does not use LIKE pattern matching" do
+    # Verify the source code does not contain LIKE-based argument matching,
+    # ensuring the lookup is robust against serialization format changes.
+    source_file = Rails.root.join("app/jobs/cleanup_stale_sync_attempts_job.rb").read
+    refute_match(/arguments LIKE/, source_file,
+      "find_failed_job should use json_extract or active_job_id instead of LIKE pattern matching")
+  end
+
+  test "find_failed_job uses active_job_id as primary lookup" do
+    stale_attempt = SyncAttempt.create!(
+      calendar_source: @source,
+      status: :queued,
+      created_at: 3.hours.ago,
+    )
+
+    job = CleanupStaleSyncAttemptsJob.new
+    # The method should attempt active_job_id lookup first
+    if defined?(SolidQueue::Job)
+      SolidQueue::Job.expects(:find_by).with(
+        class_name: "SyncCalendarJob",
+        active_job_id: stale_attempt.id.to_s,
+      ).returns(nil)
+
+      # Then fall back to json_extract (returns a relation mock)
+      relation_mock = mock
+      relation_mock.stubs(:first).returns(nil)
+      SolidQueue::Job.stubs(:where).returns(relation_mock)
+      relation_mock.stubs(:where).returns(relation_mock)
+
+      result = job.send(:find_failed_job, stale_attempt)
+      assert_nil(result)
+    end
+  end
+
+  test "cleanup still works when find_failed_job returns nil" do
+    stale_attempt = SyncAttempt.create!(
+      calendar_source: @source,
+      status: :queued,
+      created_at: 3.hours.ago,
+    )
+
+    CleanupStaleSyncAttemptsJob.perform_now
+
+    stale_attempt.reload
+    assert_equal("failed", stale_attempt.status)
+    assert_includes(stale_attempt.message, "timed out")
+    # Should not include a failure reason when no job is found
+    refute_includes(stale_attempt.message, " - ") unless stale_attempt.message.include?("Reason")
   end
 end

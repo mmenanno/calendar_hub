@@ -14,7 +14,13 @@ module Admin
       @sync_calendar_jobs = SolidQueue::Job.where(class_name: "SyncCalendarJob").where("created_at > ?", 24.hours.ago).count
 
       # Sync Attempt Analysis
-      @recent_attempts = SyncAttempt.includes(:calendar_source).order(created_at: :desc).limit(20)
+      per_page = 20
+      @recent_attempts = SyncAttempt.includes(:calendar_source).order(created_at: :desc).limit(per_page + 1)
+      if params[:before].present?
+        @recent_attempts = @recent_attempts.where("sync_attempts.created_at < ?", Time.zone.parse(params[:before]))
+      end
+      @has_more_attempts = @recent_attempts.length > per_page
+      @recent_attempts = @recent_attempts.first(per_page)
 
       # Auto-sync vs Manual sync breakdown (last 24 hours)
       recent_attempts_24h = SyncAttempt.includes(:calendar_source).where("sync_attempts.created_at > ?", 24.hours.ago)

@@ -2,10 +2,15 @@
 
 class CalendarEventsController < ApplicationController
   def index
-    @calendar_sources = CalendarSource.order(:name)
-    @selected_source = CalendarSource.find_by(id: params[:source_id]) if params[:source_id].present?
+    @calendar_sources = CalendarSource.includes(:latest_sync_attempt).order(:name).to_a
+    @selected_source = params[:source_id].present? ? @calendar_sources.find { |s| s.id == params[:source_id].to_i } : nil
 
-    scope = CalendarEvent.upcoming
+    @show_past = params[:show_past] == "true"
+    scope = if @show_past
+      CalendarEvent.where(starts_at: ...Time.current.beginning_of_day).order(starts_at: :desc)
+    else
+      CalendarEvent.upcoming
+    end
     scope = scope.where(calendar_source_id: @selected_source.id) if @selected_source
 
     # Hide excluded events by default unless explicitly shown
@@ -24,6 +29,7 @@ class CalendarEventsController < ApplicationController
 
   def show
     @event = CalendarEvent.find(params[:id])
+    @audits = CalendarEventAudit.where(calendar_event_id: @event.id).order(occurred_at: :asc)
   end
 
   def toggle_sync

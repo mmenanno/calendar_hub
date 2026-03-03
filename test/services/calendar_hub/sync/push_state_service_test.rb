@@ -11,19 +11,19 @@ module CalendarHub
         @observer = mock("Observer")
       end
 
-      test "pushes upcoming events to Apple Calendar" do
-        upcoming_events = @source.calendar_events.upcoming
-        @observer.expects(:start).with(total: upcoming_events.size)
+      test "pushes upcoming events to Apple Calendar using find_each" do
+        upcoming_count = @source.calendar_events.upcoming.count
+        @observer.expects(:start).with(total: upcoming_count)
         @observer.expects(:finish).with(status: :success)
 
         syncer = mock("AppleEventSyncer")
-        syncer.expects(:sync_events_batch).with(anything, observer: @observer).returns({ upserts: 2, deletes: 0 })
+        syncer.expects(:sync_event).times(upcoming_count).returns(:upserted)
         CalendarHub::Shared::AppleEventSyncer.expects(:new).with(source: @source, apple_client: @apple_client).returns(syncer)
 
         service = PushStateService.new(source: @source, apple_client: @apple_client, observer: @observer)
         counts = service.call
 
-        assert_equal 2, counts[:upserts]
+        assert_equal upcoming_count, counts[:upserts]
         assert_equal 0, counts[:deletes]
       end
 
@@ -34,7 +34,7 @@ module CalendarHub
         @observer.expects(:finish).with(status: :success)
 
         syncer = mock("AppleEventSyncer")
-        syncer.expects(:sync_events_batch).returns({ upserts: 0, deletes: 0 })
+        syncer.expects(:sync_event).never
         CalendarHub::Shared::AppleEventSyncer.expects(:new).with(source: @source, apple_client: @apple_client).returns(syncer)
 
         service = PushStateService.new(source: @source, apple_client: @apple_client, observer: @observer)
@@ -42,6 +42,24 @@ module CalendarHub
 
         assert_equal 0, counts[:upserts]
         assert_equal 0, counts[:deletes]
+      end
+
+      test "tracks deleted events in counts" do
+        upcoming_count = @source.calendar_events.upcoming.count
+        assert upcoming_count > 0, "Need at least one upcoming event for this test"
+
+        @observer.expects(:start).with(total: upcoming_count)
+        @observer.expects(:finish).with(status: :success)
+
+        syncer = mock("AppleEventSyncer")
+        syncer.expects(:sync_event).times(upcoming_count).returns(:deleted)
+        CalendarHub::Shared::AppleEventSyncer.expects(:new).with(source: @source, apple_client: @apple_client).returns(syncer)
+
+        service = PushStateService.new(source: @source, apple_client: @apple_client, observer: @observer)
+        counts = service.call
+
+        assert_equal 0, counts[:upserts]
+        assert_equal upcoming_count, counts[:deletes]
       end
     end
   end

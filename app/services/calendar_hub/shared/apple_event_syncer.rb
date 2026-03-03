@@ -3,21 +3,24 @@
 module CalendarHub
   module Shared
     class AppleEventSyncer
-      attr_reader :source, :apple_client, :translator
+      attr_reader :source, :apple_client, :translator, :event_filter
 
       def initialize(source:, apple_client: AppleCalendar::Client.new)
         @source = source
         @apple_client = apple_client
         @translator = ::CalendarHub::Translators::EventTranslator.new(source)
+        @event_filter = ::CalendarHub::EventFilter.new(source)
       end
 
       def sync_event(event, observer: nil)
+        destination = resolve_destination(event)
+
         if event.sync_exempt? || event.cancelled?
-          delete_event(event)
+          delete_event(event, calendar_identifier: destination)
           observer&.delete_success(event)
           :deleted
         else
-          upsert_event(event)
+          upsert_event(event, calendar_identifier: destination)
           observer&.upsert_success(event)
           :upserted
         end
@@ -28,17 +31,17 @@ module CalendarHub
         :error
       end
 
-      def delete_event(event)
+      def delete_event(event, calendar_identifier: nil)
         apple_client.delete_event(
-          calendar_identifier: source.calendar_identifier,
+          calendar_identifier: calendar_identifier || source.calendar_identifier,
           uid: ::CalendarHub::Shared::UidGenerator.composite_uid_for(event),
         )
       end
 
-      def upsert_event(event)
+      def upsert_event(event, calendar_identifier: nil)
         payload = build_payload(event)
         apple_client.upsert_event(
-          calendar_identifier: source.calendar_identifier,
+          calendar_identifier: calendar_identifier || source.calendar_identifier,
           payload: payload,
         )
       end
@@ -67,6 +70,10 @@ module CalendarHub
       end
 
       private
+
+      def resolve_destination(event)
+        event_filter.destination_calendar_for(event) || source.calendar_identifier
+      end
 
       def build_payload(event)
         payload = translator.call(event)

@@ -4,12 +4,18 @@ class CalendarSourcesController < ApplicationController
   before_action :set_calendar_source, only: [:show, :edit, :update, :destroy, :sync, :force_sync, :push_state, :check_destination, :toggle_active, :toggle_auto_sync, :purge, :unarchive]
 
   def index
-    @calendar_sources = CalendarSource.includes(:sync_attempts, :calendar_events).order(:name)
+    @calendar_sources = CalendarSource.includes(:latest_sync_attempt).order(:name)
+    @pending_counts = CalendarEvent.needs_sync
+      .where(calendar_source_id: @calendar_sources.map(&:id))
+      .group(:calendar_source_id)
+      .count
     @archived_sources = CalendarSource.unscoped.where.not(deleted_at: nil).order(:name)
     @new_source = CalendarSource.new
   end
 
-  def show; end
+  def show
+    @sync_attempts = @calendar_source.sync_attempts.order(created_at: :desc).limit(50)
+  end
 
   def new
     @calendar_source = CalendarSource.new
@@ -222,6 +228,45 @@ class CalendarSourcesController < ApplicationController
       ),
     ]
     turbo_success_response(streams, message: t("flashes.calendar_sources.auto_sync_updated"), fallback_location: calendar_events_path)
+  end
+
+  def discover_apple_calendars
+    client = AppleCalendar::Client.new
+    calendars = client.discover_calendars
+    render(json: { success: true, calendars: calendars })
+  rescue StandardError => e
+    render(json: { success: false, error: e.message }, status: :ok)
+  end
+
+  def test_ics_feed
+    url = params[:url].to_s.strip
+    if url.blank?
+      render(json: { success: false, error: "URL is required" }, status: :unprocessable_entity)
+      return
+    end
+
+    begin
+      response = Faraday.get(url) do |req|
+        req.headers["User-Agent"] = "CalendarHub/1.0"
+        req.options.timeout = 10
+        req.options.open_timeout = 5
+      end
+
+      unless response.success?
+        render(json: { success: false, error: "HTTP #{response.status}: #{response.reason_phrase}" }, status: :ok)
+        return
+      end
+
+      parser = CalendarHub::ICS::Parser.new(response.body)
+      events = parser.events
+      titles = events.first(5).map(&:summary)
+
+      render(json: { success: true, event_count: events.size, sample_titles: titles })
+    rescue Faraday::Error => e
+      render(json: { success: false, error: "Could not fetch URL: #{e.message}" })
+    rescue => e
+      render(json: { success: false, error: "Failed to parse feed: #{e.message}" })
+    end
   end
 
   def unarchive

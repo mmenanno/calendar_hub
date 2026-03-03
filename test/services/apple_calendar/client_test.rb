@@ -231,6 +231,44 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
     assert_equal(expected, result)
   end
 
+  test "build_ics sanitizes UID with embedded newlines" do
+    payload = {
+      uid: "abc123\r\nX-INJECTED:malicious",
+      summary: "Test",
+      starts_at: Time.utc(2025, 1, 1, 10, 0, 0),
+      ends_at: Time.utc(2025, 1, 1, 11, 0, 0),
+    }
+
+    ics = @client.send(:build_ics, payload)
+
+    # The UID line should not contain a line break
+    assert_match(/UID:abc123X-INJECTED:malicious/, ics)
+    # There should be exactly one UID line
+    uid_lines = ics.lines.select { |l| l.strip.start_with?("UID:") }
+
+    assert_equal(1, uid_lines.count)
+  end
+
+  test "build_ics sanitizes UID with tabs and null bytes" do
+    payload = {
+      uid: "abc\t123\x00456",
+      summary: "Test",
+      starts_at: Time.utc(2025, 1, 1, 10, 0, 0),
+      ends_at: Time.utc(2025, 1, 1, 11, 0, 0),
+    }
+
+    ics = @client.send(:build_ics, payload)
+
+    assert_match(/UID:abc123456/, ics)
+  end
+
+  test "sanitize_uid strips whitespace and control characters" do
+    assert_equal("abc123", @client.send(:sanitize_uid, "  abc123  "))
+    assert_equal("abc123", @client.send(:sanitize_uid, "abc\r\n123"))
+    assert_equal("abc123", @client.send(:sanitize_uid, "abc\t123"))
+    assert_equal("abc123", @client.send(:sanitize_uid, "abc\x00123"))
+  end
+
   test "build_ics includes all fields" do
     payload = {
       uid: "test-123",
@@ -284,12 +322,35 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
     assert_requested(stub)
   end
 
-  test "head_etag handles request failure" do
-    stub_request(:head, "https://example.com/test").to_raise(StandardError.new("Network error"))
+  test "head_etag returns nil and logs on transient connection error" do
+    stub_request(:head, "https://example.com/test").to_raise(Errno::ECONNRESET.new("Connection reset"))
+
+    Rails.logger.expects(:warn).with(regexp_matches(/head_etag connection error/))
 
     result = @client.send(:head_etag, "https://example.com/test")
 
     assert_nil(result)
+  end
+
+  test "head_etag propagates authentication errors (non-transient)" do
+    # A 401 response causes `request` to raise RuntimeError (non-2xx), which
+    # should NOT be rescued by head_etag since it is not a transient error.
+    stub_request(:head, "https://example.com/test").to_return(status: 401, body: "Unauthorized")
+
+    assert_raises(RuntimeError) do
+      @client.send(:head_etag, "https://example.com/test")
+    end
+  end
+
+  test "head_etag propagates programming errors" do
+    # NoMethodError is not in the rescue list and should propagate
+    @client.stubs(:request).raises(NoMethodError, "undefined method")
+
+    assert_raises(NoMethodError) do
+      @client.send(:head_etag, "https://example.com/test")
+    end
+  ensure
+    @client.unstub(:request)
   end
 
   test "request raises error for non-2xx status codes" do
@@ -314,9 +375,51 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
   end
 
   test "perform_with_retries handles network errors with retries" do
-    # Test that network errors trigger retries
+    # Test that retryable network errors trigger retries (uses Errno::ECONNRESET
+    # which is in RETRYABLE_ERRORS, not a bare StandardError)
     stub_request(:get, "https://example.com/test")
-      .to_raise(StandardError.new("Network error"))
+      .to_raise(Errno::ECONNRESET.new("Connection reset"))
+      .then.to_return(status: 200)
+
+    result = @client.send(:request, :get, "https://example.com/test")
+
+    assert_equal("200", result.code)
+  end
+
+  test "perform_with_retries propagates Interrupt without retrying" do
+    uri = URI("https://example.com/test")
+    http = Net::HTTP.new(uri.host, uri.port)
+    req = Net::HTTPGenericRequest.new("GET", false, true, uri.request_uri)
+
+    http.stubs(:request).raises(Interrupt)
+
+    assert_raises(Interrupt) do
+      @client.send(:perform_with_retries, http, req, uri)
+    end
+  ensure
+    http.unstub(:request)
+  end
+
+  test "perform_with_retries propagates SignalException without retrying" do
+    uri = URI("https://example.com/test")
+    http = Net::HTTP.new(uri.host, uri.port)
+    req = Net::HTTPGenericRequest.new("GET", false, true, uri.request_uri)
+
+    http.stubs(:request).raises(SignalException, "SIGTERM")
+
+    assert_raises(SignalException) do
+      @client.send(:perform_with_retries, http, req, uri)
+    end
+  ensure
+    http.unstub(:request)
+  end
+
+  test "perform_with_retries retries on network errors up to limit" do
+    # Test that retryable errors are retried up to the configured limit.
+    # Uses stub_request with sequential responses.
+    stub_request(:get, "https://example.com/test")
+      .to_raise(Errno::ECONNRESET.new("Connection reset"))
+      .then.to_raise(Errno::ECONNRESET.new("Connection reset"))
       .then.to_return(status: 200)
 
     result = @client.send(:request, :get, "https://example.com/test")
@@ -325,11 +428,11 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
   end
 
   test "perform_with_retries gives up after max retries" do
-    # Test that persistent errors eventually give up
+    # Test that persistent retryable errors eventually give up
     stub_request(:get, "https://example.com/test")
-      .to_raise(StandardError.new("Persistent network error"))
+      .to_raise(Errno::ECONNRESET.new("Persistent network error"))
 
-    assert_raises(StandardError, "Persistent network error") do
+    assert_raises(Errno::ECONNRESET) do
       @client.send(:request, :get, "https://example.com/test")
     end
   end
@@ -521,6 +624,73 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
     assert_equal("Server unavailable", error.message)
   ensure
     @client.unstub(:request)
+  end
+
+  # FEAT-007: Calendar discovery
+  test "discover_calendars returns list of available calendars" do
+    stub_discovery
+
+    calendars = @client.discover_calendars
+
+    assert_kind_of(Array, calendars)
+    assert_equal(1, calendars.length)
+    assert_equal("Work", calendars.first[:displayname])
+    assert_equal("Work", calendars.first[:identifier])
+  end
+
+  test "discover_calendars returns multiple calendars sorted" do
+    base = @creds[:base_url]
+
+    stub_request(:propfind, "#{base}/.well-known/caldav")
+      .to_return(status: 301, headers: { "Location" => "#{base}/principals/user/" }, body: "")
+
+    stub_request(:propfind, "#{base}/principals/user/")
+      .with(headers: { "Depth" => "0" })
+      .to_return(status: 207, body: <<~XML)
+        <d:multistatus xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
+          <d:response><d:propstat><d:prop><cal:calendar-home-set><d:href>/calendars/user/</d:href></cal:calendar-home-set></d:prop></d:propstat></d:response>
+        </d:multistatus>
+      XML
+
+    stub_request(:propfind, "#{base}/calendars/user/")
+      .with(headers: { "Depth" => "1" })
+      .to_return(status: 207, body: <<~XML)
+        <d:multistatus xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
+          <d:response>
+            <d:href>/calendars/user/Work/</d:href>
+            <d:propstat><d:prop><d:displayname>Work</d:displayname><d:resourcetype><d:collection/><cal:calendar/></d:resourcetype></d:prop></d:propstat>
+          </d:response>
+          <d:response>
+            <d:href>/calendars/user/Family/</d:href>
+            <d:propstat><d:prop><d:displayname>Family</d:displayname><d:resourcetype><d:collection/><cal:calendar/></d:resourcetype></d:prop></d:propstat>
+          </d:response>
+          <d:response>
+            <d:href>/calendars/user/Personal/</d:href>
+            <d:propstat><d:prop><d:displayname>Personal</d:displayname><d:resourcetype><d:collection/><cal:calendar/></d:resourcetype></d:prop></d:propstat>
+          </d:response>
+        </d:multistatus>
+      XML
+
+    calendars = @client.discover_calendars
+
+    assert_equal(3, calendars.length)
+    assert_equal("Family", calendars[0][:displayname])
+    assert_equal("Personal", calendars[1][:displayname])
+    assert_equal("Work", calendars[2][:displayname])
+  end
+
+  test "discover_calendars raises ArgumentError when credentials missing" do
+    client = AppleCalendar::Client.new(credentials: {})
+
+    assert_raises(ArgumentError) do
+      client.discover_calendars
+    end
+
+    client = AppleCalendar::Client.new(credentials: { username: "user" })
+
+    assert_raises(ArgumentError) do
+      client.discover_calendars
+    end
   end
 
   test "discover_calendar_url returns cached result immediately using mocha" do

@@ -31,7 +31,7 @@ class EventMapping < ApplicationRecord
   def schedule_affected_syncs
     return if only_position_changed?
 
-    affected_sources.each { |source| source.schedule_sync(force: true) }
+    affected_sources.select(&:syncable?).each { |source| SyncCalendarJob.perform_later(source.id) }
   end
 
   def affected_sources
