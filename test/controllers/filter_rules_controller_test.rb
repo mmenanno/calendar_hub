@@ -735,51 +735,6 @@ class FilterRulesControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  # FEAT-009: Destination routing
-
-  test "should create filter rule with target_calendar_identifier" do
-    assert_difference("FilterRule.count") do
-      post filter_rules_url,
-        params: {
-          filter_rule: {
-            pattern: "Route Test",
-            field_name: "title",
-            match_type: "contains",
-            active: true,
-            target_calendar_identifier: "Work",
-            target_calendar_display_name: "Work Calendar",
-          },
-        },
-        as: :turbo_stream
-    end
-
-    assert_response(:success)
-
-    filter_rule = FilterRule.find_by(pattern: "Route Test")
-
-    refute_nil(filter_rule)
-    assert_equal("Work", filter_rule.target_calendar_identifier)
-    assert_equal("Work Calendar", filter_rule.target_calendar_display_name)
-  end
-
-  test "should update filter rule with target_calendar_identifier" do
-    patch filter_rule_url(@filter_rule),
-      params: {
-        filter_rule: {
-          target_calendar_identifier: "Personal",
-          target_calendar_display_name: "Personal Cal",
-        },
-      },
-      as: :turbo_stream
-
-    assert_response(:success)
-
-    @filter_rule.reload
-
-    assert_equal("Personal", @filter_rule.target_calendar_identifier)
-    assert_equal("Personal Cal", @filter_rule.target_calendar_display_name)
-  end
-
   test "reorder does not enqueue SyncFilterRulesJob" do
     rule2 = FilterRule.create!(
       pattern: "Reorder Sync Test",

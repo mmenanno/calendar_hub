@@ -15,13 +15,25 @@ class EventMapping < ApplicationRecord
   default_scope { order(position: :asc, created_at: :asc) }
 
   validates :match_type, inclusion: { in: MATCH_TYPES.values }
-  validates :pattern, :replacement, presence: true
+  validates :pattern, presence: true
+  validates :replacement, presence: true, unless: -> { target_calendar_identifier.present? }
+  validate :must_have_replacement_or_destination
 
   after_destroy :clear_name_mapper_cache
   after_save :clear_name_mapper_cache
   after_commit :schedule_affected_syncs
 
+  def has_destination_override?
+    target_calendar_identifier.present?
+  end
+
   private
+
+  def must_have_replacement_or_destination
+    if replacement.blank? && target_calendar_identifier.blank?
+      errors.add(:base, "must have a replacement or a destination calendar override")
+    end
+  end
 
   def clear_name_mapper_cache
     cache_key = "name_mapper/active_mappings/#{calendar_source_id || "global"}"

@@ -17,25 +17,6 @@ module CalendarHub
       rules.any? { |rule| rule.matches?(event) }
     end
 
-    # Returns the first matching filter rule for the event, or nil if none match.
-    def matching_rule(event)
-      return nil if event.blank?
-
-      rules.find { |rule| rule.matches?(event) }
-    end
-
-    # Returns the destination calendar identifier for the event.
-    # If a matching filter rule has a target_calendar_identifier, use that.
-    # Otherwise, fall back to the source's calendar_identifier.
-    def destination_calendar_for(event)
-      rule = matching_rule(event)
-      if rule&.has_destination_override?
-        rule.target_calendar_identifier
-      else
-        calendar_source&.calendar_identifier
-      end
-    end
-
     class << self
       def should_filter?(event)
         return false if event.blank?

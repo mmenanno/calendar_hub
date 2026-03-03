@@ -27,10 +27,6 @@ class FilterRule < ApplicationRecord
 
   after_commit :schedule_filter_sync
 
-  def has_destination_override?
-    target_calendar_identifier.present?
-  end
-
   def matches?(event)
     return false unless active?
 

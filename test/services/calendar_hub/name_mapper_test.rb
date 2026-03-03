@@ -360,6 +360,99 @@ module CalendarHub
       assert_equal("Global Match", result2)
     end
 
+    # matching_rule and destination_for
+
+    test "matching_rule returns the first matching event mapping" do
+      EventMapping.where(calendar_source: @source).destroy_all
+      Rails.cache.clear
+
+      rule = EventMapping.create!(
+        calendar_source: @source,
+        pattern: "Meeting",
+        replacement: "Conference",
+        match_type: "contains",
+        active: true,
+      )
+
+      matched = ::CalendarHub::NameMapper.matching_rule("Team Meeting", source: @source)
+
+      assert_equal(rule, matched)
+    end
+
+    test "matching_rule returns nil when no rules match" do
+      EventMapping.where(calendar_source: @source).destroy_all
+      Rails.cache.clear
+
+      matched = ::CalendarHub::NameMapper.matching_rule("Unmatched Title", source: @source)
+
+      assert_nil(matched)
+    end
+
+    test "matching_rule returns nil for blank title" do
+      assert_nil(::CalendarHub::NameMapper.matching_rule(nil, source: @source))
+      assert_nil(::CalendarHub::NameMapper.matching_rule("", source: @source))
+    end
+
+    test "destination_for returns target_calendar_identifier from matching rule" do
+      EventMapping.where(calendar_source: @source).destroy_all
+      Rails.cache.clear
+
+      EventMapping.create!(
+        calendar_source: @source,
+        pattern: "Michael",
+        match_type: "contains",
+        target_calendar_identifier: "Michael Personal",
+        active: true,
+      )
+
+      destination = ::CalendarHub::NameMapper.destination_for("Michael Session", source: @source)
+
+      assert_equal("Michael Personal", destination)
+    end
+
+    test "destination_for returns nil when no matching rule" do
+      EventMapping.where(calendar_source: @source).destroy_all
+      Rails.cache.clear
+
+      destination = ::CalendarHub::NameMapper.destination_for("Unmatched Title", source: @source)
+
+      assert_nil(destination)
+    end
+
+    test "destination_for returns nil when matching rule has no target" do
+      EventMapping.where(calendar_source: @source).destroy_all
+      Rails.cache.clear
+
+      EventMapping.create!(
+        calendar_source: @source,
+        pattern: "Meeting",
+        replacement: "Conference",
+        match_type: "contains",
+        active: true,
+      )
+
+      destination = ::CalendarHub::NameMapper.destination_for("Team Meeting", source: @source)
+
+      assert_nil(destination)
+    end
+
+    test "apply with blank replacement returns original title" do
+      EventMapping.where(calendar_source: @source).destroy_all
+      Rails.cache.clear
+
+      EventMapping.create!(
+        calendar_source: @source,
+        pattern: "Michael",
+        match_type: "contains",
+        target_calendar_identifier: "Michael Personal",
+        active: true,
+      )
+
+      result = ::CalendarHub::NameMapper.apply("Michael Session", source: @source)
+
+      assert_equal("Michael Session", result)
+    end
+
     test "handles inactive mappings correctly" do
       EventMapping.where(calendar_source: @source).destroy_all
       Rails.cache.clear

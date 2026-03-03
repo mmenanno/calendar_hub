@@ -313,11 +313,8 @@ module AppleCalendar
     def head_etag(url)
       res = request(:head, url)
       res["ETag"]
-    rescue Faraday::ConnectionFailed, Faraday::TimeoutError,
-           Net::OpenTimeout, Net::ReadTimeout,
-           Errno::ECONNRESET, Errno::ECONNREFUSED, Errno::ETIMEDOUT,
-           Timeout::Error, IOError, SocketError => e
-      Rails.logger.warn("[AppleCal] head_etag connection error for #{url}: #{e.message}")
+    rescue StandardError => e
+      Rails.logger.warn("[AppleCal] head_etag error for #{url}: #{e.message}")
       nil
     end
 

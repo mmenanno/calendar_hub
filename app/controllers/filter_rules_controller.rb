@@ -135,6 +135,6 @@ class FilterRulesController < ApplicationController
   end
 
   def filter_rule_params
-    params.expect(filter_rule: [:calendar_source_id, :match_type, :pattern, :field_name, :case_sensitive, :active, :position, :target_calendar_identifier, :target_calendar_display_name])
+    params.expect(filter_rule: [:calendar_source_id, :match_type, :pattern, :field_name, :case_sensitive, :active, :position])
   end
 end

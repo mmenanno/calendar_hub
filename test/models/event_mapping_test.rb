@@ -70,6 +70,61 @@ class EventMappingTest < ActiveSupport::TestCase
     end
   end
 
+  # Destination override
+
+  test "has_destination_override? returns false when target_calendar_identifier is blank" do
+    mapping = EventMapping.create!(
+      match_type: "contains",
+      pattern: "Test",
+      replacement: "Replaced",
+    )
+
+    refute_predicate(mapping, :has_destination_override?)
+  end
+
+  test "has_destination_override? returns true when target_calendar_identifier is present" do
+    mapping = EventMapping.create!(
+      match_type: "contains",
+      pattern: "Test",
+      target_calendar_identifier: "Work",
+    )
+
+    assert_predicate(mapping, :has_destination_override?)
+  end
+
+  test "replacement is optional when target_calendar_identifier is present" do
+    mapping = EventMapping.new(
+      match_type: "contains",
+      pattern: "Route Only",
+      target_calendar_identifier: "Personal",
+    )
+
+    assert_predicate(mapping, :valid?)
+  end
+
+  test "must have replacement or destination calendar override" do
+    mapping = EventMapping.new(
+      match_type: "contains",
+      pattern: "Nothing",
+      replacement: "",
+      target_calendar_identifier: "",
+    )
+
+    refute_predicate(mapping, :valid?)
+    assert(mapping.errors[:base].any? { |e| e.include?("must have a replacement or a destination") })
+  end
+
+  test "valid with both replacement and destination override" do
+    mapping = EventMapping.new(
+      match_type: "contains",
+      pattern: "Both",
+      replacement: "Renamed",
+      target_calendar_identifier: "Work",
+    )
+
+    assert_predicate(mapping, :valid?)
+  end
+
   test "inactive source does not enqueue sync" do
     source = calendar_sources(:inactive_source)
 

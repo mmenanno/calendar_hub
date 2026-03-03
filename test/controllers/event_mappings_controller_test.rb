@@ -619,6 +619,75 @@ class EventMappingsControllerTest < ActionDispatch::IntegrationTest
     assert_match "mapping_test_result", response.body
   end
 
+  # Destination override
+
+  test "create with target_calendar_identifier" do
+    assert_difference("EventMapping.count") do
+      post event_mappings_path,
+        params: {
+          event_mapping: {
+            match_type: "contains",
+            pattern: "Route Test",
+            target_calendar_identifier: "Work",
+            target_calendar_display_name: "Work Calendar",
+          },
+        },
+        as: :turbo_stream
+    end
+
+    assert_response(:success)
+
+    mapping = EventMapping.find_by(pattern: "Route Test")
+
+    refute_nil(mapping)
+    assert_equal("Work", mapping.target_calendar_identifier)
+    assert_equal("Work Calendar", mapping.target_calendar_display_name)
+    assert_nil(mapping.replacement)
+  end
+
+  test "create with both replacement and target_calendar_identifier" do
+    assert_difference("EventMapping.count") do
+      post event_mappings_path,
+        params: {
+          event_mapping: {
+            match_type: "contains",
+            pattern: "Both Test",
+            replacement: "Renamed",
+            target_calendar_identifier: "Personal",
+          },
+        },
+        as: :turbo_stream
+    end
+
+    assert_response(:success)
+
+    mapping = EventMapping.find_by(pattern: "Both Test")
+
+    refute_nil(mapping)
+    assert_equal("Renamed", mapping.replacement)
+    assert_equal("Personal", mapping.target_calendar_identifier)
+  end
+
+  test "update with target_calendar_identifier" do
+    mapping = event_mappings(:basic_mapping)
+
+    patch event_mapping_path(mapping),
+      params: {
+        event_mapping: {
+          target_calendar_identifier: "Personal",
+          target_calendar_display_name: "Personal Cal",
+        },
+      },
+      as: :turbo_stream
+
+    assert_response(:success)
+
+    mapping.reload
+
+    assert_equal("Personal", mapping.target_calendar_identifier)
+    assert_equal("Personal Cal", mapping.target_calendar_display_name)
+  end
+
   # Sync trigger tests
 
   test "create enqueues SyncCalendarJob" do

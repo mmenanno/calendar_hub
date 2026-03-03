@@ -27,7 +27,22 @@
       </div>
       <div>
         <%= f.label(:replacement, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
-        <%= f.text_field(:replacement, required: true, placeholder: "Client Session - In Person", class: input_class) %>
+        <%= f.text_field(:replacement, placeholder: "Client Session - In Person", class: input_class) %>
+      </div>
+      <div data-controller="browse-calendars" data-browse-calendars-url-value="<%= discover_apple_calendars_path %>">
+        <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.destination") %></label>
+        <div class="flex items-center gap-2">
+          <%= f.text_field(:target_calendar_identifier, placeholder: t("ui.mappings.destination_hint"), class: "#{input_class} flex-1", data: { browse_calendars_target: "calendarField" }) %>
+          <button type="button" class="<%= secondary_button_class %> whitespace-nowrap text-xs" data-action="click->browse-calendars#browse"><%= t("ui.sources.browse_calendars") %></button>
+        </div>
+        <p class="mt-1 text-xs text-slate-400"><%= t("ui.mappings.destination_hint") %></p>
+        <p data-browse-calendars-target="loading" class="mt-1 text-xs text-indigo-300 hidden"><%= t("ui.sources.browse_loading") %></p>
+        <p data-browse-calendars-target="error" class="mt-1 text-xs text-rose-300 hidden"></p>
+        <div data-browse-calendars-target="results" class="mt-2 hidden"></div>
+      </div>
+      <div>
+        <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.destination_display_name") %></label>
+        <%= f.text_field(:target_calendar_display_name, placeholder: "e.g. Work Calendar", class: input_class) %>
       </div>
       <label class="inline-flex items-center gap-2 text-xs text-slate-400">
         <%= f.check_box(:case_sensitive) %>

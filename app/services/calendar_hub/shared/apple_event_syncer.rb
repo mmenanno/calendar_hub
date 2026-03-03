@@ -3,13 +3,12 @@
 module CalendarHub
   module Shared
     class AppleEventSyncer
-      attr_reader :source, :apple_client, :translator, :event_filter
+      attr_reader :source, :apple_client, :translator
 
       def initialize(source:, apple_client: AppleCalendar::Client.new)
         @source = source
         @apple_client = apple_client
         @translator = ::CalendarHub::Translators::EventTranslator.new(source)
-        @event_filter = ::CalendarHub::EventFilter.new(source)
       end
 
       def sync_event(event, observer: nil)
@@ -72,7 +71,7 @@ module CalendarHub
       private
 
       def resolve_destination(event)
-        event_filter.destination_calendar_for(event) || source.calendar_identifier
+        CalendarHub::NameMapper.destination_for(event.title, source: source) || source.calendar_identifier
       end
 
       def build_payload(event)

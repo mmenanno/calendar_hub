@@ -107,6 +107,6 @@ class EventMappingsController < ApplicationController
   end
 
   def event_mapping_params
-    params.expect(event_mapping: [:calendar_source_id, :match_type, :pattern, :replacement, :case_sensitive, :position, :active])
+    params.expect(event_mapping: [:calendar_source_id, :match_type, :pattern, :replacement, :case_sensitive, :position, :active, :target_calendar_identifier, :target_calendar_display_name])
   end
 end

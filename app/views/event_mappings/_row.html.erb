@@ -4,6 +4,15 @@
     <td class="px-3 py-2"><%= mapping.match_type.humanize %></td>
     <td class="px-3 py-2 font-mono"><%= mapping.pattern %></td>
     <td class="px-3 py-2 font-mono"><%= mapping.replacement %></td>
+    <td class="px-3 py-2">
+      <% if mapping.has_destination_override? %>
+        <span class="inline-flex items-center rounded-full bg-indigo-500/10 px-2 py-1 text-xs font-medium text-indigo-300">
+          <%= mapping.target_calendar_display_name.presence || mapping.target_calendar_identifier %>
+        </span>
+      <% else %>
+        <span class="text-slate-500">—</span>
+      <% end %>
+    </td>
     <td class="px-3 py-2" title="<%= mapping.case_sensitive ? t("ui.mappings.case_sensitive_tooltip") : t("ui.mappings.case_insensitive_tooltip") %>"><%= mapping.case_sensitive ? t("ui.mappings.case_sensitive_label") : t("ui.mappings.case_insensitive_label") %></td>
     <td class="px-3 py-2">
       <%= form_with url: toggle_event_mapping_path(mapping), method: :patch, data: { turbo_stream: true }, class: "inline-flex" do %>

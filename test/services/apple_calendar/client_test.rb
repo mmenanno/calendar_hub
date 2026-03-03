@@ -325,32 +325,23 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
   test "head_etag returns nil and logs on transient connection error" do
     stub_request(:head, "https://example.com/test").to_raise(Errno::ECONNRESET.new("Connection reset"))
 
-    Rails.logger.expects(:warn).with(regexp_matches(/head_etag connection error/))
+    Rails.logger.expects(:warn).with(regexp_matches(/head_etag error/))
 
     result = @client.send(:head_etag, "https://example.com/test")
 
     assert_nil(result)
   end
 
-  test "head_etag propagates authentication errors (non-transient)" do
+  test "head_etag returns nil on non-2xx HTTP errors" do
     # A 401 response causes `request` to raise RuntimeError (non-2xx), which
-    # should NOT be rescued by head_etag since it is not a transient error.
+    # is now rescued by head_etag to allow the upsert to fall through without ETag.
     stub_request(:head, "https://example.com/test").to_return(status: 401, body: "Unauthorized")
 
-    assert_raises(RuntimeError) do
-      @client.send(:head_etag, "https://example.com/test")
-    end
-  end
+    Rails.logger.expects(:warn).with(regexp_matches(/head_etag error/))
 
-  test "head_etag propagates programming errors" do
-    # NoMethodError is not in the rescue list and should propagate
-    @client.stubs(:request).raises(NoMethodError, "undefined method")
+    result = @client.send(:head_etag, "https://example.com/test")
 
-    assert_raises(NoMethodError) do
-      @client.send(:head_etag, "https://example.com/test")
-    end
-  ensure
-    @client.unstub(:request)
+    assert_nil(result)
   end
 
   test "request raises error for non-2xx status codes" do

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_03_020002) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_03_171734) do
   create_table "app_settings", force: :cascade do |t|
     t.string "app_host"
     t.integer "app_port"
@@ -107,7 +107,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_020002) do
     t.string "match_type", default: "contains", null: false
     t.string "pattern", null: false
     t.integer "position", default: 0, null: false
-    t.string "replacement", null: false
+    t.string "replacement"
+    t.string "target_calendar_display_name"
+    t.string "target_calendar_identifier"
     t.datetime "updated_at", null: false
     t.index ["calendar_source_id", "active", "position"], name: "idx_on_calendar_source_id_active_position_f8d680a321"
     t.index ["calendar_source_id"], name: "index_event_mappings_on_calendar_source_id"
@@ -122,8 +124,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_020002) do
     t.string "match_type", default: "contains", null: false
     t.string "pattern", null: false
     t.integer "position", default: 0, null: false
-    t.string "target_calendar_display_name"
-    t.string "target_calendar_identifier"
     t.datetime "updated_at", null: false
     t.index ["calendar_source_id", "active", "position"], name: "idx_filter_rules_source_active_position"
     t.index ["calendar_source_id"], name: "index_filter_rules_on_calendar_source_id"
