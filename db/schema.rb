@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_03_171734) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_03_180301) do
   create_table "app_settings", force: :cascade do |t|
     t.string "app_host"
     t.integer "app_port"
@@ -49,6 +49,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_171734) do
     t.datetime "ends_at", null: false
     t.string "external_id", null: false
     t.string "fingerprint"
+    t.string "last_synced_to_calendar"
     t.string "location"
     t.datetime "source_updated_at"
     t.datetime "starts_at", null: false

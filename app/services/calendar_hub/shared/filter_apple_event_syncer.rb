@@ -12,8 +12,9 @@ module CalendarHub
 
       def sync_event(event, observer: nil)
         destination = resolve_destination(event)
+        cleanup_old_destination(event, destination)
 
-        if event.sync_exempt? || event.cancelled?
+        result = if event.sync_exempt? || event.cancelled?
           delete_event(event, calendar_identifier: destination)
           observer&.delete_success(event)
           :deleted
@@ -22,7 +23,8 @@ module CalendarHub
           observer&.upsert_success(event)
           :upserted
         end
-        event.mark_synced!
+        event.update_columns(synced_at: Time.current, last_synced_to_calendar: destination)
+        result
       rescue StandardError => error
         observer&.upsert_error(event, error)
         # Let FilterSyncService handle the error logging and re-raising

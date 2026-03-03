@@ -86,7 +86,6 @@ module CalendarHub
         event = calendar_events(:provider_consult)
         event.stubs(:calendar_source).returns(@source)
         event.stubs(:sync_exempt?).returns(true)
-        event.expects(:mark_synced!)
 
         expected_uid = "prov-123@#{@source.id}.calendar-hub.local"
         @apple_client_mock.expects(:delete_event).with(
@@ -95,13 +94,14 @@ module CalendarHub
         )
 
         @service.sync_event_filter_status(event)
+
+        assert_equal @source.calendar_identifier, event.reload.last_synced_to_calendar
       end
 
       test "sync_event_filter_status upserts event when not sync_exempt" do
         event = calendar_events(:provider_consult)
         event.stubs(:calendar_source).returns(@source)
         event.stubs(:sync_exempt?).returns(false)
-        event.expects(:mark_synced!)
 
         # The FilterAppleEventSyncer handles all the payload building internally
         # We just verify the final upsert call with the correct filter UID format
@@ -111,6 +111,8 @@ module CalendarHub
         end
 
         @service.sync_event_filter_status(event)
+
+        assert_equal @source.calendar_identifier, event.reload.last_synced_to_calendar
       end
 
       test "sync_event_filter_status handles StandardError and re-raises" do

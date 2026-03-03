@@ -13,8 +13,9 @@ module CalendarHub
 
       def sync_event(event, observer: nil)
         destination = resolve_destination(event)
+        cleanup_old_destination(event, destination)
 
-        if event.sync_exempt? || event.cancelled?
+        result = if event.sync_exempt? || event.cancelled?
           delete_event(event, calendar_identifier: destination)
           observer&.delete_success(event)
           :deleted
@@ -23,7 +24,8 @@ module CalendarHub
           observer&.upsert_success(event)
           :upserted
         end
-        event.mark_synced!
+        event.update_columns(synced_at: Time.current, last_synced_to_calendar: destination)
+        result
       rescue StandardError => error
         observer&.upsert_error(event, error)
         Rails.logger.error("[AppleEventSyncer] Failed to sync event #{event.external_id}: #{error.message}")
@@ -72,6 +74,25 @@ module CalendarHub
 
       def resolve_destination(event)
         CalendarHub::NameMapper.destination_for(event.title, source: source) || source.calendar_identifier
+      end
+
+      # When an event's destination calendar changes (e.g., a mapping override
+      # routes it to a different calendar), delete it from the old calendar first.
+      # iCloud enforces UID uniqueness across calendars, so leaving the old copy
+      # causes 412 Precondition Failed on the PUT to the new calendar.
+      def cleanup_old_destination(event, new_destination)
+        old_destination = event.last_synced_to_calendar
+        return if old_destination.blank? || old_destination == new_destination
+
+        Rails.logger.info(
+          "[AppleEventSyncer] Destination changed for #{event.external_id}: " \
+            "#{old_destination} -> #{new_destination}, deleting from old calendar",
+        )
+        delete_event(event, calendar_identifier: old_destination)
+      rescue StandardError => e
+        Rails.logger.warn(
+          "[AppleEventSyncer] Failed to delete #{event.external_id} from old calendar #{old_destination}: #{e.message}",
+        )
       end
 
       def build_payload(event)
