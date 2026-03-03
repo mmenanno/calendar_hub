@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class CalendarSourcesController < ApplicationController
-  before_action :set_calendar_source, only: [:show, :edit, :update, :destroy, :sync, :force_sync, :push_state, :check_destination, :toggle_active, :toggle_auto_sync, :purge, :unarchive]
+  before_action :set_calendar_source, only: [:show, :edit, :update, :destroy, :sync, :force_sync, :push_state, :check_destination, :toggle_active, :toggle_auto_sync, :purge, :unarchive, :acknowledge_failure]
 
   def index
     @calendar_sources = CalendarSource.includes(:latest_sync_attempt).order(:name)
@@ -301,6 +301,17 @@ class CalendarSourcesController < ApplicationController
         render(turbo_stream: streams)
       end
       format.html { redirect_to(calendar_events_path, notice: t("flashes.calendar_sources.unarchived")) }
+    end
+  end
+
+  def acknowledge_failure
+    @calendar_source.record_sync_success!
+
+    respond_to do |format|
+      format.turbo_stream do
+        render(turbo_stream: turbo_stream.remove("sync_failure_alert_#{@calendar_source.id}"))
+      end
+      format.html { redirect_back_or_to(root_path) }
     end
   end
 

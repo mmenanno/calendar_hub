@@ -20,19 +20,24 @@ module AppleCalendar
 
       body = build_ics(payload)
       headers = { "Content-Type" => "text/calendar; charset=utf-8" }
-      # Try create first
+      # Try create first (If-None-Match: * fails with 412 when resource exists)
       begin
         request(:put, url, headers: headers.merge("If-None-Match" => "*"), body: body)
       rescue => e
-        if e.message.include?(" 412 ")
-          # Resource exists; attempt update with ETag
+        raise unless e.message.include?(" 412 ")
+
+        # Resource exists; attempt update with ETag
+        begin
           if (etag = head_etag(url))
             request(:put, url, headers: headers.merge("If-Match" => etag), body: body)
           else
             request(:put, url, headers: headers, body: body)
           end
-        else
-          raise
+        rescue => e2
+          raise unless e2.message.include?(" 412 ")
+
+          # ETag was stale; unconditional PUT as last resort
+          request(:put, url, headers: headers, body: body)
         end
       end
       uid

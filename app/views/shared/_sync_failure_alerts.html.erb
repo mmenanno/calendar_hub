@@ -1,14 +1,11 @@
 <% failing_sources = CalendarSource.failing.includes(:latest_sync_attempt).order(:name) %>
 <% if failing_sources.any? %>
-  <div id="sync-failure-alerts" class="mx-auto max-w-6xl px-6 pt-4 space-y-2" data-controller="dismissible">
+  <div id="sync-failure-alerts" class="mx-auto max-w-6xl px-6 pt-4 space-y-2">
     <% failing_sources.each do |source| %>
       <% failure_count = source.consecutive_sync_failures.to_i %>
       <% latest = source.latest_sync_attempt %>
       <% banner_class = failure_count >= 3 ? "border-rose-800 bg-rose-950/40 text-rose-200" : "border-yellow-700 bg-yellow-950/40 text-yellow-200" %>
-      <div class="rounded-lg border px-4 py-3 text-sm flex items-start justify-between gap-3 <%= banner_class %>"
-           data-dismissible-target="banner"
-           data-source-id="<%= source.id %>"
-           data-failure-count="<%= failure_count %>">
+      <div id="sync_failure_alert_<%= source.id %>" class="rounded-lg border px-4 py-3 text-sm flex items-start justify-between gap-3 <%= banner_class %>">
         <div class="space-y-1">
           <div>
             <strong><%= source.name %></strong>
@@ -33,9 +30,9 @@
             <% end %>
           <% end %>
         </div>
-        <button type="button" class="cursor-pointer shrink-0 text-current opacity-60 hover:opacity-100" data-action="click->dismissible#dismiss" aria-label="<%= t("common.actions.close") %>">
+        <%= button_to acknowledge_failure_calendar_source_path(source), method: :patch, data: { turbo_stream: true }, form: { class: "shrink-0" }, class: "cursor-pointer text-current opacity-60 hover:opacity-100" do %>
           &times;
-        </button>
+        <% end %>
       </div>
     <% end %>
   </div>

@@ -12,6 +12,7 @@ Rails.application.routes.draw do
       patch :toggle_active
       patch :toggle_auto_sync
       patch :unarchive
+      patch :acknowledge_failure
       delete :purge
     end
   end
