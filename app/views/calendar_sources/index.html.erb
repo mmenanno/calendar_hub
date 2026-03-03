@@ -17,12 +17,12 @@
 
       <section id="sources-list" class="space-y-4">
         <% @calendar_sources.each do |source| %>
-          <%= render "calendar_sources/source", source: source %>
+          <%= render "calendar_sources/source", source: source, pending_counts: @pending_counts %>
         <% end %>
       </section>
 
       <div id="archived-sources-section">
-        <%= render "calendar_sources/archived_section", archived_sources: @archived_sources %>
+        <%= render "calendar_sources/archived_section", archived_sources: @archived_sources, archived_pending_counts: @pending_counts %>
       </div>
     </div>
 <% end %>

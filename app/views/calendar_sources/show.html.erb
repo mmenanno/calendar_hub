@@ -78,7 +78,7 @@
                   <td class="px-3 py-2 text-slate-300"><%= day[:syncs] %></td>
                   <td class="px-3 py-2 text-slate-300"><%= day[:upserts] %></td>
                   <td class="px-3 py-2 text-slate-300"><%= day[:deletes] %></td>
-                  <td class="px-3 py-2 <%= day[:errors] > 0 ? "text-rose-300" : "text-slate-300" %>"><%= day[:errors] %></td>
+                  <td class="px-3 py-2 <%= day[:errors].positive? ? "text-rose-300" : "text-slate-300" %>"><%= day[:errors] %></td>
                   <td class="px-3 py-2 text-slate-300"><%= day[:avg_duration_ms] %>ms</td>
                 </tr>
               <% end %>

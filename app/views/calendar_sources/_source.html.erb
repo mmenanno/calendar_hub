@@ -1,4 +1,4 @@
-<% sp = CalendarSourcePresenter.new(source, self, pending_count: @pending_counts&.fetch(source.id, 0)) %>
+<% sp = CalendarSourcePresenter.new(source, self, pending_count: local_assigns.fetch(:pending_counts, {})&.fetch(source.id, 0)) %>
 <div id="<%= dom_id(source, :card) %>" class="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
   <%# Header: source name + status badges %>
   <div class="flex flex-wrap items-center gap-2">
