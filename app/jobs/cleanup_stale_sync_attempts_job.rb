@@ -36,6 +36,10 @@ class CleanupStaleSyncAttemptsJob < ApplicationJob
 
   private
 
+  # Look up the corresponding Solid Queue job using active_job_id or structured
+  # JSON extraction. We avoid LIKE pattern matching against the serialized
+  # arguments column because that format is an internal ActiveJob implementation
+  # detail subject to change across Rails versions (see BUG-013).
   def find_failed_job(attempt)
     return unless defined?(SolidQueue::Job)
 
@@ -44,7 +48,13 @@ class CleanupStaleSyncAttemptsJob < ApplicationJob
       active_job_id: attempt.id.to_s,
     ) || SolidQueue::Job.where(
       class_name: "SyncCalendarJob",
-    ).where("arguments LIKE ?", "%attempt_id: #{attempt.id}%").first
+    ).where(
+      "json_extract(arguments, '$.arguments[0].attempt_id') = ? OR " \
+      "json_extract(arguments, '$.arguments[1].attempt_id') = ? OR " \
+      "json_extract(arguments, '$.arguments[1]._aj_ruby2_keywords[0]') = 'attempt_id' AND " \
+      "json_extract(arguments, '$.arguments[1].attempt_id') = ?",
+      attempt.id, attempt.id, attempt.id,
+    ).first
   end
 
   def extract_failure_reason(job)

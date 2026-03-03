@@ -220,13 +220,19 @@ class SyncAttemptTest < ActiveSupport::TestCase
   end
 
   test "stale scope returns queued attempts older than threshold" do
+    # Complete the setup attempt so we can create new active ones
+    @sync_attempt.update!(status: :success, finished_at: Time.current)
+
+    stale_source = calendar_sources(:ics_feed)
+    recent_source = calendar_sources(:auto_sync_source)
+
     stale_queued = SyncAttempt.create!(
-      calendar_source: @calendar_source,
+      calendar_source: stale_source,
       status: :queued,
       created_at: 3.hours.ago,
     )
     recent_queued = SyncAttempt.create!(
-      calendar_source: @calendar_source,
+      calendar_source: recent_source,
       status: :queued,
       created_at: 30.minutes.ago,
     )
@@ -238,14 +244,19 @@ class SyncAttemptTest < ActiveSupport::TestCase
   end
 
   test "stale scope returns running attempts older than threshold" do
+    @sync_attempt.update!(status: :success, finished_at: Time.current)
+
+    stale_source = calendar_sources(:ics_feed)
+    recent_source = calendar_sources(:auto_sync_source)
+
     stale_running = SyncAttempt.create!(
-      calendar_source: @calendar_source,
+      calendar_source: stale_source,
       status: :running,
       created_at: 3.hours.ago,
       started_at: 3.hours.ago,
     )
     recent_running = SyncAttempt.create!(
-      calendar_source: @calendar_source,
+      calendar_source: recent_source,
       status: :running,
       created_at: 30.minutes.ago,
       started_at: 30.minutes.ago,
@@ -278,6 +289,8 @@ class SyncAttemptTest < ActiveSupport::TestCase
   end
 
   test "stale scope respects custom threshold" do
+    @sync_attempt.update!(status: :success, finished_at: Time.current)
+
     attempt = SyncAttempt.create!(
       calendar_source: @calendar_source,
       status: :queued,
@@ -292,6 +305,8 @@ class SyncAttemptTest < ActiveSupport::TestCase
   end
 
   test "stale? returns true for old queued attempts" do
+    @sync_attempt.update!(status: :success, finished_at: Time.current)
+
     stale_attempt = SyncAttempt.create!(
       calendar_source: @calendar_source,
       status: :queued,
@@ -302,6 +317,8 @@ class SyncAttemptTest < ActiveSupport::TestCase
   end
 
   test "stale? returns true for old running attempts" do
+    @sync_attempt.update!(status: :success, finished_at: Time.current)
+
     stale_attempt = SyncAttempt.create!(
       calendar_source: @calendar_source,
       status: :running,
@@ -313,6 +330,8 @@ class SyncAttemptTest < ActiveSupport::TestCase
   end
 
   test "stale? returns false for recent queued attempts" do
+    @sync_attempt.update!(status: :success, finished_at: Time.current)
+
     recent_attempt = SyncAttempt.create!(
       calendar_source: @calendar_source,
       status: :queued,
@@ -334,6 +353,8 @@ class SyncAttemptTest < ActiveSupport::TestCase
   end
 
   test "stale? respects custom threshold" do
+    @sync_attempt.update!(status: :success, finished_at: Time.current)
+
     attempt = SyncAttempt.create!(
       calendar_source: @calendar_source,
       status: :queued,

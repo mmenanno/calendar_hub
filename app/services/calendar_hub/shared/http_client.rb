@@ -7,6 +7,8 @@ module CalendarHub
   module Shared
     class HttpClient
       USER_AGENT = "CalendarHub/1.0"
+      OPEN_TIMEOUT = 10  # seconds to establish connection
+      READ_TIMEOUT = 30  # seconds to receive full response
 
       attr_reader :source
 
@@ -28,6 +30,10 @@ module CalendarHub
         else
           raise CalendarHub::Ingestion::Error, "HTTP #{response.status}: #{response.reason_phrase}"
         end
+      rescue Faraday::TimeoutError => error
+        raise CalendarHub::Ingestion::Error, "HTTP request timed out: #{error.message}"
+      rescue Faraday::ConnectionFailed => error
+        raise CalendarHub::Ingestion::Error, "HTTP connection failed: #{error.message}"
       rescue Faraday::Error => error
         raise CalendarHub::Ingestion::Error, "HTTP request failed: #{error.message}"
       end
@@ -36,6 +42,8 @@ module CalendarHub
 
       def http_client
         @http_client ||= Faraday.new do |connection|
+          connection.options.open_timeout = OPEN_TIMEOUT
+          connection.options.timeout = READ_TIMEOUT
           connection.headers["User-Agent"] = USER_AGENT
           apply_authentication(connection)
           connection.response(:raise_error)

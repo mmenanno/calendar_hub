@@ -519,6 +519,43 @@ class CalendarSourceTest < ActiveSupport::TestCase
     end
   end
 
+  test "schedule_sync prevents duplicate active attempts via DB constraint" do
+    source = calendar_sources(:provider)
+
+    # First schedule_sync should succeed
+    first_attempt = source.schedule_sync(force: true)
+
+    refute_nil(first_attempt)
+    assert_equal("queued", first_attempt.status)
+
+    # Second schedule_sync should return nil due to unique index constraint
+    second_attempt = source.schedule_sync(force: true)
+
+    assert_nil(second_attempt)
+
+    # Only one active attempt should exist
+    active_count = source.sync_attempts.where(status: ["queued", "running"]).count
+
+    assert_equal(1, active_count)
+  end
+
+  test "schedule_sync marks stale attempts as failed before creating new one" do
+    source = calendar_sources(:provider)
+
+    # Create a stale attempt
+    stale = SyncAttempt.create!(
+      calendar_source: source,
+      status: :queued,
+      created_at: 3.hours.ago,
+    )
+
+    new_attempt = source.schedule_sync(force: true)
+
+    refute_nil(new_attempt)
+    assert_equal("failed", stale.reload.status)
+    assert_equal("queued", new_attempt.status)
+  end
+
   test "ingestion_adapter returns correct adapter" do
     source = calendar_sources(:provider)
 
@@ -566,6 +603,108 @@ class CalendarSourceTest < ActiveSupport::TestCase
     )
 
     assert_equal(1, source.pending_events_count)
+  end
+
+  # FEAT-006/008: Health status and sync failure tracking
+  test "record_sync_success! resets consecutive_sync_failures to zero" do
+    source = calendar_sources(:provider)
+    source.update_column(:consecutive_sync_failures, 5)
+
+    source.record_sync_success!
+
+    assert_equal(0, source.reload.consecutive_sync_failures)
+  end
+
+  test "record_sync_failure! increments consecutive_sync_failures" do
+    source = calendar_sources(:provider)
+    source.update_column(:consecutive_sync_failures, 0)
+
+    source.record_sync_failure!
+
+    assert_equal(1, source.reload.consecutive_sync_failures)
+
+    source.record_sync_failure!
+
+    assert_equal(2, source.reload.consecutive_sync_failures)
+  end
+
+  test "record_sync_failure! handles zero consecutive_sync_failures" do
+    source = calendar_sources(:provider)
+    source.update_column(:consecutive_sync_failures, 0)
+
+    source.record_sync_failure!
+
+    assert_equal(1, source.reload.consecutive_sync_failures)
+  end
+
+  test "healthy? returns true when no failures" do
+    source = calendar_sources(:provider)
+    source.update_column(:consecutive_sync_failures, 0)
+
+    assert_predicate(source, :healthy?)
+  end
+
+  test "healthy? returns true when failures is zero" do
+    source = calendar_sources(:provider)
+    source.update_column(:consecutive_sync_failures, 0)
+
+    assert_predicate(source, :healthy?)
+  end
+
+  test "healthy? returns false when failures exist" do
+    source = calendar_sources(:provider)
+    source.update_column(:consecutive_sync_failures, 3)
+
+    refute_predicate(source, :healthy?)
+  end
+
+  test "health_status returns healthy when no failures" do
+    source = calendar_sources(:provider)
+    source.update_column(:consecutive_sync_failures, 0)
+
+    assert_equal(:healthy, source.health_status)
+  end
+
+  test "health_status returns warning for 1-2 failures" do
+    source = calendar_sources(:provider)
+    source.update_column(:consecutive_sync_failures, 1)
+
+    assert_equal(:warning, source.health_status)
+
+    source.update_column(:consecutive_sync_failures, 2)
+
+    assert_equal(:warning, source.health_status)
+  end
+
+  test "health_status returns error for 3+ failures" do
+    source = calendar_sources(:provider)
+    source.update_column(:consecutive_sync_failures, 3)
+
+    assert_equal(:error, source.health_status)
+
+    source.update_column(:consecutive_sync_failures, 10)
+
+    assert_equal(:error, source.health_status)
+  end
+
+  test "health_status returns healthy for zero consecutive_sync_failures" do
+    source = calendar_sources(:provider)
+    source.update_column(:consecutive_sync_failures, 0)
+
+    assert_equal(:healthy, source.health_status)
+  end
+
+  test "failing scope returns sources with consecutive_sync_failures >= 1" do
+    source = calendar_sources(:provider)
+    healthy = calendar_sources(:ics_feed)
+
+    source.update_column(:consecutive_sync_failures, 2)
+    healthy.update_column(:consecutive_sync_failures, 0)
+
+    failing_sources = CalendarSource.failing
+
+    assert_includes(failing_sources, source)
+    refute_includes(failing_sources, healthy)
   end
 
   test "encrypt_payload and decrypt_payload work correctly" do

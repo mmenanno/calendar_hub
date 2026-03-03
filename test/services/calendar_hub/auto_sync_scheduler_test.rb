@@ -126,5 +126,71 @@ module CalendarHub
         assert_equal(2, result)
       end
     end
+
+    test "find_sources_due_for_sync uses constant number of queries regardless of source count" do
+      @source1.update!(last_synced_at: 1.hour.ago)
+      @source2.update!(last_synced_at: 1.hour.ago)
+
+      query_count = 0
+      counter = ->(_name, _start, _finish, _id, payload) {
+        query_count += 1 unless payload[:name] == "SCHEMA" || payload[:sql]&.match?(/PRAGMA/i)
+      }
+
+      scheduler = ::CalendarHub::AutoSyncScheduler.new
+      ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
+        scheduler.find_sources_due_for_sync
+      end
+
+      # Should be a fixed number of queries (1 query with subquery), not N+1
+      assert_operator(query_count, :<=, 2,
+        "Expected at most 2 queries, got #{query_count} (should use subquery, not per-source EXISTS)")
+    end
+
+    test "excludes sources with queued sync attempts via subquery" do
+      @source1.update!(last_synced_at: 1.hour.ago)
+      @source2.update!(last_synced_at: 1.hour.ago)
+      @source1.sync_attempts.create!(status: :queued)
+
+      scheduler = ::CalendarHub::AutoSyncScheduler.new
+      due_sources = scheduler.find_sources_due_for_sync
+
+      assert_equal(1, due_sources.count)
+      assert_equal(@source2, due_sources.first)
+    end
+
+    test "includes sources whose sync attempts are older than 2 hours" do
+      @source1.update!(last_synced_at: 1.hour.ago)
+      @source2.update!(last_synced_at: 1.hour.ago)
+      # Create a stale queued attempt older than 2 hours
+      @source1.sync_attempts.create!(status: :queued, created_at: 3.hours.ago)
+
+      scheduler = ::CalendarHub::AutoSyncScheduler.new
+      due_sources = scheduler.find_sources_due_for_sync
+
+      # source1 should be included because the attempt is stale (older than 2 hours)
+      assert_includes(due_sources, @source1)
+      assert_includes(due_sources, @source2)
+    end
+
+    test "schedule_syncs does not re-fetch sources already in memory" do
+      @source1.update!(last_synced_at: 1.hour.ago)
+      @source2.update!(last_synced_at: 1.hour.ago)
+
+      freeze_time do
+        frozen_now = Time.current
+        schedule = {
+          @source1.id => frozen_now,
+          @source2.id => frozen_now,
+        }
+        ::CalendarHub::DomainOptimizer.stubs(:optimize_sync_schedule).returns(schedule)
+
+        sources = [@source1, @source2]
+        # CalendarSource.find should NOT be called since sources are already in memory
+        CalendarSource.expects(:find).never
+
+        scheduler = ::CalendarHub::AutoSyncScheduler.new
+        scheduler.schedule_syncs(sources)
+      end
+    end
   end
 end

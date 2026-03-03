@@ -3,13 +3,23 @@
 class AppSetting < ApplicationRecord
   validates :default_time_zone, presence: true
   validates :default_sync_frequency_minutes, presence: true, numericality: { greater_than: 0 }
+  validates :singleton_guard, inclusion: { in: [0] }
 
   before_validation :persist_credentials
   after_commit :reset_credential_store!, on: [:create, :update]
+  after_commit :invalidate_instance_cache!, on: [:create, :update]
 
   class << self
     def instance
-      first_or_create!(default_time_zone: "UTC", default_sync_frequency_minutes: 60)
+      @instance ||= begin
+        first || create!(default_time_zone: "UTC", default_sync_frequency_minutes: 60)
+      rescue ActiveRecord::RecordNotUnique
+        first
+      end
+    end
+
+    def reset_instance!
+      @instance = nil
     end
   end
 
@@ -104,5 +114,9 @@ class AppSetting < ApplicationRecord
 
   def reset_credential_store!
     remove_instance_variable(:@credential_store) if instance_variable_defined?(:@credential_store)
+  end
+
+  def invalidate_instance_cache!
+    self.class.reset_instance!
   end
 end

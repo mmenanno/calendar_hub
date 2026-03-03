@@ -1,0 +1,51 @@
+<div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+  <h2 class="mb-4 text-lg font-semibold"><%= t("ui.events.audit_trail") %></h2>
+  <% if audits.any? %>
+    <div class="relative ml-3 border-l border-slate-700 pl-6 space-y-6">
+      <% audits.each do |audit| %>
+        <div class="relative">
+          <% dot_color = case audit.action
+             when "created" then "bg-emerald-400"
+             when "updated" then "bg-indigo-400"
+             when "deleted" then "bg-rose-400"
+             else "bg-slate-500"
+             end %>
+          <span class="absolute -left-[31px] top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-slate-900 <%= dot_color %>"></span>
+          <div class="text-sm">
+            <div class="flex items-center gap-2 mb-1">
+              <% label_color = case audit.action
+                 when "created" then "text-emerald-300"
+                 when "updated" then "text-indigo-300"
+                 when "deleted" then "text-rose-300"
+                 else "text-slate-400"
+                 end %>
+              <span class="font-medium capitalize <%= label_color %>"><%= audit.action %></span>
+              <span class="text-xs text-slate-500"><%= l audit.occurred_at, format: :long %></span>
+            </div>
+            <% if audit.updated? && audit.changes_from.present? && audit.changes_to.present? %>
+              <% changed_fields = audit_changed_fields(audit) %>
+              <% if changed_fields.any? %>
+                <div class="mt-1 space-y-1">
+                  <% changed_fields.each do |field, (old_val, new_val)| %>
+                    <div class="rounded bg-slate-800/60 px-3 py-1.5 text-xs text-slate-300">
+                      <span class="font-medium text-slate-400"><%= field.humanize %></span>
+                      <span class="text-rose-300 line-through"><%= truncate(old_val.to_s, length: 80) %></span>
+                      <span class="mx-1 text-slate-600">&rarr;</span>
+                      <span class="text-emerald-300"><%= truncate(new_val.to_s, length: 80) %></span>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            <% elsif audit.created? %>
+              <p class="text-xs text-slate-500"><%= t("ui.events.audit_event_created") %></p>
+            <% elsif audit.deleted? %>
+              <p class="text-xs text-slate-500"><%= t("ui.events.audit_event_deleted") %></p>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="text-sm text-slate-400"><%= t("ui.events.no_audit_trail") %></p>
+  <% end %>
+</div>

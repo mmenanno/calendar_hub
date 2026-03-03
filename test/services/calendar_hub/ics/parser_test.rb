@@ -484,6 +484,73 @@ class ParserTest < ActiveSupport::TestCase
     assert_equal("Line 1\nLine 2\nLine 3", result)
   end
 
+  test "decode_value unescapes uppercase \\N to newline" do
+    parser = ::CalendarHub::ICS::Parser.new("")
+
+    result = parser.send(:decode_value, "Line 1\\NLine 2")
+
+    assert_equal("Line 1\nLine 2", result)
+  end
+
+  test "decode_value unescapes \\, to comma" do
+    parser = ::CalendarHub::ICS::Parser.new("")
+
+    result = parser.send(:decode_value, 'Phase 1\\, Kickoff')
+
+    assert_equal("Phase 1, Kickoff", result)
+  end
+
+  test "decode_value unescapes \\; to semicolon" do
+    parser = ::CalendarHub::ICS::Parser.new("")
+
+    result = parser.send(:decode_value, 'Project\\; Phase 1')
+
+    assert_equal("Project; Phase 1", result)
+  end
+
+  test "decode_value unescapes \\\\ to backslash" do
+    parser = ::CalendarHub::ICS::Parser.new("")
+
+    result = parser.send(:decode_value, 'C:\\\\Users\\\\test')
+
+    assert_equal('C:\\Users\\test', result)
+  end
+
+  test "decode_value handles all RFC 5545 escape sequences together" do
+    parser = ::CalendarHub::ICS::Parser.new("")
+
+    result = parser.send(:decode_value, 'Project\\; Phase 1\\, Kickoff\\nLocation: C:\\\\Office')
+
+    assert_equal("Project; Phase 1, Kickoff\nLocation: C:\\Office", result)
+  end
+
+  test "parsing ICS with escaped semicolons and commas in summary" do
+    ics_content = <<~ICS
+      BEGIN:VCALENDAR
+      VERSION:2.0
+      PRODID:-//Test//EN
+      BEGIN:VEVENT
+      UID:escaped-special
+      SUMMARY:Project\\; Phase 1\\, Kickoff
+      DESCRIPTION:Review docs\\, prepare notes\\; bring laptop
+      LOCATION:Room 5\\, Building A
+      DTSTART:20250101T100000Z
+      DTEND:20250101T110000Z
+      END:VEVENT
+      END:VCALENDAR
+    ICS
+
+    parser = ::CalendarHub::ICS::Parser.new(ics_content)
+    events = parser.events
+
+    assert_equal(1, events.count)
+    event = events.first
+
+    assert_equal("Project; Phase 1, Kickoff", event.summary)
+    assert_equal("Review docs, prepare notes; bring laptop", event.description)
+    assert_equal("Room 5, Building A", event.location)
+  end
+
   test "all_day_event? returns true for VALUE=DATE parameter" do
     parser = ::CalendarHub::ICS::Parser.new("")
 

@@ -4,11 +4,11 @@
     <td class="px-3 py-2"><%= mapping.match_type.humanize %></td>
     <td class="px-3 py-2 font-mono"><%= mapping.pattern %></td>
     <td class="px-3 py-2 font-mono"><%= mapping.replacement %></td>
-    <td class="px-3 py-2"><%= mapping.case_sensitive ? "Aa" : "aa" %></td>
+    <td class="px-3 py-2" title="<%= mapping.case_sensitive ? t("ui.mappings.case_sensitive_tooltip") : t("ui.mappings.case_insensitive_tooltip") %>"><%= mapping.case_sensitive ? t("ui.mappings.case_sensitive_label") : t("ui.mappings.case_insensitive_label") %></td>
     <td class="px-3 py-2">
       <%= form_with url: toggle_event_mapping_path(mapping), method: :patch, data: { turbo_stream: true }, class: "inline-flex" do %>
         <% on = mapping.active? %>
-        <button type="submit" class="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300 transition hover:border-slate-500">
+        <button type="submit" class="cursor-pointer inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300 transition hover:border-slate-500">
           <span class="relative inline-flex h-4 w-8 items-center rounded-full transition <%= on ? "bg-emerald-600/70" : "bg-slate-700" %>">
             <span class="inline-block h-3 w-3 transform rounded-full bg-white transition <%= on ? "translate-x-4" : "translate-x-1" %>"></span>
           </span>
@@ -20,8 +20,9 @@
       <div class="inline-flex items-center gap-2">
         <%= link_to t("common.actions.edit"), edit_event_mapping_path(mapping), data: { turbo_frame: "modal" }, class: "cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:border-slate-500" %>
         <%= button_to t("common.actions.duplicate"), duplicate_event_mapping_path(mapping), method: :post, form: { data: { turbo_stream: true } }, class: "cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:border-slate-500" %>
+        <span class="mx-1 h-4 border-l border-slate-700"></span>
         <%= form_with url: event_mapping_path(mapping), method: :delete, data: { turbo_stream: true, controller: "confirm", confirm_message_value: t("ui.mappings.confirm_delete", name: mapping.pattern) }, class: "inline" do %>
-          <button type="submit" class="cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:border-slate-500"><%= t("common.actions.remove") %></button>
+          <button type="submit" class="cursor-pointer rounded-lg border border-rose-800 px-2 py-1 text-xs text-rose-300 hover:border-rose-600"><%= t("common.actions.remove") %></button>
         <% end %>
       </div>
     </td>

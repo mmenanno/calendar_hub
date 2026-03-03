@@ -32,12 +32,12 @@ module CalendarHub
         assert_raises(Ingestion::Error) { adapter.fetch_events }
       end
 
-      test "returns empty when server responds 304 Not Modified" do
+      test "returns nil when server responds 304 Not Modified" do
         stub_ics_304_not_modified(@source)
         adapter = GenericICSAdapter.new(@source)
-        events = adapter.fetch_events
+        result = adapter.fetch_events
 
-        assert_equal 0, events.size
+        assert_nil result
       end
 
       test "stores etag and last-modified headers" do

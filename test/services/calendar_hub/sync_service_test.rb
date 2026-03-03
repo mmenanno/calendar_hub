@@ -63,6 +63,33 @@ module CalendarHub
       assert_predicate existing.reload, :cancelled?
     end
 
+    test "short-circuits on nil fetch_events (304 Not Modified) without cancelling events" do
+      # Create an existing event that should NOT be cancelled
+      existing = @source.calendar_events.create!(
+        external_id: "existing-event",
+        title: "Existing Event",
+        description: "",
+        location: "",
+        starts_at: Time.zone.parse("2025-09-25 09:00"),
+        ends_at: Time.zone.parse("2025-09-25 10:00"),
+        status: :confirmed,
+        data: {},
+      )
+
+      # Adapter returns nil to signal "no change" (HTTP 304)
+      ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns(nil)
+      apple_client = mock("apple_client")
+      apple_client.expects(:upsert_event).never
+      apple_client.expects(:delete_event).never
+
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client)
+      result = service.call
+
+      assert_equal([], result)
+      # The existing event should still be confirmed (not cancelled)
+      assert_predicate(existing.reload, :confirmed?)
+    end
+
     test "raises error when no ingestion adapter" do
       service = ::CalendarHub::Sync::SyncService.new(source: @source, adapter: nil)
       # Force the adapter to be nil after initialization
@@ -73,6 +100,71 @@ module CalendarHub
       end
 
       assert_match(/No ingestion adapter configured/, error.message)
+    end
+
+    test "upsert_events rolls back all events when one save fails" do
+      good_event = build_ics_event(
+        uid: "good-event",
+        summary: "Good Event",
+        starts_at: Time.zone.parse("2025-09-24 10:00"),
+        ends_at: Time.zone.parse("2025-09-24 11:00"),
+        time_zone: @source.time_zone,
+      )
+      bad_event = build_ics_event(
+        uid: "bad-event",
+        summary: "Bad Event",
+        starts_at: Time.zone.parse("2025-09-24 12:00"),
+        ends_at: Time.zone.parse("2025-09-24 13:00"),
+        time_zone: @source.time_zone,
+      )
+
+      # Make save! fail for the second event
+      call_count = 0
+      CalendarEvent.any_instance.stubs(:save!).with do
+        call_count += 1
+        if call_count >= 2
+          raise ActiveRecord::RecordInvalid.new(CalendarEvent.new)
+        end
+        true
+      end
+
+      service = ::CalendarHub::Sync::SyncService.new(source: @source)
+
+      assert_raises(ActiveRecord::RecordInvalid) do
+        service.send(:upsert_events, [good_event, bad_event])
+      end
+
+      # Neither event should have been persisted due to transaction rollback
+      assert_nil @source.calendar_events.find_by(external_id: "good-event")
+      assert_nil @source.calendar_events.find_by(external_id: "bad-event")
+    ensure
+      CalendarEvent.any_instance.unstub(:save!)
+    end
+
+    test "upsert_events persists all events when all saves succeed" do
+      events = [
+        build_ics_event(
+          uid: "event-1",
+          summary: "Event 1",
+          starts_at: Time.zone.parse("2025-09-24 10:00"),
+          ends_at: Time.zone.parse("2025-09-24 11:00"),
+          time_zone: @source.time_zone,
+        ),
+        build_ics_event(
+          uid: "event-2",
+          summary: "Event 2",
+          starts_at: Time.zone.parse("2025-09-24 12:00"),
+          ends_at: Time.zone.parse("2025-09-24 13:00"),
+          time_zone: @source.time_zone,
+        ),
+      ]
+
+      service = ::CalendarHub::Sync::SyncService.new(source: @source)
+      result = service.send(:upsert_events, events)
+
+      assert_equal 2, result.size
+      assert @source.calendar_events.find_by(external_id: "event-1").present?
+      assert @source.calendar_events.find_by(external_id: "event-2").present?
     end
 
     test "raises error when calendar identifier is blank" do
@@ -388,6 +480,43 @@ module CalendarHub
       result = service.send(:composite_uid_for, event)
 
       assert_equal("ch-#{@source.id}-test-uid", result)
+    end
+
+    test "upsert_events resolves source time_zone once for the batch" do
+      fetched_events = [
+        build_ics_event(
+          uid: "tz-event-1",
+          summary: "TZ Event 1",
+          starts_at: Time.zone.parse("2025-09-24 10:00"),
+          ends_at: Time.zone.parse("2025-09-24 11:00"),
+          time_zone: @source.time_zone,
+        ),
+        build_ics_event(
+          uid: "tz-event-2",
+          summary: "TZ Event 2",
+          starts_at: Time.zone.parse("2025-09-24 12:00"),
+          ends_at: Time.zone.parse("2025-09-24 13:00"),
+          time_zone: @source.time_zone,
+        ),
+      ]
+
+      mock_ingestion_adapter(@source, events: fetched_events)
+      apple_client = mock_apple_client
+      apple_client.expects(:upsert_event).twice
+
+      # source.time_zone should be called at most twice (once cached in local
+      # var during upsert, and once during generate_change_hash in mark_synced!),
+      # NOT once per event.
+      @source.expects(:time_zone).returns("America/Toronto").at_most(2)
+
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client)
+      service.call
+
+      event1 = @source.calendar_events.find_by(external_id: "tz-event-1")
+      event2 = @source.calendar_events.find_by(external_id: "tz-event-2")
+
+      assert_equal("America/Toronto", event1.time_zone)
+      assert_equal("America/Toronto", event2.time_zone)
     end
 
     private

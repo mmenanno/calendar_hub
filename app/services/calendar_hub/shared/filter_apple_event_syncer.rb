@@ -3,20 +3,22 @@
 module CalendarHub
   module Shared
     class FilterAppleEventSyncer < AppleEventSyncer
-      def delete_event(event)
+      def delete_event(event, calendar_identifier: nil)
         apple_client.delete_event(
-          calendar_identifier: source.calendar_identifier,
+          calendar_identifier: calendar_identifier || source.calendar_identifier,
           uid: filter_uid_for(event),
         )
       end
 
       def sync_event(event, observer: nil)
+        destination = resolve_destination(event)
+
         if event.sync_exempt? || event.cancelled?
-          delete_event(event)
+          delete_event(event, calendar_identifier: destination)
           observer&.delete_success(event)
           :deleted
         else
-          upsert_event(event)
+          upsert_event(event, calendar_identifier: destination)
           observer&.upsert_success(event)
           :upserted
         end

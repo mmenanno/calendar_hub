@@ -41,6 +41,13 @@ class SyncCalendarJob < ApplicationJob
       attempt = find_or_create_sync_attempt(source, sync_options[:attempt_id])
       execute_sync(source, attempt, sync_options)
       attempt.finish(status: :success)
+
+      # Track consecutive failure count for health indicators
+      if attempt.errors_count.to_i > 0
+        source.record_sync_failure!
+      else
+        source.record_sync_success!
+      end
     end
   rescue ActiveRecord::StatementTimeout, ActiveRecord::Deadlocked, ActiveRecord::StatementInvalid => e
     # These will be retried automatically, but update attempt if we have one
@@ -56,6 +63,7 @@ class SyncCalendarJob < ApplicationJob
     raise
   rescue => e
     attempt&.finish(status: :failed, message: e.message) unless attempt&.finished_at
+    source&.record_sync_failure!
     raise
   end
 

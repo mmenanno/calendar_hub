@@ -1,4 +1,4 @@
-<%= form_with model: calendar_source, class: "space-y-5", html: { autocomplete: "off", "data-1p-ignore": true, "data-lpignore": true } do |form| %>
+<%= form_with model: calendar_source, class: "space-y-5", html: { autocomplete: "off", "data-1p-ignore": true, "data-lpignore": true, "data-controller": "ics-test" } do |form| %>
   <% if calendar_source.errors.any? %>
     <div class="rounded-lg border border-rose-700/40 bg-rose-950/40 p-4 text-sm text-rose-200">
       <p class="font-semibold"><%= t("ui.sources.issues_with_submission") %></p>
@@ -28,11 +28,15 @@
     </div>
     <div>
       <%= form.label(:ingestion_url, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
-      <%= form.url_field(:ingestion_url, placeholder: "https://example.com/calendar.ics", class: input_class, data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply" }, autocomplete: "off", autocapitalize: "none", spellcheck: "false", "data-1p-ignore": true, "data-lpignore": true) %>
+      <div class="flex items-center gap-2">
+        <%= form.url_field(:ingestion_url, placeholder: "https://example.com/calendar.ics", class: "#{input_class} flex-1", data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply", ics_test_target: "urlField" }, autocomplete: "off", autocapitalize: "none", spellcheck: "false", "data-1p-ignore": true, "data-lpignore": true) %>
+        <button type="button" class="<%= secondary_button_class %> whitespace-nowrap" data-action="click->ics-test#test"><%= t("ui.sources.test_feed") %></button>
+      </div>
       <% if calendar_source.errors[:ingestion_url].any? %>
         <p class="mt-1 text-xs text-rose-300"><%= calendar_source.errors[:ingestion_url].to_sentence %></p>
       <% end %>
       <p class="mt-1 text-xs text-slate-400"><%= t("ui.sources.required_ics_url") %></p>
+      <div data-ics-test-target="result" class="mt-2"></div>
     </div>
     <div>
       <%= form.label(:import_start_date, "Import Events From", class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
@@ -47,13 +51,19 @@
   <fieldset class="space-y-4 rounded-lg border border-slate-800 bg-slate-950/40 p-4">
     <legend class="px-2 text-xs font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.sources.destination_schedule") %></legend>
     <div class="grid gap-3 md:grid-cols-2">
-      <div>
+      <div data-controller="browse-calendars" data-browse-calendars-url-value="<%= discover_apple_calendars_path %>">
         <%= form.label(:calendar_identifier, t("ui.sources.apple_identifier"), class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
-        <%= form.text_field(:calendar_identifier, required: true, value: calendar_source.calendar_identifier.presence || AppSetting.instance.default_calendar_identifier, class: input_class, data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply" }, autocomplete: "off", autocapitalize: "none", spellcheck: "false", "data-1p-ignore": true, "data-lpignore": true) %>
+        <div class="flex items-center gap-2">
+          <%= form.text_field(:calendar_identifier, required: true, value: calendar_source.calendar_identifier.presence || AppSetting.instance.default_calendar_identifier, class: "#{input_class} flex-1", data: { controller: "trim", trim_target: "field", action: "blur->trim#apply", browse_calendars_target: "calendarField" }, autocomplete: "off", autocapitalize: "none", spellcheck: "false", "data-1p-ignore": true, "data-lpignore": true) %>
+          <button type="button" class="<%= secondary_button_class %> whitespace-nowrap" data-action="click->browse-calendars#browse"><%= t("ui.sources.browse_calendars") %></button>
+        </div>
         <% if calendar_source.errors[:calendar_identifier].any? %>
           <p class="mt-1 text-xs text-rose-300"><%= calendar_source.errors[:calendar_identifier].to_sentence %></p>
         <% end %>
         <p class="mt-1 text-xs text-slate-400"><%= t("ui.sources.defaults_to_settings") %></p>
+        <p data-browse-calendars-target="loading" class="mt-1 text-xs text-indigo-300 hidden"><%= t("ui.sources.browse_loading") %></p>
+        <p data-browse-calendars-target="error" class="mt-1 text-xs text-rose-300 hidden"></p>
+        <div data-browse-calendars-target="results" class="mt-2 hidden"></div>
       </div>
       <div>
         <%= form.label(:time_zone, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>

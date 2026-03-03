@@ -14,7 +14,7 @@ module CalendarHub
         raise Error, "ingestion URL is missing" if source.ingestion_url.blank?
 
         result = http_client.get_with_caching(source.ingestion_url)
-        return [] unless result[:changed] # Not modified
+        return nil unless result[:changed] # 304 Not Modified — nil signals "no change" to callers
 
         parser = ::CalendarHub::ICS::Parser.new(result[:body], default_time_zone: source.time_zone)
         events = parser.events.map { |event| to_fetched_event(event) }

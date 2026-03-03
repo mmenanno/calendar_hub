@@ -150,6 +150,27 @@ module CalendarHub
         @service.sync_event_filter_status(nil)
       end
 
+      test "sync_filter_rules does not sleep on SQLite3::BusyException and lets it propagate" do
+        ::CalendarHub::EventFilter.expects(:apply_backwards_filtering).with(@source).raises(SQLite3::BusyException.new("database is locked"))
+
+        # Ensure sleep is never called on the service
+        @service.expects(:sleep).never
+
+        assert_raises(SQLite3::BusyException) do
+          @service.sync_filter_rules
+        end
+      end
+
+      test "sync_filter_rules does not sleep on ActiveRecord::StatementTimeout and lets it propagate" do
+        ::CalendarHub::EventFilter.expects(:apply_backwards_filtering).with(@source).raises(ActiveRecord::StatementTimeout.new("database is locked"))
+
+        @service.expects(:sleep).never
+
+        assert_raises(ActiveRecord::StatementTimeout) do
+          @service.sync_filter_rules
+        end
+      end
+
       test "trigger_apple_sync calls schedule_sync with force: true" do
         @source.expects(:schedule_sync).with(force: true)
         @service.send(:trigger_apple_sync)

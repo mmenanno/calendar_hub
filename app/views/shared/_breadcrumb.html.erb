@@ -1,0 +1,18 @@
+<%# Breadcrumb navigation partial
+    Usage: render "shared/breadcrumb", breadcrumbs: [["Sources", sources_path], ["Edit"]]
+    The last item is rendered as plain text (current page). All preceding items are links. %>
+<nav aria-label="Breadcrumb" class="mb-4">
+  <ol class="flex items-center gap-1.5 text-sm text-slate-400">
+    <% breadcrumbs = local_assigns[:breadcrumbs] || [] %>
+    <% breadcrumbs.each_with_index do |(label, path), index| %>
+      <% if index > 0 %>
+        <li aria-hidden="true" class="text-slate-600">/</li>
+      <% end %>
+      <% if path.present? && index < breadcrumbs.size - 1 %>
+        <li><%= link_to label, path, class: "text-slate-400 hover:text-slate-200 transition" %></li>
+      <% else %>
+        <li class="text-slate-300" aria-current="page"><%= label %></li>
+      <% end %>
+    <% end %>
+  </ol>
+</nav>

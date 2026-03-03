@@ -5,6 +5,7 @@ require "test_helper"
 class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
   include ActiveJob::TestHelper
   include TurboStreamHelpers
+  include ICSTestHelpers
 
   # INDEX ACTION TESTS
   test "index displays active and archived sources" do
@@ -711,6 +712,39 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to calendar_events_path
   end
 
+  # SYNC HISTORY ON SHOW PAGE TESTS
+  test "show displays sync history table for source with attempts" do
+    source = calendar_sources(:ics_feed)
+    # ics_feed has the failed_sync fixture
+    get calendar_source_path(source)
+
+    assert_response :success
+    assert_match "Sync History", response.body
+    assert_match "failed_sync".present? ? "Failed" : "", response.body
+  end
+
+  test "show displays empty state when source has no sync attempts" do
+    source = calendar_sources(:provider)
+    # Clear any sync attempts for this source
+    source.sync_attempts.destroy_all
+
+    get calendar_source_path(source)
+
+    assert_response :success
+    assert_match "Sync History", response.body
+    assert_match I18n.t("ui.sources.no_sync_history"), response.body
+  end
+
+  test "show displays sync attempt details in history table" do
+    source = calendar_sources(:test_source)
+    get calendar_source_path(source)
+
+    assert_response :success
+    # The test_source has successful_sync and queued_sync fixtures
+    assert_match "Success", response.body
+    assert_match "Queued", response.body
+  end
+
   # PRIVATE METHOD TESTS (via integration)
   test "set_calendar_source uses unscoped for purge and unarchive actions" do
     archived_source = calendar_sources(:archived_source)
@@ -813,5 +847,123 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "existing_value", credentials["existing_key"]  # Preserved
     assert_equal "newuser", credentials["http_basic_username"]  # Updated
     assert_equal "newpass", credentials["http_basic_password"]  # Added
+  end
+
+  # TEST ICS FEED ACTION TESTS
+  test "test_ics_feed returns event count and sample titles on success" do
+    ics_body = file_fixture("provider.ics").read
+    stub_request(:get, "https://example.com/test.ics")
+      .to_return(status: 200, body: ics_body, headers: { "Content-Type" => "text/calendar" })
+
+    post test_ics_feed_path, params: { url: "https://example.com/test.ics" }, as: :json
+
+    assert_response :success
+    json = JSON.parse(response.body)
+
+    assert json["success"]
+    assert_equal 2, json["event_count"]
+    assert_includes json["sample_titles"], "Initial Consultation"
+    assert_includes json["sample_titles"], "Follow Up"
+  end
+
+  test "test_ics_feed returns error on HTTP failure" do
+    stub_request(:get, "https://example.com/bad.ics")
+      .to_return(status: 404, body: "Not Found")
+
+    post test_ics_feed_path, params: { url: "https://example.com/bad.ics" }, as: :json
+
+    assert_response :success
+    json = JSON.parse(response.body)
+
+    refute json["success"]
+    assert_match(/HTTP 404/, json["error"])
+  end
+
+  test "test_ics_feed returns error on network failure" do
+    stub_request(:get, "https://example.com/timeout.ics")
+      .to_timeout
+
+    post test_ics_feed_path, params: { url: "https://example.com/timeout.ics" }, as: :json
+
+    assert_response :success
+    json = JSON.parse(response.body)
+
+    refute json["success"]
+    assert_match(/Could not fetch URL/, json["error"])
+  end
+
+  test "test_ics_feed returns error when URL is blank" do
+    post test_ics_feed_path, params: { url: "" }, as: :json
+
+    assert_response :unprocessable_entity
+    json = JSON.parse(response.body)
+
+    refute json["success"]
+    assert_equal "URL is required", json["error"]
+  end
+
+  test "test_ics_feed limits sample titles to 5" do
+    events = (1..8).map do |i|
+      { uid: "event-#{i}", summary: "Event #{i}", starts_at: Time.zone.parse("2025-01-01 #{i}:00"), ends_at: Time.zone.parse("2025-01-01 #{i + 1}:00") }
+    end
+    ics_body = build_ics_content(events)
+
+    stub_request(:get, "https://example.com/many.ics")
+      .to_return(status: 200, body: ics_body, headers: { "Content-Type" => "text/calendar" })
+
+    post test_ics_feed_path, params: { url: "https://example.com/many.ics" }, as: :json
+
+    assert_response :success
+    json = JSON.parse(response.body)
+
+    assert json["success"]
+    assert_equal 8, json["event_count"]
+    assert_equal 5, json["sample_titles"].length
+  end
+
+  test "test_ics_feed does not create or modify any records" do
+    ics_body = file_fixture("provider.ics").read
+    stub_request(:get, "https://example.com/readonly.ics")
+      .to_return(status: 200, body: ics_body, headers: { "Content-Type" => "text/calendar" })
+
+    assert_no_difference(["CalendarSource.count", "CalendarEvent.count", "SyncAttempt.count"]) do
+      post test_ics_feed_path, params: { url: "https://example.com/readonly.ics" }, as: :json
+    end
+
+    assert_response :success
+  end
+
+  # DISCOVER_APPLE_CALENDARS ACTION TESTS (FEAT-007)
+  test "discover_apple_calendars returns calendar list on success" do
+    mock_client = mock("client")
+    mock_client.expects(:discover_calendars).returns([
+      { displayname: "Work", identifier: "Work" },
+      { displayname: "Personal", identifier: "Personal" },
+    ])
+    AppleCalendar::Client.expects(:new).returns(mock_client)
+
+    post discover_apple_calendars_path, as: :json
+
+    assert_response :success
+    json = JSON.parse(response.body)
+
+    assert(json["success"])
+    assert_equal(2, json["calendars"].length)
+    assert_equal("Work", json["calendars"][0]["displayname"])
+    assert_equal("Personal", json["calendars"][1]["displayname"])
+  end
+
+  test "discover_apple_calendars returns error on failure" do
+    mock_client = mock("client")
+    mock_client.expects(:discover_calendars).raises(StandardError.new("Connection failed"))
+    AppleCalendar::Client.expects(:new).returns(mock_client)
+
+    post discover_apple_calendars_path, as: :json
+
+    assert_response :success
+    json = JSON.parse(response.body)
+
+    refute(json["success"])
+    assert_equal("Connection failed", json["error"])
   end
 end

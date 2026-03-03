@@ -94,4 +94,55 @@ module ApplicationHelper
   def small_danger_button_class
     "cursor-pointer rounded-lg bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-500"
   end
+
+  # Extract meaningful field changes from an audit record, filtering out
+  # internal fields like updated_at, fingerprint, etc.
+  AUDIT_SKIP_FIELDS = %w[id created_at updated_at fingerprint synced_at source_updated_at calendar_source_id external_id].freeze
+
+  def audit_changed_fields(audit)
+    from = audit.changes_from || {}
+    to = audit.changes_to || {}
+    all_keys = (from.keys + to.keys).uniq - AUDIT_SKIP_FIELDS
+    all_keys.each_with_object({}) do |key, result|
+      old_val = from[key]
+      new_val = to[key]
+      result[key] = [old_val, new_val] if old_val != new_val
+    end
+  end
+
+  # Format sync attempt duration in a human-readable way
+  def sync_attempt_duration(attempt)
+    return "\u2014" unless attempt.started_at && attempt.finished_at
+
+    seconds = (attempt.finished_at - attempt.started_at).to_f
+    if seconds < 1
+      "#{(seconds * 1000).round}ms"
+    elsif seconds < 60
+      "#{seconds.round(1)}s"
+    else
+      minutes = (seconds / 60).floor
+      remaining = (seconds % 60).round
+      "#{minutes}m #{remaining}s"
+    end
+  end
+
+  # Format a duration given in milliseconds into a human-readable string.
+  # < 1000 ms  -> "847 ms"
+  # 1000..59999 -> "74.1 s"
+  # >= 60000   -> "1m 14s"
+  def format_duration_ms(ms)
+    return "\u2014" if ms.nil?
+
+    ms = ms.to_f
+    if ms < 1000
+      "#{ms.round} ms"
+    elsif ms < 60_000
+      "#{(ms / 1000.0).round(1)} s"
+    else
+      total_seconds = (ms / 1000.0).round
+      minutes = total_seconds / 60
+      seconds = total_seconds % 60
+      "#{minutes}m #{seconds}s"
+    end
+  end
 end

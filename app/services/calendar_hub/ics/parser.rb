@@ -181,7 +181,12 @@ module CalendarHub
       end
 
       def decode_value(value)
-        value.gsub("\\n", "\n")
+        value
+          .gsub("\\n", "\n")
+          .gsub("\\N", "\n")
+          .gsub("\\,", ",")
+          .gsub("\\;", ";")
+          .gsub("\\\\", "\\")
       end
 
       def all_day_event?(attributes)

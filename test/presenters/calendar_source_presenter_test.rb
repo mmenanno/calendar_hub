@@ -205,11 +205,91 @@ class CalendarSourcePresenterTest < ActiveSupport::TestCase
     assert_equal(I18n.t("ui.sources.every_n_hours", count: 3), presenter.sync_frequency_text)
   end
 
-  test "pending_count delegates to source" do
+  test "pending_count delegates to source when not preloaded" do
     source = build_source
     source.stubs(:pending_events_count).returns(7)
     presenter = presenter_for(source)
 
     assert_equal(7, presenter.pending_count)
+  end
+
+  test "pending_count uses preloaded value when provided" do
+    source = build_source
+    source.expects(:pending_events_count).never
+    presenter = CalendarSourcePresenter.new(source, FakeView.new, pending_count: 42)
+
+    assert_equal(42, presenter.pending_count)
+  end
+
+  # FEAT-008: Health badge presenter tests
+
+  test "health_badge_visible? returns false when no failures" do
+    source = build_source
+    source.update_column(:consecutive_sync_failures, 0)
+    presenter = presenter_for(source)
+
+    refute_predicate(presenter, :health_badge_visible?)
+  end
+
+  test "health_badge_visible? returns false when failures is zero" do
+    source = build_source
+    source.update_column(:consecutive_sync_failures, 0)
+    presenter = presenter_for(source)
+
+    refute_predicate(presenter, :health_badge_visible?)
+  end
+
+  test "health_badge_visible? returns true when failures exist" do
+    source = build_source
+    source.update_column(:consecutive_sync_failures, 2)
+    presenter = presenter_for(source)
+
+    assert_predicate(presenter, :health_badge_visible?)
+  end
+
+  test "health_badge_class returns warning class for 1-2 failures" do
+    source = build_source
+    source.update_column(:consecutive_sync_failures, 1)
+    presenter = presenter_for(source)
+
+    assert_equal("bg-yellow-500/10 text-yellow-300", presenter.health_badge_class)
+  end
+
+  test "health_badge_class returns danger class for 3+ failures" do
+    source = build_source
+    source.update_column(:consecutive_sync_failures, 3)
+    presenter = presenter_for(source)
+
+    assert_equal("bg-rose-500/10 text-rose-300", presenter.health_badge_class)
+  end
+
+  test "health_dot_class returns correct dot colors" do
+    source = build_source
+    source.update_column(:consecutive_sync_failures, 1)
+    presenter = presenter_for(source)
+
+    assert_equal("bg-yellow-400", presenter.health_dot_class)
+
+    source.update_column(:consecutive_sync_failures, 3)
+    source.reload
+    presenter = presenter_for(source)
+
+    assert_equal("bg-rose-400", presenter.health_dot_class)
+  end
+
+  test "health_badge_label returns healthy when no failures" do
+    source = build_source
+    source.update_column(:consecutive_sync_failures, 0)
+    presenter = presenter_for(source)
+
+    assert_equal(I18n.t("ui.sources.health.healthy"), presenter.health_badge_label)
+  end
+
+  test "health_badge_label returns failure count text" do
+    source = build_source
+    source.update_column(:consecutive_sync_failures, 3)
+    presenter = presenter_for(source)
+
+    assert_equal(I18n.t("ui.sources.health.failures", count: 3), presenter.health_badge_label)
   end
 end

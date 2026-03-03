@@ -1,3 +1,4 @@
+<% content_for :title, t("navigation.settings") %>
 <%= render "shared/page_header",
       nav_active: :settings,
       max_width: "max-w-4xl",
@@ -77,15 +78,22 @@
           </div>
         </div>
 
+        <noscript>
+          <button type="submit" class="<%= primary_button_class %> mt-4">
+            <%= t("ui.settings.save_changes") %>
+          </button>
+        </noscript>
         <button type="submit" data-dirty-form-target="save" class="hidden fixed bottom-4 right-4 z-20 rounded-full <%= primary_button_class.gsub("rounded-lg", "rounded-full") %> px-5 py-3 shadow-lg shadow-indigo-500/20">
           <%= t("ui.settings.save_changes") %>
         </button>
       <% end %>
 
       <div class="space-y-4">
-        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5" data-controller="collapsible" data-collapsible-key-value="settings-advanced" data-collapsible-show-label-value="<%= t("ui.settings.show") %>" data-collapsible-hide-label-value="<%= t("ui.settings.hide") %>">
+        <hr class="border-slate-800">
+        <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Advanced</p>
+        <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-5" data-controller="collapsible" data-collapsible-key-value="settings-advanced" data-collapsible-show-label-value="<%= t("ui.settings.show") %>" data-collapsible-hide-label-value="<%= t("ui.settings.hide") %>">
           <div class="mb-2 flex items-center justify-between">
-            <h3 class="text-base font-semibold"><%= t("ui.settings.advanced") %></h3>
+            <h3 class="text-base font-semibold text-slate-300"><%= t("ui.settings.advanced") %></h3>
             <button type="button" class="cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:border-slate-500" data-action="collapsible#toggle">
               <span data-collapsible-target="label"><%= t("common.actions.show") %></span>
               <span data-collapsible-target="icon" class="ml-1 inline-block transition-transform">▾</span>
@@ -105,7 +113,7 @@
                   <p><span class="text-slate-400"><%= t("ui.settings.credential_key_created_at") %></span> <%= l(key_status[:created_at], format: :long) %></p>
                 <% end %>
                 <p><span class="text-slate-400"><%= t("ui.settings.credential_key_location") %></span> <code><%= key_status[:path] %></code></p>
-                <%= button_to t("ui.settings.rotate_credential_key"), rotate_credential_key_settings_path, method: :post, data: { turbo_stream: true, confirm: t("ui.settings.rotate_credential_key_confirm") }, class: "cursor-pointer inline-flex items-center rounded-lg border border-indigo-700 px-3 py-2 text-sm text-indigo-200 hover:border-indigo-500", form: { data: { controller: "dirty-form", dirty_form_target: "form" } } %>
+                <%= button_to t("ui.settings.rotate_credential_key"), rotate_credential_key_settings_path, method: :post, data: { turbo_stream: true, confirm: t("ui.settings.rotate_credential_key_confirm") }, class: "cursor-pointer inline-flex items-center rounded-lg border border-indigo-700 px-3 py-2 text-sm text-indigo-200 hover:border-indigo-500" %>
                 <p class="text-slate-500"><%= t("ui.settings.credential_key_hint") %></p>
               </div>
               <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-xs text-slate-300">

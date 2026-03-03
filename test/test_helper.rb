@@ -22,5 +22,9 @@ module ActiveSupport
     end
 
     fixtures :all
+
+    setup do
+      AppSetting.reset_instance!
+    end
   end
 end

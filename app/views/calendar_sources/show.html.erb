@@ -1,8 +1,17 @@
+<% content_for :title, @calendar_source.name %>
 <div class="min-h-screen bg-slate-950 text-slate-100">
   <div class="mx-auto w-full max-w-3xl px-6 py-10 space-y-6">
+    <%= render "shared/breadcrumb", breadcrumbs: [[t("navigation.sources"), calendar_sources_path], [@calendar_source.name]] %>
     <div class="flex items-center justify-between">
-      <div>
+      <div class="flex items-center gap-3">
         <h1 class="text-2xl font-semibold"><%= @calendar_source.name %></h1>
+        <% sp = CalendarSourcePresenter.new(@calendar_source, self) %>
+        <% if sp.health_badge_visible? %>
+          <span class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs <%= sp.health_badge_class %>" aria-label="<%= sp.health_badge_label %>">
+            <span class="h-1.5 w-1.5 rounded-full <%= sp.health_dot_class %>"></span>
+            <%= sp.health_badge_label %>
+          </span>
+        <% end %>
       </div>
       <%= link_to t("common.actions.edit"), edit_calendar_source_path(@calendar_source), class: "rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:border-slate-500" %>
     </div>
@@ -44,5 +53,83 @@
     </div>
 
     <%= button_to t("common.actions.sync"), sync_calendar_source_path(@calendar_source), method: :post, class: "rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400", form: { data: { controller: "confirm", confirm_message_value: t("ui.sources.confirm.sync_now") } } %>
+
+    <%# 7-Day Sync Trend (FEAT-005) %>
+    <div class="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+      <h2 class="text-lg font-semibold"><%= t("ui.sources.sync_trend.header") %></h2>
+      <% trend_data = SyncMetric.daily_trend(@calendar_source.id) %>
+      <% if trend_data.any? { |d| d[:syncs] > 0 } %>
+        <div class="overflow-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-900/60 text-slate-400">
+              <tr>
+                <th class="px-3 py-2"><%= t("ui.sources.sync_trend.date") %></th>
+                <th class="px-3 py-2"><%= t("ui.sources.sync_trend.syncs") %></th>
+                <th class="px-3 py-2"><%= t("ui.sources.sync_trend.upserts") %></th>
+                <th class="px-3 py-2"><%= t("ui.sources.sync_trend.deletes") %></th>
+                <th class="px-3 py-2"><%= t("ui.sources.sync_trend.errors") %></th>
+                <th class="px-3 py-2"><%= t("ui.sources.sync_trend.avg_duration") %></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800">
+              <% trend_data.each do |day| %>
+                <tr>
+                  <td class="px-3 py-2 text-slate-300"><%= day[:date] %></td>
+                  <td class="px-3 py-2 text-slate-300"><%= day[:syncs] %></td>
+                  <td class="px-3 py-2 text-slate-300"><%= day[:upserts] %></td>
+                  <td class="px-3 py-2 text-slate-300"><%= day[:deletes] %></td>
+                  <td class="px-3 py-2 <%= day[:errors].positive? ? "text-rose-300" : "text-slate-300" %>"><%= day[:errors] %></td>
+                  <td class="px-3 py-2 text-slate-300"><%= day[:avg_duration_ms] %>ms</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <p class="text-sm text-slate-400"><%= t("ui.sources.sync_trend.no_data") %></p>
+      <% end %>
+    </div>
+
+    <div class="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+      <h2 class="text-lg font-semibold"><%= t("ui.sources.sync_history") %></h2>
+      <% if @sync_attempts.any? %>
+        <div class="overflow-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-900/60 text-slate-400">
+              <tr>
+                <th class="px-3 py-2"><%= t("ui.sources.sync_history_cols.timestamp") %></th>
+                <th class="px-3 py-2"><%= t("ui.sources.sync_history_cols.duration") %></th>
+                <th class="px-3 py-2"><%= t("ui.sources.sync_history_cols.status") %></th>
+                <th class="px-3 py-2"><%= t("ui.sources.sync_history_cols.upserts") %></th>
+                <th class="px-3 py-2"><%= t("ui.sources.sync_history_cols.deletes") %></th>
+                <th class="px-3 py-2"><%= t("ui.sources.sync_history_cols.errors") %></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800">
+              <% @sync_attempts.each do |attempt| %>
+                <tr>
+                  <td class="px-3 py-2 text-slate-300"><%= time_ago_in_words(attempt.created_at) %> ago</td>
+                  <td class="px-3 py-2 text-slate-300"><%= sync_attempt_duration(attempt) %></td>
+                  <td class="px-3 py-2">
+                    <% variant = case attempt.status
+                       when "success" then :success
+                       when "failed" then :danger
+                       when "running" then :info
+                       else :default
+                       end %>
+                    <%= render "shared/status_badge", status: attempt.status.capitalize, variant: variant %>
+                  </td>
+                  <td class="px-3 py-2 text-slate-300"><%= attempt.upserts %></td>
+                  <td class="px-3 py-2 text-slate-300"><%= attempt.deletes %></td>
+                  <td class="px-3 py-2 text-slate-300"><%= attempt.errors_count %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <p class="text-sm text-slate-400"><%= t("ui.sources.no_sync_history") %></p>
+      <% end %>
+    </div>
   </div>
 </div>
