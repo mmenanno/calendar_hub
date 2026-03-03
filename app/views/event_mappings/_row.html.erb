@@ -6,7 +6,7 @@
     <td class="px-3 py-2 font-mono"><%= mapping.replacement %></td>
     <td class="px-3 py-2">
       <% if mapping.has_destination_override? %>
-        <span class="inline-flex items-center rounded-full bg-indigo-500/10 px-2 py-1 text-xs font-medium text-indigo-300">
+        <span class="inline-flex items-center rounded-full bg-indigo-500/10 px-2 py-1 text-xs leading-none font-medium text-indigo-300">
           <%= mapping.target_calendar_display_name.presence || mapping.target_calendar_identifier %>
         </span>
       <% else %>
