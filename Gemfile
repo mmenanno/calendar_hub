@@ -29,7 +29,7 @@ group :development, :test, :ci do
   gem "debug", platforms: [:mri], require: "debug/prelude"
   gem "erb_lint", require: false
   gem "rubocop-mmenanno-rails", require: false
-  gem "toys", "~> 0.20.0"
+  gem "toys", "~> 0.21.0"
 end
 
 # System testing and HTTP mocking
