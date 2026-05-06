@@ -359,9 +359,9 @@ GEM
     thruster (0.1.20-arm64-darwin)
     thruster (0.1.20-x86_64-linux)
     timeout (0.6.1)
-    toys (0.21.0)
-      toys-core (= 0.21.0)
-    toys-core (0.21.0)
+    toys (0.22.0)
+      toys-core (= 0.22.0)
+    toys-core (0.22.0)
       logger
     tsort (0.2.0)
     turbo-rails (2.0.23)
@@ -413,7 +413,7 @@ DEPENDENCIES
   stimulus-rails
   tailwindcss-rails
   thruster
-  toys (~> 0.21.0)
+  toys (~> 0.22.0)
   turbo-rails
   tzinfo-data
   webmock
