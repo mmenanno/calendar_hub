@@ -12,7 +12,7 @@ Calendar Hub consolidates subscribed calendars (for example, healthcare portals 
 
 ## Stack
 
-- Ruby 3.4.5 (see `.ruby-version`)
+- Ruby (see `.ruby-version` for the exact version)
 - Rails 8 with Hotwire (Turbo + Stimulus) and Tailwind CSS
 - Solid Cache / Solid Queue / Solid Cable on SQLite
 - Thruster app server; Faraday and Nokogiri for HTTP + parsing
@@ -22,7 +22,7 @@ Calendar Hub consolidates subscribed calendars (for example, healthcare portals 
 
 ### Prerequisites
 
-- Ruby 3.4.5 with Bundler (`gem install bundler`)
+- Ruby matching `.ruby-version`, with Bundler (`gem install bundler`)
 - SQLite 3 (ships with macOS and most Linux distributions)
 
 ### First run
