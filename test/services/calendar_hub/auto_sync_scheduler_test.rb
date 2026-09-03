@@ -172,6 +172,28 @@ module CalendarHub
       assert_includes(due_sources, @source2)
     end
 
+    test "schedule_syncs skips a source when a concurrent attempt already exists" do
+      @source1.update!(last_synced_at: 1.hour.ago)
+      @source2.update!(last_synced_at: 1.hour.ago)
+
+      scheduler = ::CalendarHub::AutoSyncScheduler.new
+      sources = scheduler.find_sources_due_for_sync
+
+      assert_equal(2, sources.count)
+
+      # Simulate another worker winning the race to create the active attempt
+      # for source1 between find_sources_due_for_sync and schedule_syncs -- the
+      # real DB constraint (idx_unique_active_sync_attempt_per_source) is what
+      # schedule_syncs must tolerate.
+      SyncAttempt.create!(calendar_source: @source1, status: :queued)
+
+      assert_enqueued_jobs(1, only: SyncCalendarJob) do
+        result = scheduler.schedule_syncs(sources)
+
+        assert_equal(1, result)
+      end
+    end
+
     test "schedule_syncs does not re-fetch sources already in memory" do
       @source1.update!(last_synced_at: 1.hour.ago)
       @source2.update!(last_synced_at: 1.hour.ago)

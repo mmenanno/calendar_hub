@@ -36,7 +36,15 @@ module CalendarHub
 
       schedule.each do |source_id, scheduled_at|
         source = sources_by_id[source_id] || CalendarSource.find(source_id)
-        attempt = SyncAttempt.create!(calendar_source: source, status: :queued)
+
+        begin
+          attempt = SyncAttempt.create!(calendar_source: source, status: :queued)
+        rescue ActiveRecord::RecordNotUnique
+          # Another worker already created an active attempt for this source
+          # (enforced by idx_unique_active_sync_attempt_per_source) between
+          # find_sources_due_for_sync and here -- skip it, it's already scheduled.
+          next
+        end
 
         if scheduled_at <= @now
           SyncCalendarJob.perform_later(source.id, attempt_id: attempt.id)

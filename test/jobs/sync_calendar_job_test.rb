@@ -85,6 +85,22 @@ class SyncCalendarJobTest < ActiveJob::TestCase
     assert(source.sync_attempts.exists?(status: "success"))
   end
 
+  test "reuses existing active attempt when concurrent creation hits the unique constraint" do
+    source = calendar_sources(:provider)
+    existing_attempt = source.sync_attempts.create!(status: :queued)
+
+    # Simulate another worker winning the race to create the active attempt
+    # for this source (enforced by idx_unique_active_sync_attempt_per_source).
+    SyncAttempt.expects(:create!).with(calendar_source: source, status: :queued)
+      .raises(ActiveRecord::RecordNotUnique.new("UNIQUE constraint failed"))
+
+    CalendarHub::Sync::EnhancedSyncService.expects(:new).with(source: source, observer: existing_attempt).returns(mock(call: true))
+
+    SyncCalendarJob.perform_now(source.id)
+
+    assert_equal "success", existing_attempt.reload.status
+  end
+
   # FEAT-006: Sync failure tracking
 
   test "records sync success and resets consecutive_sync_failures" do
