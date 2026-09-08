@@ -323,7 +323,7 @@ GEM
     ruby-progressbar (1.13.0)
     ruby2_keywords (0.0.5)
     securerandom (0.4.1)
-    simplecov (1.1.1)
+    simplecov (1.2.0)
     smart_properties (1.17.0)
     solid_cable (4.0.2)
       actioncable (>= 7.2)
