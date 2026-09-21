@@ -130,7 +130,7 @@ GEM
     globalid (1.4.0)
       activesupport (>= 6.1)
     hashdiff (1.2.1)
-    honeybadger (6.9.1)
+    honeybadger (6.9.2)
       logger
       ostruct
     i18n (1.15.2)
