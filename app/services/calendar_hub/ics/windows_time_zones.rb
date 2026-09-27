@@ -5,7 +5,7 @@ module CalendarHub
     # Windows time zone names (as emitted by Exchange/Outlook feeds in TZID)
     # mapped to IANA identifiers, following the "001" (default territory)
     # entries of CLDR's windowsZones.xml.
-    module WindowsTimeZones
+    module WindowsTimeZones # rubocop:disable Metrics/ModuleLength -- data table
       MAP = {
         "Dateline Standard Time" => "Etc/GMT+12",
         "UTC-11" => "Etc/GMT+11",

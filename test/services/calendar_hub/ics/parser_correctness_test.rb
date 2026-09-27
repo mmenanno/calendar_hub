@@ -5,8 +5,8 @@ require "test_helper"
 module CalendarHub
   module ICS
     class ParserCorrectnessTest < ActiveSupport::TestCase
-      def parse(body, **options)
-        Parser.new(body, **options).events
+      def parse(body, **)
+        Parser.new(body, **).events
       end
 
       def calendar(*lines)
@@ -151,7 +151,7 @@ module CalendarHub
           "DTEND;TZID=Mars/Olympus_Mons:20250101T110000",
           "END:VEVENT",
         )
-        Rails.logger.expects(:warn).with(regexp_matches(/Unknown TZID "Mars\/Olympus_Mons"/)).once
+        Rails.logger.expects(:warn).with(regexp_matches(%r{Unknown TZID "Mars/Olympus_Mons"})).once
 
         event = parse(body, default_time_zone: "America/New_York").sole
 
