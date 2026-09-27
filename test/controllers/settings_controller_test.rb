@@ -3,6 +3,8 @@
 require "test_helper"
 
 class SettingsControllerTest < ActionDispatch::IntegrationTest
+  include CredentialHelpers
+
   setup do
     @app_setting = AppSetting.instance
   end
@@ -17,6 +19,63 @@ class SettingsControllerTest < ActionDispatch::IntegrationTest
     get edit_settings_path
 
     assert_response(:success)
+  end
+
+  test "edit shows no credential warning when everything decrypts" do
+    assert_equal({ "http_basic_username" => "testuser", "http_basic_password" => "testpass" }, calendar_sources(:authenticated_source).credentials)
+
+    get edit_settings_path
+
+    assert_select("#credentials-unreadable-warning", count: 0)
+  end
+
+  test "edit warns when the Apple credentials can't be decrypted" do
+    @app_setting.update_column(:apple_credentials_ciphertext, foreign_ciphertext(apple_username: "u", apple_app_password: "p"))
+
+    get edit_settings_path
+
+    assert_select("#credentials-unreadable-warning", text: /Apple Calendar credentials/)
+    assert_select("#credentials-unreadable-warning", text: /key_store\.json/)
+  end
+
+  test "edit warns about sources whose credentials can't be decrypted" do
+    source = calendar_sources(:provider)
+    source.update_column(:credentials, foreign_ciphertext(http_basic_username: "u", http_basic_password: "p"))
+
+    get edit_settings_path
+
+    assert_select("#credentials-unreadable-warning", text: /#{Regexp.escape(source.name)}/)
+  end
+
+  test "saving settings does not wipe unreadable Apple credentials" do
+    ciphertext = foreign_ciphertext(apple_username: "u", apple_app_password: "p")
+    @app_setting.update_column(:apple_credentials_ciphertext, ciphertext)
+
+    patch settings_path, params: { app_setting: { default_time_zone: "Europe/Paris", apple_username: "", apple_app_password: "" } }
+
+    assert_redirected_to(edit_settings_path)
+    assert_equal(ciphertext, @app_setting.reload.apple_credentials_ciphertext)
+    assert_equal("Europe/Paris", @app_setting.default_time_zone)
+  end
+
+  test "re-entering Apple credentials in settings recovers from unreadable ones" do
+    @app_setting.update_column(:apple_credentials_ciphertext, foreign_ciphertext(apple_username: "u", apple_app_password: "p"))
+
+    patch settings_path, params: { app_setting: { apple_username: "me@example.com", apple_app_password: "fresh-pass" } }
+
+    fresh = AppSetting.find(@app_setting.id)
+
+    refute_predicate(fresh, :credentials_unreadable?)
+    assert_equal("me@example.com", fresh.apple_username)
+    assert_equal("fresh-pass", fresh.apple_app_password)
+  end
+
+  test "reset clears unreadable Apple credentials" do
+    @app_setting.update_column(:apple_credentials_ciphertext, foreign_ciphertext(apple_username: "u", apple_app_password: "p"))
+
+    post reset_settings_path
+
+    assert_nil(@app_setting.reload.apple_credentials_ciphertext)
   end
 
   test "should update settings successfully" do

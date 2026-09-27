@@ -51,9 +51,7 @@ authenticated_source:
   settings:
     time_zone: UTC
   active: true
-  credentials:
-    http_basic_username: testuser
-    http_basic_password: testpass
+  credentials: <%= CalendarHub::CredentialEncryption.encrypt(http_basic_username: "testuser", http_basic_password: "testpass") %>
 
 sync_window_source:
   name: Sync Window Source

@@ -6,6 +6,10 @@
       title: t("ui.settings.header"),
       subtitle: t("ui.settings.subheader") do %>
 
+    <% if @apple_credentials_unreadable || @unreadable_credential_sources.present? %>
+      <%= render "settings/credentials_warning", apple_unreadable: @apple_credentials_unreadable, sources: @unreadable_credential_sources %>
+    <% end %>
+
     <div class="grid gap-8 lg:grid-cols-[1.2fr_1fr]">
       <%= render "settings/form", settings: @settings %>
 

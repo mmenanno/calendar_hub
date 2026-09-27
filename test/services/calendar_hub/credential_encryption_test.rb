@@ -14,7 +14,7 @@ module CalendarHub
 
     def teardown
       CredentialEncryption.reset!
-      File.delete(@tmp_key_path) if @tmp_key_path && File.exist?(@tmp_key_path)
+      FileUtils.rm_f([@tmp_key_path, "#{@tmp_key_path}.bak"]) if @tmp_key_path
       if @original_path
         ENV["CALENDAR_HUB_KEY_STORE_PATH"] = @original_path
       else
@@ -328,13 +328,20 @@ module CalendarHub
       # Write invalid key directly to file
       path = CredentialEncryption.send(:key_path)
       FileUtils.mkdir_p(path.dirname)
-      File.write(path, "invalid-key")
+      File.write(path, { credential_key: { value: "invalid-key" } }.to_json)
 
       assert_raises(ArgumentError) do
         CredentialEncryption.send(:read_key)
       end
     ensure
       FileUtils.rm_f(path)
+    end
+
+    test "a corrupt key store fails loudly instead of generating a new key" do
+      File.write(@tmp_key_path, "{not json")
+
+      assert_raises(CalendarHub::KeyStore::CorruptStoreError) { CredentialEncryption.ensure_key! }
+      assert_equal("{not json", File.read(@tmp_key_path))
     end
 
     test "key_location returns path as string" do
@@ -430,6 +437,87 @@ module CalendarHub
       assert_equal(16, status[:fingerprint].length)
       assert_equal(path.to_s, status[:path])
       assert_kind_of(Time, status[:created_at])
+    end
+
+    test "decrypt raises DecryptionError for ciphertext from another key" do
+      CredentialEncryption.ensure_key!
+      foreign = CredentialEncryption.send(:build_encryptor, SecureRandom.hex(32)).encrypt_and_sign({ username: "x" }.to_json)
+
+      error = assert_raises(CredentialEncryption::DecryptionError) { CredentialEncryption.decrypt(foreign) }
+
+      assert_match(/can't be decrypted/, error.message)
+      assert_includes(error.message, @tmp_key_path.to_s)
+      assert_match(/re-enter the credentials/, error.message)
+    end
+
+    test "decrypt raises DecryptionError for garbage ciphertext" do
+      CredentialEncryption.ensure_key!
+
+      assert_raises(CredentialEncryption::DecryptionError) { CredentialEncryption.decrypt("not-a-ciphertext") }
+    end
+
+    test "picks up a key rotated by another process without a restart" do
+      CredentialEncryption.ensure_key!
+      other_process_key = SecureRandom.hex(32)
+      KeyStore.new(path: @tmp_key_path).write_credential_key!(other_process_key)
+      other_process = CredentialEncryption.send(:build_encryptor, other_process_key)
+
+      ciphertext = other_process.encrypt_and_sign({ username: "rotated" }.to_json)
+
+      assert_equal("rotated", CredentialEncryption.decrypt(ciphertext)[:username])
+      # New writes use the new key too, so the other process can read them.
+      mine = CredentialEncryption.encrypt({ username: "fresh" })
+
+      assert_equal({ "username" => "fresh" }, JSON.parse(other_process.decrypt_and_verify(mine)))
+      assert_equal(Digest::SHA256.hexdigest(other_process_key)[0, 16], CredentialEncryption.key_fingerprint)
+    end
+
+    test "detects an in-place rewrite that keeps size and mtime" do
+      CredentialEncryption.ensure_key!
+      original = File.stat(@tmp_key_path)
+      new_key = SecureRandom.hex(32)
+      data = JSON.parse(File.read(@tmp_key_path))
+      data["credential_key"]["value"] = new_key
+      File.write(@tmp_key_path, JSON.pretty_generate(data)) # same inode, same length
+      File.utime(original.atime, original.mtime, @tmp_key_path)
+
+      assert_equal(original.size, File.size(@tmp_key_path))
+      assert_equal(Digest::SHA256.hexdigest(new_key)[0, 16], CredentialEncryption.key_fingerprint)
+    end
+
+    test "reloads the key once and retries when decryption fails" do
+      CredentialEncryption.ensure_key!
+      new_key = SecureRandom.hex(32)
+      KeyStore.new(path: @tmp_key_path).write_credential_key!(new_key)
+      CredentialEncryption.stubs(:key_file_changed?).returns(false) # change not noticed up front
+      ciphertext = CredentialEncryption.send(:build_encryptor, new_key).encrypt_and_sign({ username: "retry" }.to_json)
+
+      assert_equal("retry", CredentialEncryption.decrypt(ciphertext)[:username])
+    ensure
+      CredentialEncryption.unstub(:key_file_changed?)
+    end
+
+    test "keeps the loaded key when the key file disappears" do
+      CredentialEncryption.ensure_key!
+      fingerprint = CredentialEncryption.key_fingerprint
+      ciphertext = CredentialEncryption.encrypt({ username: "kept" })
+      FileUtils.rm_f(@tmp_key_path)
+
+      assert_equal("kept", CredentialEncryption.decrypt(ciphertext)[:username])
+      assert_equal(fingerprint, CredentialEncryption.key_fingerprint)
+      refute_path_exists(@tmp_key_path)
+    end
+
+    test "rotate! keeps the previous key in key_store.json.bak" do
+      CredentialEncryption.ensure_key!
+      old_key = CredentialEncryption.ensure_key!
+
+      CredentialEncryption.rotate!
+
+      backup = JSON.parse(File.read("#{@tmp_key_path}.bak"))
+
+      assert_equal(old_key, backup.dig("credential_key", "value"))
+      refute_equal(old_key, CredentialEncryption.ensure_key!)
     end
 
     test "legacy_encryptor creates encryptor successfully" do

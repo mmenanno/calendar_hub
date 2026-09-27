@@ -32,6 +32,19 @@ module CalendarHub
       end
     end
 
+    test "copies the previous key store backup when present" do
+      Pathname.new("#{@key_store_path}.bak").write('{"credential_key":{"value":"old"}}')
+
+      copied = run_backup.join("key_store.json.bak")
+
+      assert_equal('{"credential_key":{"value":"old"}}', copied.read)
+      assert_equal(0o600, copied.stat.mode & 0o777)
+    end
+
+    test "skips the key store backup when there is none" do
+      refute_path_exists(run_backup.join("key_store.json.bak"))
+    end
+
     test "copies the key store with owner-only permissions" do
       path = run_backup
       copied = path.join("key_store.json")

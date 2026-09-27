@@ -3,12 +3,14 @@
 require "test_helper"
 
 class AppSettingTest < ActiveSupport::TestCase
+  include CredentialHelpers
+
   def setup
     super
     AppSetting.reset_instance!
-    @original_path = ENV.fetch("CALENDAR_HUB_CREDENTIAL_KEY_PATH", nil)
-    @tmp_key_path = Rails.root.join("tmp", "test_credential_key_#{SecureRandom.hex(4)}")
-    ENV["CALENDAR_HUB_CREDENTIAL_KEY_PATH"] = @tmp_key_path.to_s
+    @original_path = ENV.fetch("CALENDAR_HUB_KEY_STORE_PATH", nil)
+    @tmp_key_path = Rails.root.join("tmp", "test_credential_key_#{SecureRandom.hex(4)}.json")
+    ENV["CALENDAR_HUB_KEY_STORE_PATH"] = @tmp_key_path.to_s
     CalendarHub::CredentialEncryption.reset!
     CalendarHub::CredentialEncryption.ensure_key!
   end
@@ -16,13 +18,80 @@ class AppSettingTest < ActiveSupport::TestCase
   def teardown
     AppSetting.reset_instance!
     CalendarHub::CredentialEncryption.reset!
-    File.delete(@tmp_key_path) if @tmp_key_path && File.exist?(@tmp_key_path)
+    FileUtils.rm_f([@tmp_key_path, "#{@tmp_key_path}.bak"]) if @tmp_key_path
     if @original_path
-      ENV["CALENDAR_HUB_CREDENTIAL_KEY_PATH"] = @original_path
+      ENV["CALENDAR_HUB_KEY_STORE_PATH"] = @original_path
     else
-      ENV.delete("CALENDAR_HUB_CREDENTIAL_KEY_PATH")
+      ENV.delete("CALENDAR_HUB_KEY_STORE_PATH")
     end
     super
+  end
+
+  test "credentials_unreadable? is false for readable or missing credentials" do
+    settings = AppSetting.instance
+
+    refute_predicate(settings, :credentials_unreadable?)
+
+    settings.update!(apple_username: "user@example.com", apple_app_password: "pass")
+
+    refute_predicate(AppSetting.find(settings.id), :credentials_unreadable?)
+  end
+
+  test "credentials_unreadable? flags ciphertext from another key" do
+    settings = AppSetting.instance
+    settings.update_column(:apple_credentials_ciphertext, foreign_ciphertext(apple_username: "u", apple_app_password: "p"))
+
+    fresh = AppSetting.find(settings.id)
+
+    assert_predicate(fresh, :credentials_unreadable?)
+    assert_nil(fresh.apple_username)
+    assert_nil(fresh.apple_app_password)
+  end
+
+  test "saving other settings keeps unreadable credentials untouched" do
+    ciphertext = foreign_ciphertext(apple_username: "u", apple_app_password: "p")
+    AppSetting.instance.update_column(:apple_credentials_ciphertext, ciphertext)
+    settings = AppSetting.find(AppSetting.instance.id)
+
+    # What the Settings form submits: the (blank) fields plus other changes.
+    settings.update!(default_time_zone: "Europe/Paris", apple_username: "", apple_app_password: nil)
+
+    assert_equal(ciphertext, settings.reload.apple_credentials_ciphertext)
+    assert_equal("Europe/Paris", settings.default_time_zone)
+  end
+
+  test "re-entering credentials replaces unreadable ones" do
+    AppSetting.instance.update_column(:apple_credentials_ciphertext, foreign_ciphertext(apple_username: "u"))
+    settings = AppSetting.find(AppSetting.instance.id)
+
+    settings.update!(apple_username: "new@example.com", apple_app_password: "new-pass")
+
+    fresh = AppSetting.find(settings.id)
+
+    refute_predicate(fresh, :credentials_unreadable?)
+    assert_equal("new@example.com", fresh.apple_username)
+    assert_equal("new-pass", fresh.apple_app_password)
+  end
+
+  test "clear_apple_credentials removes unreadable credentials" do
+    AppSetting.instance.update_column(:apple_credentials_ciphertext, foreign_ciphertext(apple_username: "u"))
+    settings = AppSetting.find(AppSetting.instance.id)
+
+    settings.clear_apple_credentials
+    settings.save!
+
+    assert_nil(settings.reload.apple_credentials_ciphertext)
+    refute_predicate(AppSetting.find(settings.id), :credentials_unreadable?)
+  end
+
+  test "rotate_credentials_key! leaves unreadable credentials in place" do
+    ciphertext = foreign_ciphertext(apple_username: "u")
+    AppSetting.instance.update_column(:apple_credentials_ciphertext, ciphertext)
+    settings = AppSetting.find(AppSetting.instance.id)
+
+    settings.rotate_credentials_key!
+
+    assert_equal(ciphertext, settings.reload.apple_credentials_ciphertext)
   end
 
   test "stores apple credentials encrypted" do

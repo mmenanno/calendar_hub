@@ -254,9 +254,25 @@ class CalendarSource < ApplicationRecord
     write_attribute(:credentials, encrypt_payload(value))
   end
 
+  # Unreadable credentials (see credentials_unreadable?) read as empty. They
+  # are left in place until new credentials are assigned explicitly.
   def credentials
-    decrypted = read_attribute(:credentials)
-    decrypt_payload(decrypted)
+    decrypt_payload(read_attribute(:credentials))
+  rescue CalendarHub::CredentialEncryption::DecryptionError
+    {}.with_indifferent_access
+  end
+
+  # True when stored credentials exist but can't be decrypted with the
+  # current credential key.
+  def credentials_unreadable?
+    credentials_decryption_error.present?
+  end
+
+  def credentials_decryption_error
+    decrypt_payload(self[:credentials])
+    nil
+  rescue CalendarHub::CredentialEncryption::DecryptionError => exception
+    exception
   end
 
   private
@@ -291,8 +307,14 @@ class CalendarSource < ApplicationRecord
     return if will_save_change_to_credentials?
     return if CalendarHub::Shared::HttpClient.same_host?(ingestion_url_in_database, ingestion_url)
 
-    current = credentials
-    self.credentials = current.except("http_basic_password") if current.key?("http_basic_password")
+    if credentials_unreadable?
+      # Can't strip just the password; drop them all rather than let them
+      # reach the new host once the key is restored.
+      self[:credentials] = nil
+    else
+      current = credentials
+      self.credentials = current.except("http_basic_password") if current.key?("http_basic_password")
+    end
   end
 
   def set_import_start_date

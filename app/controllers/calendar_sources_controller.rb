@@ -380,13 +380,14 @@ class CalendarSourcesController < ApplicationController
 
     existing = source.credentials || {}
     # A blank password field keeps the saved password, but only while the
-    # feed stays on the same host: never send it to a new one.
-    if source.persisted? && sanitized[:http_basic_password].blank? && existing.key?("http_basic_password") && feed_host_changed?(source)
+    # feed stays on the same host: never send it to a new one. Unreadable
+    # credentials are dropped too (see CalendarSource#drop_password_on_host_change).
+    if source.persisted? && sanitized[:http_basic_password].blank? && feed_host_changed?(source)
+      @feed_password_cleared = existing.key?("http_basic_password") || source.credentials_unreadable?
       existing = existing.except("http_basic_password")
-      @feed_password_cleared = true
-    elsif sanitized.blank?
-      return
     end
+    # Nothing typed: leave the stored credentials (readable or not) alone.
+    return if sanitized.blank? && !@feed_password_cleared
 
     source.credentials = existing.merge(sanitized)
   end

@@ -450,6 +450,11 @@ en:
       rotate_credential_key: "Rotate Key"
       rotate_credential_key_confirm: "Rotate the credential key? This will re-encrypt all stored credentials."
       credential_key_hint: "Rotating the key re-encrypts all stored credentials with a new encryption key."
+      credentials_unreadable:
+        apple: "The Apple Calendar credentials below can't be decrypted, so syncing to Apple Calendar fails."
+        header: "Some stored credentials can't be decrypted with the current credential key"
+        recovery_html: "This happens when %{path} was lost or replaced. Restore it (and key_store.json.bak) from a backup and restart the app, or re-enter the affected credentials. Saving other settings leaves the unreadable credentials untouched."
+        sources: "HTTP Basic credentials of: %{names}."
 
     sources:
       add_source: "Add Source"

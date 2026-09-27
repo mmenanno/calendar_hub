@@ -5,6 +5,7 @@ require "test_helper"
 class CalendarSourceTest < ActiveSupport::TestCase
   include ActiveJob::TestHelper
   include ModelBuilders
+  include CredentialHelpers
 
   test "within_sync_window? true when no window set" do
     s = CalendarSource.new(time_zone: "UTC")
@@ -398,6 +399,36 @@ class CalendarSourceTest < ActiveSupport::TestCase
     )
 
     assert_equal("new-secret", source.reload.credentials["http_basic_password"])
+  end
+
+  test "credentials_unreadable? flags ciphertext from another key" do
+    source = calendar_sources(:provider)
+
+    refute_predicate(source, :credentials_unreadable?)
+
+    source.update_column(:credentials, foreign_ciphertext(http_basic_username: "u", http_basic_password: "p"))
+
+    assert_predicate(source, :credentials_unreadable?)
+    assert_empty(source.credentials)
+  end
+
+  test "saving other attributes keeps unreadable credentials untouched" do
+    source = calendar_sources(:provider)
+    ciphertext = foreign_ciphertext(http_basic_username: "u", http_basic_password: "p")
+    source.update_column(:credentials, ciphertext)
+
+    CalendarSource.find(source.id).update!(name: "Renamed")
+
+    assert_equal(ciphertext, source.reload.read_attribute(:credentials))
+  end
+
+  test "changing the feed host drops unreadable credentials too" do
+    source = calendar_sources(:provider)
+    source.update_column(:credentials, foreign_ciphertext(http_basic_username: "u", http_basic_password: "p"))
+
+    CalendarSource.find(source.id).update!(ingestion_url: "https://elsewhere.example.net/feed.ics")
+
+    assert_nil(source.reload.read_attribute(:credentials))
   end
 
   test "set_import_start_date sets default on creation" do

@@ -7,6 +7,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
   include TurboStreamHelpers
   include ICSTestHelpers
   include EnvHelpers
+  include CredentialHelpers
 
   # INDEX ACTION TESTS
   test "index displays active and archived sources" do
@@ -338,6 +339,33 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     assert_response(:success)
     assert_includes(response.body, CGI.escapeHTML(I18n.t("flashes.calendar_sources.feed_password_cleared")))
     assert_nil(source.reload.credentials["http_basic_password"])
+  end
+
+  test "update leaves unreadable credentials alone when nothing is typed" do
+    source = calendar_sources(:provider)
+    ciphertext = foreign_ciphertext(http_basic_username: "u", http_basic_password: "p")
+    source.update_column(:credentials, ciphertext)
+
+    patch calendar_source_path(source), params: {
+      calendar_source: { name: "Renamed", credentials: { http_basic_username: "", http_basic_password: "" } },
+    }
+
+    assert_equal("Renamed", source.reload.name)
+    assert_equal(ciphertext, source.read_attribute(:credentials))
+  end
+
+  test "update replaces unreadable credentials with newly typed ones" do
+    source = calendar_sources(:provider)
+    source.update_column(:credentials, foreign_ciphertext(http_basic_username: "u", http_basic_password: "p"))
+
+    patch calendar_source_path(source), params: {
+      calendar_source: { name: "Renamed", credentials: { http_basic_username: "new", http_basic_password: "new-pass" } },
+    }
+
+    source.reload
+
+    refute_predicate(source, :credentials_unreadable?)
+    assert_equal({ "http_basic_username" => "new", "http_basic_password" => "new-pass" }, source.credentials)
   end
 
   test "update saves a new password typed for the new host" do

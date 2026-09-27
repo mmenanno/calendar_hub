@@ -9,8 +9,15 @@ module CalendarHub
     SALT = "calendar-source-salt"
     KEY_BYTES = 32
     HEX_LENGTH = KEY_BYTES * 2
+    # Filesystems with coarse timestamps can give an in-place rewrite the same
+    # mtime; within this window the key file's digest is compared as well.
+    MTIME_GRANULARITY = 2 # seconds
 
     class KeyRotationError < StandardError; end
+
+    # Raised for a stored ciphertext that neither the current key (re-read
+    # from disk) nor the legacy key can decrypt.
+    class DecryptionError < StandardError; end
 
     def encrypt(payload)
       hash = coerce_payload(payload)
@@ -23,15 +30,19 @@ module CalendarHub
     def decrypt(ciphertext)
       return empty_hash if ciphertext.blank?
 
-      decrypted = current_encryptor.decrypt_and_verify(ciphertext)
-      coerce_payload(decrypted)
-    rescue ActiveSupport::MessageEncryptor::InvalidMessage
-      legacy_decrypt(ciphertext) || empty_hash
+      encryptor = current_encryptor
+      decrypted = decrypt_with(ciphertext, encryptor)
+      if decrypted.nil?
+        # The key may have been rotated by another process a moment ago.
+        reloaded = reload_encryptor!
+        decrypted = decrypt_with(ciphertext, reloaded) unless reloaded.equal?(encryptor)
+      end
+      decrypted || legacy_decrypt(ciphertext) || raise(DecryptionError, decryption_error_message)
     end
 
     def rotate!
-      mutex.synchronize do
-        ensure_key!
+      synchronize do
+        refresh_key!
         old_encryptor = @current_encryptor
         new_key = generate_key
         new_encryptor = build_encryptor(new_key)
@@ -41,8 +52,7 @@ module CalendarHub
           reencrypt_app_settings(old_encryptor, new_encryptor)
           write_key(new_key) # Must be inside transaction so a filesystem failure rolls back re-encrypted credentials
         end
-        @current_key = new_key
-        @current_encryptor = new_encryptor
+        install_key(new_key)
       end
     rescue StandardError => exception
       reset_cached_encryptor!
@@ -50,19 +60,11 @@ module CalendarHub
       raise KeyRotationError, exception.message
     end
 
+    # Returns the current key, (re)loading it when the key file changed since
+    # it was read (e.g. rotated by another process) and generating one when
+    # none exists yet.
     def ensure_key!
-      return @current_key if instance_variable_defined?(:@current_key) && @current_key.present?
-
-      mutex.synchronize do
-        unless instance_variable_defined?(:@current_key) && @current_key.present?
-          next_key = key_store.credential_key
-          next_key = generate_and_store_key unless valid_key?(next_key)
-          @current_key = next_key
-          @current_encryptor = build_encryptor(@current_key)
-        end
-      end
-
-      @current_key
+      synchronize { refresh_key! }
     end
 
     def key_fingerprint
@@ -87,7 +89,7 @@ module CalendarHub
     end
 
     def reset!
-      mutex.synchronize do
+      synchronize do
         reset_cached_encryptor!
         remove_instance_variable(:@legacy_encryptor) if instance_variable_defined?(:@legacy_encryptor)
         remove_instance_variable(:@key_store) if instance_variable_defined?(:@key_store)
@@ -98,8 +100,87 @@ module CalendarHub
     private
 
     def reset_cached_encryptor!
-      remove_instance_variable(:@current_key) if instance_variable_defined?(:@current_key)
-      remove_instance_variable(:@current_encryptor) if instance_variable_defined?(:@current_encryptor)
+      [:@current_key, :@current_encryptor, :@key_signature, :@key_digest, :@key_verified_at].each do |ivar|
+        remove_instance_variable(ivar) if instance_variable_defined?(ivar)
+      end
+    end
+
+    # Callers must hold the mutex.
+    def refresh_key!
+      load_key! unless key_loaded? && !key_file_changed?
+      @current_key
+    end
+
+    def reload_encryptor!
+      synchronize do
+        load_key!
+        @current_encryptor
+      end
+    end
+
+    def load_key!
+      # Fresh instance: KeyStore caches the document it read.
+      @key_store = CalendarHub::KeyStore.instance
+      # A deleted key file keeps the loaded key rather than minting a new one
+      # that no stored credential was encrypted with.
+      return if key_loaded? && !key_path.exist?
+
+      # Remember the file as it was *before* reading, so a write racing with
+      # the read is noticed on the next call.
+      signature = key_file_signature
+      digest = key_file_digest
+      key = @key_store.credential_key
+      if valid_key?(key)
+        install_key(key, signature: signature, digest: digest)
+      else
+        install_key(generate_and_store_key)
+      end
+    end
+
+    def install_key(key, signature: key_file_signature, digest: key_file_digest)
+      # Deriving the encryptor is deliberately slow (PBKDF2); skip it when a
+      # reload finds the same key.
+      @current_encryptor = build_encryptor(key) unless key == @current_key && @current_encryptor
+      @current_key = key
+      @key_signature = signature
+      @key_digest = digest
+      @key_verified_at = Time.current
+    end
+
+    def key_loaded?
+      instance_variable_defined?(:@current_key) && @current_key.present?
+    end
+
+    # Cheap check (one stat) run before every encrypt/decrypt.
+    def key_file_changed?
+      signature = key_file_signature
+      return false if signature.nil? # file deleted: keep the loaded key
+      return true if signature != @key_signature
+
+      _dev, _ino, _size, mtime = signature
+      return false if mtime < @key_verified_at - MTIME_GRANULARITY
+      return true if key_file_digest != @key_digest
+
+      @key_verified_at = Time.current
+      false
+    end
+
+    def key_file_signature
+      stat = key_path.stat
+      [stat.dev, stat.ino, stat.size, stat.mtime]
+    rescue Errno::ENOENT
+      nil
+    end
+
+    def key_file_digest
+      Digest::SHA256.file(key_path).hexdigest
+    rescue Errno::ENOENT
+      nil
+    end
+
+    def decryption_error_message
+      "Stored credentials can't be decrypted: the credential key in #{key_path} doesn't match the one they were " \
+        "encrypted with. Restore #{key_path.basename} from a backup, or re-enter the credentials."
     end
 
     def reencrypt_calendar_sources(old_encryptor, new_encryptor)
@@ -237,8 +318,10 @@ module CalendarHub
     end
 
     def current_encryptor
-      ensure_key!
-      @current_encryptor ||= build_encryptor(@current_key)
+      synchronize do
+        refresh_key!
+        @current_encryptor
+      end
     end
 
     def build_encryptor(key)
@@ -277,8 +360,12 @@ module CalendarHub
       candidate.is_a?(String) && candidate.present? && candidate.length == HEX_LENGTH && candidate.match?(/\A[0-9a-f]{64}\z/i)
     end
 
-    def mutex
-      @mutex ||= Mutex.new
+    MUTEX = Mutex.new
+    private_constant :MUTEX
+
+    # Reentrant: rotate! reloads the key while already holding the lock.
+    def synchronize(&)
+      MUTEX.owned? ? yield : MUTEX.synchronize(&)
     end
 
     def key_store

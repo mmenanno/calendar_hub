@@ -145,6 +145,10 @@ module AppleCalendar
       rescue StandardError
         nil
       end
+      if (error = settings&.credentials_decryption_error)
+        raise CalendarHub::CredentialEncryption::DecryptionError, "Apple Calendar credentials (Settings): #{error.message}"
+      end
+
       if settings&.apple_username.present? && settings&.apple_app_password.present?
         { username: settings.apple_username, app_specific_password: settings.apple_app_password }
       else
