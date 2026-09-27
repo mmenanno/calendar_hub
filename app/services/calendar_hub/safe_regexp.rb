@@ -25,6 +25,8 @@ module CalendarHub
       end
 
       def gsub(regex, text, replacement)
+        return text if regex.nil?
+
         text.gsub(regex, replacement)
       rescue Regexp::TimeoutError
         Rails.logger.warn("[SafeRegexp] Pattern #{regex.source.inspect} timed out; leaving title unchanged")

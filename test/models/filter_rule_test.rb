@@ -158,12 +158,20 @@ class FilterRuleTest < ActiveSupport::TestCase
     refute(filter_rule.matches?(event))
   end
 
-  test "should handle invalid regex gracefully" do
-    filter_rule = FilterRule.create!(
-      pattern: "[invalid regex",
-      field_name: "title",
-      match_type: "regex",
-    )
+  test "rejects an invalid regex pattern" do
+    filter_rule = FilterRule.new(pattern: "[invalid regex", field_name: "title", match_type: "regex")
+
+    refute_predicate(filter_rule, :valid?)
+    assert_match(/not a valid regular expression/, filter_rule.errors[:pattern].first)
+  end
+
+  test "accepts the same text as a contains pattern" do
+    assert_predicate(FilterRule.new(pattern: "[invalid regex", field_name: "title", match_type: "contains"), :valid?)
+  end
+
+  test "should handle a previously saved invalid regex gracefully" do
+    filter_rule = FilterRule.new(pattern: "[invalid regex", field_name: "title", match_type: "regex")
+    filter_rule.save!(validate: false)
 
     event = CalendarEvent.new(title: "Team Meeting", description: "Weekly sync", location: "Office")
 

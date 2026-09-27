@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class FilterRule < ApplicationRecord
+  include RegexPatternValidation
+
   MATCH_TYPES = {
     contains: "contains",
     equals: "equals",
