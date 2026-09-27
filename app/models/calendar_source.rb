@@ -24,6 +24,7 @@ class CalendarSource < ApplicationRecord
   validates :sync_window_start_hour, :sync_window_end_hour, allow_nil: true, inclusion: { in: 0..23 }
   validates :sync_frequency_minutes, allow_nil: true, numericality: { greater_than: 0 }
 
+  before_validation :normalize_ingestion_url
   before_create :set_import_start_date
 
   class << self
@@ -120,12 +121,24 @@ class CalendarSource < ApplicationRecord
     Digest::SHA256.hexdigest([mappings_data, settings_data].inspect)
   end
 
-  def mark_synced!(token:, timestamp: Time.current)
-    update!(
+  # Called once a sync completed. Feed cache validators (ETag /
+  # Last-Modified) are only stored here, so a failed sync never makes the next
+  # run skip the feed with a 304.
+  def mark_synced!(token:, timestamp: Time.current, cache_headers: nil)
+    attributes = {
       sync_token: token,
       last_synced_at: timestamp,
       last_change_hash: generate_change_hash,
-    )
+    }
+    if cache_headers
+      attributes[:settings] = settings.to_h.merge(
+        "etag" => cache_headers[:etag],
+        "last_modified" => cache_headers[:last_modified],
+      ).compact
+      attributes[:ics_feed_etag] = cache_headers[:etag]
+      attributes[:ics_feed_last_modified] = cache_headers[:last_modified]
+    end
+    update!(attributes)
   end
 
   def soft_delete!
@@ -212,6 +225,12 @@ class CalendarSource < ApplicationRecord
 
   def requires_ingestion_url?
     true
+  end
+
+  def normalize_ingestion_url
+    return if ingestion_url.blank?
+
+    self.ingestion_url = CalendarHub::Shared::HttpClient.normalize_url(ingestion_url)
   end
 
   def set_import_start_date

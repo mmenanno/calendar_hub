@@ -17,13 +17,13 @@ module CalendarHub
         adapter = GenericICSAdapter.new(@source)
         events = adapter.fetch_events
 
-        assert_equal 2, events.count
+        assert_equal(2, events.count)
         first = events.first
 
-        assert_equal "prov-123", first.uid
-        assert_equal "Initial Consultation", first.summary
-        assert_equal "confirmed", first.status
-        assert_kind_of Hash, first.raw_properties
+        assert_equal("prov-123", first.uid)
+        assert_equal("Initial Consultation", first.summary)
+        assert_equal("confirmed", first.status)
+        assert_kind_of(Hash, first.raw_properties)
       end
 
       test "raises error when url missing" do
@@ -37,10 +37,10 @@ module CalendarHub
         adapter = GenericICSAdapter.new(@source)
         result = adapter.fetch_events
 
-        assert_nil result
+        assert_nil(result)
       end
 
-      test "stores etag and last-modified headers" do
+      test "exposes etag and last-modified headers without persisting them" do
         stub_ics_request(
           @source,
           body: @ics_body,
@@ -50,10 +50,59 @@ module CalendarHub
         adapter = GenericICSAdapter.new(@source)
         adapter.fetch_events
 
+        assert_equal({ etag: '"abc123"', last_modified: "Wed, 21 Oct 2015 07:28:00 GMT" }, adapter.cache_headers)
+
         @source.reload
 
-        assert_equal('"abc123"', @source.settings["etag"])
-        assert_equal("Wed, 21 Oct 2015 07:28:00 GMT", @source.settings["last_modified"])
+        assert_nil(@source.settings["etag"])
+        assert_nil(@source.settings["last_modified"])
+      end
+
+      test "skips conditional headers when conditional: false" do
+        @source.settings["etag"] = '"existing-etag"'
+        @source.save!
+
+        stub = stub_request(:get, @source.ingestion_url).to_return(status: 200, body: @ics_body)
+
+        GenericICSAdapter.new(@source).fetch_events(conditional: false)
+
+        assert_requested(stub)
+        assert_not_requested(:get, @source.ingestion_url, headers: { "If-None-Match" => '"existing-etag"' })
+      end
+
+      test "rejects bodies that are not iCalendar documents" do
+        stub_request(:get, @source.ingestion_url).to_return(status: 200, body: "<html><body>Please sign in</body></html>")
+
+        error = assert_raises(::CalendarHub::Ingestion::Error) do
+          GenericICSAdapter.new(@source).fetch_events
+        end
+
+        assert_equal("Feed did not return an iCalendar document", error.message)
+      end
+
+      test "import_start_date filter applies to occurrences, not the series master" do
+        @source.update!(import_start_date: 3.days.ago)
+        dtstart = 10.days.ago.utc.strftime("%Y%m%dT100000Z")
+        dtend = 10.days.ago.utc.strftime("%Y%m%dT110000Z")
+        body = [
+          "BEGIN:VCALENDAR",
+          "VERSION:2.0",
+          "BEGIN:VEVENT",
+          "UID:daily",
+          "SUMMARY:Daily",
+          "DTSTART:#{dtstart}",
+          "DTEND:#{dtend}",
+          "RRULE:FREQ=DAILY;COUNT=15",
+          "END:VEVENT",
+          "END:VCALENDAR",
+        ].join("\r\n")
+        stub_request(:get, @source.ingestion_url).to_return(status: 200, body: body)
+
+        events = GenericICSAdapter.new(@source).fetch_events
+
+        assert_predicate(events, :any?)
+        assert(events.all? { |event| event.starts_at >= @source.import_start_date })
+        assert(events.all? { |event| event.uid.start_with?("daily::") })
       end
 
       test "sends conditional headers when available" do
@@ -88,7 +137,7 @@ module CalendarHub
 
         # Mock the http_client to return an error response
         mock_http_client = mock("http_client")
-        mock_http_client.expects(:get_with_caching).with(@source.ingestion_url).raises(
+        mock_http_client.expects(:get_with_caching).with(@source.ingestion_url, conditional: true).raises(
           ::CalendarHub::Ingestion::Error.new("HTTP 418: I'm a teapot"),
         )
 

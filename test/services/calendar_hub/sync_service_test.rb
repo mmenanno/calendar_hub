@@ -59,6 +59,27 @@ module CalendarHub
       ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client).call
     end
 
+    test "persists feed cache headers only after a successful sync" do
+      stub_request(:get, @source.ingestion_url)
+        .to_return(status: 200, body: file_fixture("provider.ics").read, headers: { "ETag" => '"after-success"' })
+      apple_client = mock_apple_client
+      apple_client.stubs(:upsert_event).raises(ActiveRecord::StatementTimeout, "database is locked")
+      apple_client.stubs(:delete_event)
+      ::CalendarHub::Shared::AppleEventSyncer.any_instance.stubs(:sync_events_batch).raises(ActiveRecord::StatementTimeout, "database is locked")
+
+      assert_raises(ActiveRecord::StatementTimeout) do
+        ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client).call
+      end
+
+      assert_nil(@source.reload.settings["etag"])
+
+      ::CalendarHub::Shared::AppleEventSyncer.any_instance.unstub(:sync_events_batch)
+      apple_client.stubs(:upsert_event)
+      ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client).call
+
+      assert_equal('"after-success"', @source.reload.settings["etag"])
+    end
+
     test "cancels and deletes missing events" do
       existing = build_event(
         calendar_source: @source,

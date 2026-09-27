@@ -42,7 +42,7 @@ module CalendarHub
           apply_counts = apple_syncer.sync_events_batch(processed_events, observer: observer)
           cancel_counts = cancel_missing_events(fetched_events)
         end
-        source.mark_synced!(token: generate_sync_token, timestamp: Time.current)
+        source.mark_synced!(token: generate_sync_token, timestamp: Time.current, cache_headers: adapter_cache_headers)
         observer.finish(status: :success)
         broadcast_events_refresh
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round
@@ -58,7 +58,7 @@ module CalendarHub
         )
         Rails.logger.info(
           "[CalendarSync] source=#{source.id} fetched=#{fetched_events.size} upserts=#{apply_counts[:upserts]} " \
-            "deletes=#{apply_counts[:deletes] + cancel_counts[:canceled]} canceled=#{cancel_counts[:canceled]} duration_ms=#{duration_ms}",
+          "deletes=#{apply_counts[:deletes] + cancel_counts[:canceled]} canceled=#{cancel_counts[:canceled]} duration_ms=#{duration_ms}",
         )
         processed_events
       end
@@ -107,19 +107,23 @@ module CalendarHub
           apple_syncer.delete_event(event)
           observer.delete_success(event)
           canceled += 1
-        rescue StandardError => error
-          Rails.logger.warn("[CalendarSync] Failed to cancel event #{event.external_id}: #{error.message}")
-          observer.delete_error(event, error)
+        rescue StandardError => exception
+          Rails.logger.warn("[CalendarSync] Failed to cancel event #{event.external_id}: #{exception.message}")
+          observer.delete_error(event, exception)
         end
         { canceled: canceled }
+      end
+
+      def adapter_cache_headers
+        adapter.respond_to?(:cache_headers) ? adapter.cache_headers : nil
       end
 
       # Per-event broadcasts are suppressed during sync; send one refresh so
       # open event lists pick up all changes at once.
       def broadcast_events_refresh
         Turbo::StreamsChannel.broadcast_refresh_later_to("calendar_events")
-      rescue StandardError => e
-        Rails.logger.warn("[CalendarSync] Failed to broadcast events refresh: #{e.message}")
+      rescue StandardError => exception
+        Rails.logger.warn("[CalendarSync] Failed to broadcast events refresh: #{exception.message}")
       end
 
       def generate_sync_token
