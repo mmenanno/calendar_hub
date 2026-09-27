@@ -16,11 +16,12 @@ WORKDIR /rails
 
 # Install base packages
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y curl libjemalloc2 libvips sqlite3 && \
+    apt-get install --no-install-recommends -y curl libjemalloc2 sqlite3 && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 # Set production environment
 ENV RAILS_ENV="production" \
+    TZ="UTC" \
     BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH="/usr/local/bundle" \
     BUNDLE_WITHOUT="development test ci"
@@ -58,17 +59,22 @@ FROM base
 COPY --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --from=build /rails /rails
 
-# Run and own only the runtime files as a non-root user for security
-RUN set -eux; \
-    if ! getent group rails >/dev/null; then groupadd --system rails; fi; \
-    if ! id -u rails >/dev/null 2>&1; then useradd --system --gid rails --create-home --shell /bin/bash rails; fi; \
-    mkdir -p db log storage tmp; \
+# Run and own only the runtime files as a non-root user for security.
+# Fixed uid/gid 1000 so bind-mounted volumes can be chowned predictably on the host.
+RUN groupadd --gid 1000 rails && \
+    useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash && \
+    mkdir -p db log storage tmp && \
     chown -R rails:rails db log storage tmp
-USER rails:rails
+USER 1000:1000
 
 # Entrypoint prepares the database.
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]
 
 # Start server via Thruster by default, this can be overwritten at runtime
 EXPOSE 80
+
+# Thruster serves on HTTP_PORT (default 80). /up is exempt from SSL redirects
+# because production sets assume_ssl.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD curl -fsS "http://localhost:${HTTP_PORT:-80}/up" || exit 1
 CMD ["./bin/thrust", "./bin/rails", "server"]
