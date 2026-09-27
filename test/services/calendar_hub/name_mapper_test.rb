@@ -178,18 +178,19 @@ module CalendarHub
       assert_equal("Team Session today", result)
     end
 
-    test "regex match type with invalid pattern handles RegexpError" do
+    test "a previously saved invalid regex pattern leaves the title unchanged" do
       EventMapping.where(calendar_source: @source).destroy_all
       Rails.cache.clear
 
-      EventMapping.create!(
+      # Validation now rejects invalid patterns; rows saved before that still exist.
+      EventMapping.new(
         calendar_source: @source,
         pattern: "[invalid regex",
         replacement: "Should not replace",
         match_type: "regex",
         case_sensitive: true,
         active: true,
-      )
+      ).save!(validate: false)
 
       # Should return original title when regex is invalid
       assert_equal("Test Title", ::CalendarHub::NameMapper.apply("Test Title", source: @source))

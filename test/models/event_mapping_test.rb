@@ -151,6 +151,17 @@ class EventMappingTest < ActiveSupport::TestCase
     assert(other.sync_attempts.exists?(status: "queued"))
   end
 
+  test "rejects an invalid regex pattern" do
+    mapping = EventMapping.new(pattern: "(unclosed", replacement: "X", match_type: "regex")
+
+    refute_predicate(mapping, :valid?)
+    assert_match(/not a valid regular expression/, mapping.errors[:pattern].first)
+  end
+
+  test "accepts a valid regex pattern" do
+    assert_predicate(EventMapping.new(pattern: "^Appt (\\d+)$", replacement: "Visit", match_type: "regex"), :valid?)
+  end
+
   private
 
   def enqueued_jobs_count(only:)
