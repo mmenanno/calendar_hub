@@ -8,10 +8,17 @@ plugins:
   - rubocop-minitest
   - rubocop-thread_safety
 
+# Merge Include with RuboCop's defaults instead of replacing them, so the
+# whole app is linted and not just .toys.
+inherit_mode:
+  merge:
+    - Include
+
 AllCops:
   Exclude:
     - bin/bundle
     - db/schema.rb
+    - db/*_schema.rb
   Include:
     - '.toys/**/*.rb'
   NewCops: enable

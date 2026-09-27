@@ -6,15 +6,15 @@ class CalendarEventsControllerTest < ActionDispatch::IntegrationTest
   test "renders index" do
     get calendar_events_path
 
-    assert_response :success
-    assert_select "h2", text: "Upcoming Events"
+    assert_response(:success)
+    assert_select("h2", text: "Upcoming Events")
   end
 
   test "filters by source" do
     source = calendar_sources(:ics_feed)
     get calendar_events_path, params: { source_id: source.id }
 
-    assert_response :success
+    assert_response(:success)
   end
 
   test "hides excluded events by default" do
@@ -100,7 +100,7 @@ class CalendarEventsControllerTest < ActionDispatch::IntegrationTest
     get calendar_event_path(event)
 
     assert_response(:success)
-    assert_select "h1", text: /#{event.title}/
+    assert_select("h1", text: /#{event.title}/)
     # Mobile hamburger needs the mobile-nav controller and menu on this page too
     assert_select("[data-controller=mobile-nav] [data-mobile-nav-target=menu]")
     assert_select("[data-controller=mobile-nav] button[data-action='mobile-nav#open']")
@@ -222,7 +222,7 @@ class CalendarEventsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "filter by invalid source_id returns no selected source" do
-    get calendar_events_path, params: { source_id: 99999 }
+    get calendar_events_path, params: { source_id: 99_999 }
 
     assert_response(:success)
     # Should handle gracefully when source not found
@@ -262,40 +262,40 @@ class CalendarEventsControllerTest < ActionDispatch::IntegrationTest
 
     get calendar_events_path
 
-    assert_response :success
-    assert_select "h2", text: "Upcoming Events"
+    assert_response(:success)
+    assert_select("h2", text: "Upcoming Events")
     # Past event should not appear in upcoming view
-    refute_match "Yesterday Completed Checkup", response.body
+    refute_match("Yesterday Completed Checkup", response.body)
   end
 
   test "index shows past events when show_past is true" do
     get calendar_events_path(show_past: "true")
 
-    assert_response :success
-    assert_select "h2", text: "Past Events"
-    assert_match calendar_events(:past_event).title, response.body
+    assert_response(:success)
+    assert_select("h2", text: "Past Events")
+    assert_match(calendar_events(:past_event).title, response.body)
   end
 
   test "past events view does not show future events" do
     get calendar_events_path(show_past: "true")
 
-    assert_response :success
-    refute_match calendar_events(:future_event).title, response.body
+    assert_response(:success)
+    refute_match(calendar_events(:future_event).title, response.body)
   end
 
   test "past events view respects source filter" do
     source = calendar_events(:past_event).calendar_source
     get calendar_events_path(show_past: "true", source_id: source.id)
 
-    assert_response :success
-    assert_match calendar_events(:past_event).title, response.body
+    assert_response(:success)
+    assert_match(calendar_events(:past_event).title, response.body)
   end
 
   test "past events view respects search filter" do
     get calendar_events_path(show_past: "true", q: calendar_events(:past_event).title)
 
-    assert_response :success
-    assert_match calendar_events(:past_event).title, response.body
+    assert_response(:success)
+    assert_match(calendar_events(:past_event).title, response.body)
   end
 
   test "past events view respects show_excluded filter" do
@@ -305,28 +305,28 @@ class CalendarEventsControllerTest < ActionDispatch::IntegrationTest
     # Default: excluded hidden
     get calendar_events_path(show_past: "true")
 
-    assert_response :success
-    refute_match "Unique Past Excluded Visit", response.body
+    assert_response(:success)
+    refute_match("Unique Past Excluded Visit", response.body)
 
     # With show_excluded: true
     get calendar_events_path(show_past: "true", show_excluded: "true")
 
-    assert_response :success
-    assert_match "Unique Past Excluded Visit", response.body
+    assert_response(:success)
+    assert_match("Unique Past Excluded Visit", response.body)
   end
 
   test "upcoming/past toggle links are present on index" do
     get calendar_events_path
 
-    assert_response :success
-    assert_match "Upcoming", response.body
-    assert_match "Past", response.body
+    assert_response(:success)
+    assert_match("Upcoming", response.body)
+    assert_match("Past", response.body)
   end
 
   test "show_past param is preserved in URL" do
     get calendar_events_path(show_past: "true")
 
-    assert_response :success
-    assert_match "show_past", response.body
+    assert_response(:success)
+    assert_match("show_past", response.body)
   end
 end

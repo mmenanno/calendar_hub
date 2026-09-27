@@ -11,15 +11,15 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
   test "index displays active and archived sources" do
     get calendar_sources_path
 
-    assert_response :success
-    assert_select "body" # Basic page structure
+    assert_response(:success)
+    assert_select("body") # Basic page structure
 
     # Should include active sources
-    assert_includes response.body, calendar_sources(:provider).name
-    assert_includes response.body, calendar_sources(:ics_feed).name
+    assert_includes(response.body, calendar_sources(:provider).name)
+    assert_includes(response.body, calendar_sources(:ics_feed).name)
 
     # Should include archived sources section
-    assert_includes response.body, calendar_sources(:archived_source).name
+    assert_includes(response.body, calendar_sources(:archived_source).name)
   end
 
   # SHOW ACTION TESTS
@@ -27,16 +27,16 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     source = calendar_sources(:provider)
     get calendar_source_path(source)
 
-    assert_response :success
-    assert_includes response.body, source.name
+    assert_response(:success)
+    assert_includes(response.body, source.name)
   end
 
   # NEW ACTION TESTS
   test "new displays form for new calendar source" do
     get new_calendar_source_path
 
-    assert_response :success
-    assert_select "form"
+    assert_response(:success)
+    assert_select("form")
   end
 
   # EDIT ACTION TESTS
@@ -44,9 +44,9 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     source = calendar_sources(:provider)
     get edit_calendar_source_path(source)
 
-    assert_response :success
-    assert_select "form"
-    assert_includes response.body, source.name
+    assert_response(:success)
+    assert_select("form")
+    assert_includes(response.body, source.name)
   end
 
   # CREATE ACTION TESTS
@@ -64,10 +64,10 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
       post calendar_sources_path, params: params
     end
 
-    assert_redirected_to calendar_events_path
+    assert_redirected_to(calendar_events_path)
     follow_redirect!
 
-    assert_match I18n.t("flashes.calendar_sources.created"), response.body
+    assert_match(I18n.t("flashes.calendar_sources.created"), response.body)
   end
 
   test "creates a calendar source with turbo stream format" do
@@ -86,11 +86,11 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
         headers: { "Accept" => "text/vnd.turbo-stream.html" }
     end
 
-    assert_response :success
-    assert_match "turbo-stream", response.body
-    assert_match "prepend", response.body
-    assert_match "sources-list", response.body
-    assert_match "toast-anchor", response.body
+    assert_response(:success)
+    assert_match("turbo-stream", response.body)
+    assert_match("prepend", response.body)
+    assert_match("sources-list", response.body)
+    assert_match("toast-anchor", response.body)
   end
 
   test "create handles validation errors with HTML format" do
@@ -106,8 +106,8 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
       post calendar_sources_path, params: params
     end
 
-    assert_response :unprocessable_entity
-    assert_select "form"
+    assert_response(:unprocessable_entity)
+    assert_select("form")
   end
 
   test "create handles validation errors with turbo stream format" do
@@ -125,8 +125,8 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
         headers: { "Accept" => "text/vnd.turbo-stream.html" }
     end
 
-    assert_response :unprocessable_entity
-    assert_match "turbo-stream", response.body
+    assert_response(:unprocessable_entity)
+    assert_match("turbo-stream", response.body)
     # Updates the wrapper's contents so the collapsible header survives
     assert_match(/<turbo-stream action="update" target="new_source_form_body">/, response.body)
     assert_match("can&#39;t be blank", response.body)
@@ -152,8 +152,8 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     source = CalendarSource.last
 
-    assert_equal "testuser", source.credentials["http_basic_username"]
-    assert_equal "testpass", source.credentials["http_basic_password"]
+    assert_equal("testuser", source.credentials["http_basic_username"])
+    assert_equal("testpass", source.credentials["http_basic_password"])
   end
 
   test "create converts blank sync_frequency_minutes to nil" do
@@ -172,7 +172,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     source = CalendarSource.last
 
-    assert_nil source.read_attribute(:sync_frequency_minutes)
+    assert_nil(source.read_attribute(:sync_frequency_minutes))
   end
 
   test "create preserves non-blank sync_frequency_minutes" do
@@ -191,7 +191,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     source = CalendarSource.last
 
-    assert_equal 120, source.read_attribute(:sync_frequency_minutes)
+    assert_equal(120, source.read_attribute(:sync_frequency_minutes))
   end
 
   # UPDATE ACTION TESTS
@@ -206,15 +206,15 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     patch calendar_source_path(source), params: params
 
-    assert_redirected_to calendar_events_path(source_id: source.id)
+    assert_redirected_to(calendar_events_path(source_id: source.id))
     follow_redirect!
 
-    assert_match I18n.t("flashes.calendar_sources.updated"), response.body
+    assert_match(I18n.t("flashes.calendar_sources.updated"), response.body)
 
     source.reload
 
-    assert_equal "Updated Name", source.name
-    assert_equal "America/New_York", source.time_zone
+    assert_equal("Updated Name", source.name)
+    assert_equal("America/New_York", source.time_zone)
   end
 
   test "updates calendar source with turbo stream format" do
@@ -229,16 +229,16 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
       params: params,
       headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :success
-    assert_match "turbo-stream", response.body
-    assert_match "update", response.body
-    assert_match "modal", response.body
-    assert_match "replace", response.body
-    assert_match "toast-anchor", response.body
+    assert_response(:success)
+    assert_match("turbo-stream", response.body)
+    assert_match("update", response.body)
+    assert_match("modal", response.body)
+    assert_match("replace", response.body)
+    assert_match("toast-anchor", response.body)
 
     source.reload
 
-    assert_equal "Turbo Updated Name", source.name
+    assert_equal("Turbo Updated Name", source.name)
   end
 
   test "update handles validation errors" do
@@ -251,12 +251,12 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     patch calendar_source_path(source), params: params
 
-    assert_response :unprocessable_entity
-    assert_select "form"
+    assert_response(:unprocessable_entity)
+    assert_select("form")
 
     source.reload
 
-    refute_equal "", source.name # Name should not have changed
+    refute_equal("", source.name) # Name should not have changed
   end
 
   test "update applies credentials and preserves existing password when blank" do
@@ -277,27 +277,27 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     source.reload
 
-    assert_equal "newuser", source.credentials["http_basic_username"]
-    assert_equal "oldpass", source.credentials["http_basic_password"] # Should be preserved
+    assert_equal("newuser", source.credentials["http_basic_username"])
+    assert_equal("oldpass", source.credentials["http_basic_password"]) # Should be preserved
   end
 
   # DESTROY ACTION TESTS
   test "destroys calendar source with HTML format" do
     source = calendar_sources(:provider)
 
-    assert_nil source.deleted_at
+    assert_nil(source.deleted_at)
 
     delete calendar_source_path(source)
 
-    assert_redirected_to calendar_events_path
+    assert_redirected_to(calendar_events_path)
     follow_redirect!
 
-    assert_match I18n.t("flashes.calendar_sources.archived"), response.body
+    assert_match(I18n.t("flashes.calendar_sources.archived"), response.body)
 
     source.reload
 
-    refute_nil source.deleted_at
-    refute_predicate source, :active?
+    refute_nil(source.deleted_at)
+    refute_predicate(source, :active?)
   end
 
   test "destroys calendar source with turbo stream format" do
@@ -306,15 +306,15 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     delete calendar_source_path(source),
       headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :success
-    assert_match "turbo-stream", response.body
-    assert_match "remove", response.body
+    assert_response(:success)
+    assert_match("turbo-stream", response.body)
+    assert_match("remove", response.body)
     assert_match(/<turbo-stream action="update" target="archived-sources-section">/, response.body)
-    assert_match "toast-anchor", response.body
+    assert_match("toast-anchor", response.body)
 
     source.reload
 
-    refute_nil source.deleted_at
+    refute_nil(source.deleted_at)
   end
 
   # PURGE ACTION TESTS
@@ -322,29 +322,29 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     archived_source = calendar_sources(:archived_source)
     clear_enqueued_jobs
 
-    assert_enqueued_jobs 1, only: PurgeCalendarSourceJob do
+    assert_enqueued_jobs(1, only: PurgeCalendarSourceJob) do
       delete purge_calendar_source_path(archived_source)
     end
 
-    assert_redirected_to calendar_events_path
+    assert_redirected_to(calendar_events_path)
     follow_redirect!
 
-    assert_match I18n.t("flashes.calendar_sources.purge_scheduled"), response.body
+    assert_match(I18n.t("flashes.calendar_sources.purge_scheduled"), response.body)
   end
 
   test "purge schedules purge job with turbo stream format" do
     archived_source = calendar_sources(:archived_source)
     clear_enqueued_jobs
 
-    assert_enqueued_jobs 1, only: PurgeCalendarSourceJob do
+    assert_enqueued_jobs(1, only: PurgeCalendarSourceJob) do
       delete purge_calendar_source_path(archived_source),
         headers: { "Accept" => "text/vnd.turbo-stream.html" }
     end
 
-    assert_response :success
-    assert_match "turbo-stream", response.body
-    assert_match "remove", response.body
-    assert_match "toast-anchor", response.body
+    assert_response(:success)
+    assert_match("turbo-stream", response.body)
+    assert_match("remove", response.body)
+    assert_match("toast-anchor", response.body)
   end
 
   test "purge removes archived sources section when no more archived sources" do
@@ -355,9 +355,9 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     delete purge_calendar_source_path(archived_source),
       headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :success
-    assert_match "remove", response.body
-    assert_match "archived-sources", response.body
+    assert_response(:success)
+    assert_match("remove", response.body)
+    assert_match("archived-sources", response.body)
   end
 
   # SYNC_ALL ACTION TESTS
@@ -371,10 +371,10 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
       post sync_all_calendar_sources_path
     end
 
-    assert_redirected_to calendar_events_path
+    assert_redirected_to(calendar_events_path)
     follow_redirect!
 
-    assert_match I18n.t("flashes.calendar_sources.sync_scheduled", count: active_count), response.body
+    assert_match(I18n.t("flashes.calendar_sources.sync_scheduled", count: active_count), response.body)
   end
 
   test "sync_all handles no syncable sources" do
@@ -384,10 +384,10 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
       post sync_all_calendar_sources_path
     end
 
-    assert_redirected_to calendar_events_path
+    assert_redirected_to(calendar_events_path)
     follow_redirect!
 
-    assert_match I18n.t("flashes.calendar_sources.sync_skipped"), response.body
+    assert_match(I18n.t("flashes.calendar_sources.sync_skipped"), response.body)
   end
 
   # SYNC ACTION TESTS
@@ -395,29 +395,29 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     source = calendar_sources(:provider)
     clear_enqueued_jobs
 
-    assert_enqueued_jobs 1, only: SyncCalendarJob do
+    assert_enqueued_jobs(1, only: SyncCalendarJob) do
       post sync_calendar_source_path(source)
     end
 
-    assert_redirected_to calendar_events_path(source_id: source.id)
+    assert_redirected_to(calendar_events_path(source_id: source.id))
     follow_redirect!
 
-    assert_match I18n.t("flashes.calendar_sources.sync_scheduled", count: 1), response.body
+    assert_match(I18n.t("flashes.calendar_sources.sync_scheduled", count: 1), response.body)
   end
 
   test "sync schedules sync job with turbo stream format" do
     source = calendar_sources(:provider)
     clear_enqueued_jobs
 
-    assert_enqueued_jobs 1, only: SyncCalendarJob do
+    assert_enqueued_jobs(1, only: SyncCalendarJob) do
       post sync_calendar_source_path(source),
         headers: { "Accept" => "text/vnd.turbo-stream.html" }
     end
 
-    assert_response :success
-    assert_match "turbo-stream", response.body
-    assert_match "replace", response.body
-    assert_match "sync_status_source_#{source.id}", response.body
+    assert_response(:success)
+    assert_match("turbo-stream", response.body)
+    assert_match("replace", response.body)
+    assert_match("sync_status_source_#{source.id}", response.body)
   end
 
   test "sync handles inactive source with HTML format" do
@@ -425,11 +425,11 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     source.update!(active: false)
     clear_enqueued_jobs
 
-    assert_enqueued_jobs 0 do
+    assert_enqueued_jobs(0) do
       post sync_calendar_source_path(source)
     end
 
-    assert_redirected_to calendar_events_path(source_id: source.id)
+    assert_redirected_to(calendar_events_path(source_id: source.id))
     follow_redirect!
 
     assert_match(ERB::Util.html_escape(I18n.t("flashes.calendar_sources.sync_refused.paused", name: source.name)), response.body)
@@ -440,12 +440,12 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     source.update!(active: false)
     clear_enqueued_jobs
 
-    assert_enqueued_jobs 0 do
+    assert_enqueued_jobs(0) do
       post sync_calendar_source_path(source),
         headers: { "Accept" => "text/vnd.turbo-stream.html" }
     end
 
-    assert_response :unprocessable_entity
+    assert_response(:unprocessable_entity)
     assert_match(/<turbo-stream action="append" target="toast-anchor">/, response.body)
     assert_match(ERB::Util.html_escape(I18n.t("flashes.calendar_sources.sync_refused.paused", name: source.name)), response.body)
   end
@@ -488,11 +488,11 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     source.sync_attempts.create!(status: :queued)
     clear_enqueued_jobs
 
-    assert_enqueued_jobs 0 do
+    assert_enqueued_jobs(0) do
       post sync_calendar_source_path(source)
     end
 
-    assert_redirected_to calendar_events_path(source_id: source.id)
+    assert_redirected_to(calendar_events_path(source_id: source.id))
     follow_redirect!
 
     assert_match(I18n.t("flashes.calendar_sources.sync_refused.already_running"), response.body)
@@ -505,26 +505,26 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     source.update!(sync_window_start_hour: 2, sync_window_end_hour: 3)
     clear_enqueued_jobs
 
-    assert_enqueued_jobs 1, only: SyncCalendarJob do
+    assert_enqueued_jobs(1, only: SyncCalendarJob) do
       post force_sync_calendar_source_path(source)
     end
 
-    assert_redirected_to calendar_events_path(source_id: source.id)
+    assert_redirected_to(calendar_events_path(source_id: source.id))
   end
 
   test "force_sync with turbo stream format" do
     source = calendar_sources(:provider)
     clear_enqueued_jobs
 
-    assert_enqueued_jobs 1, only: SyncCalendarJob do
+    assert_enqueued_jobs(1, only: SyncCalendarJob) do
       post force_sync_calendar_source_path(source),
         headers: { "Accept" => "text/vnd.turbo-stream.html" }
     end
 
-    assert_response :success
-    assert_match "turbo-stream", response.body
-    assert_match "replace", response.body
-    assert_match "sync_status_source_#{source.id}", response.body
+    assert_response(:success)
+    assert_match("turbo-stream", response.body)
+    assert_match("replace", response.body)
+    assert_match("sync_status_source_#{source.id}", response.body)
   end
 
   test "force_sync handles inactive source" do
@@ -532,11 +532,11 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     source.update!(active: false)
     clear_enqueued_jobs
 
-    assert_enqueued_jobs 0 do
+    assert_enqueued_jobs(0) do
       post force_sync_calendar_source_path(source)
     end
 
-    assert_redirected_to calendar_events_path(source_id: source.id)
+    assert_redirected_to(calendar_events_path(source_id: source.id))
     follow_redirect!
 
     assert_match(ERB::Util.html_escape(I18n.t("flashes.calendar_sources.sync_refused.paused", name: source.name)), response.body)
@@ -553,11 +553,11 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     get check_destination_calendar_source_path(source)
 
-    assert_redirected_to calendar_sources_path
+    assert_redirected_to(calendar_sources_path)
     follow_redirect!
     # Check for the actual message structure in the response
-    assert_match "Apple Calendar reachable", response.body
-    assert_match "/calendar/path", response.body
+    assert_match("Apple Calendar reachable", response.body)
+    assert_match("/calendar/path", response.body)
   end
 
   test "check_destination handles errors" do
@@ -570,11 +570,11 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     get check_destination_calendar_source_path(source)
 
-    assert_redirected_to calendar_sources_path
+    assert_redirected_to(calendar_sources_path)
     follow_redirect!
 
-    assert_match "Apple Calendar problem", response.body
-    assert_match "Connection failed", response.body
+    assert_match("Apple Calendar problem", response.body)
+    assert_match("Connection failed", response.body)
   end
 
   # TOGGLE_ACTIVE ACTION TESTS
@@ -584,26 +584,26 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     patch toggle_active_calendar_source_path(source)
 
-    assert_redirected_to calendar_events_path
+    assert_redirected_to(calendar_events_path)
     follow_redirect!
 
-    assert_match I18n.t("flashes.calendar_sources.status_updated"), response.body
+    assert_match(I18n.t("flashes.calendar_sources.status_updated"), response.body)
 
     source.reload
 
-    assert_predicate source, :active?
+    assert_predicate(source, :active?)
   end
 
   test "toggle_active deactivates active source with HTML format" do
     source = calendar_sources(:provider)
 
-    assert_predicate source, :active?
+    assert_predicate(source, :active?)
 
     patch toggle_active_calendar_source_path(source)
 
     source.reload
 
-    refute_predicate source, :active?
+    refute_predicate(source, :active?)
   end
 
   test "toggle_active with turbo stream format" do
@@ -613,14 +613,14 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     patch toggle_active_calendar_source_path(source),
       headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :success
-    assert_match "turbo-stream", response.body
-    assert_match "replace", response.body
-    assert_match "toast-anchor", response.body
+    assert_response(:success)
+    assert_match("turbo-stream", response.body)
+    assert_match("replace", response.body)
+    assert_match("toast-anchor", response.body)
 
     source.reload
 
-    assert_equal !original_active, source.active?
+    assert_equal(!original_active, source.active?)
   end
 
   # TOGGLE_AUTO_SYNC ACTION TESTS
@@ -630,14 +630,14 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     patch toggle_auto_sync_calendar_source_path(source)
 
-    assert_redirected_to calendar_events_path
+    assert_redirected_to(calendar_events_path)
     follow_redirect!
 
-    assert_match I18n.t("flashes.calendar_sources.auto_sync_updated"), response.body
+    assert_match(I18n.t("flashes.calendar_sources.auto_sync_updated"), response.body)
 
     source.reload
 
-    assert_predicate source, :auto_sync_enabled?
+    assert_predicate(source, :auto_sync_enabled?)
   end
 
   test "toggle_auto_sync disables auto sync with HTML format" do
@@ -648,7 +648,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     source.reload
 
-    refute_predicate source, :auto_sync_enabled?
+    refute_predicate(source, :auto_sync_enabled?)
   end
 
   test "toggle_auto_sync with turbo stream format" do
@@ -658,33 +658,33 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     patch toggle_auto_sync_calendar_source_path(source),
       headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :success
-    assert_match "turbo-stream", response.body
-    assert_match "replace", response.body
-    assert_match "toast-anchor", response.body
+    assert_response(:success)
+    assert_match("turbo-stream", response.body)
+    assert_match("replace", response.body)
+    assert_match("toast-anchor", response.body)
 
     source.reload
 
-    assert_equal !original_auto_sync, source.auto_sync_enabled?
+    assert_equal(!original_auto_sync, source.auto_sync_enabled?)
   end
 
   # UNARCHIVE ACTION TESTS (expanded from existing)
   test "unarchives a calendar source" do
     archived_source = calendar_sources(:archived_source)
 
-    assert_predicate archived_source.deleted_at, :present?
-    refute_predicate archived_source, :active?
+    assert_predicate(archived_source.deleted_at, :present?)
+    refute_predicate(archived_source, :active?)
 
     patch unarchive_calendar_source_path(archived_source)
 
     archived_source.reload
 
-    assert_nil archived_source.deleted_at
-    assert_predicate archived_source, :active?
-    assert_redirected_to calendar_events_path
+    assert_nil(archived_source.deleted_at)
+    assert_predicate(archived_source, :active?)
+    assert_redirected_to(calendar_events_path)
     follow_redirect!
 
-    assert_match I18n.t("flashes.calendar_sources.unarchived"), response.body
+    assert_match(I18n.t("flashes.calendar_sources.unarchived"), response.body)
   end
 
   test "unarchive with turbo stream updates source status" do
@@ -695,9 +695,9 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     archived_source.reload
 
-    assert_nil archived_source.deleted_at
-    assert_predicate archived_source, :active?
-    assert_response :success
+    assert_nil(archived_source.deleted_at)
+    assert_predicate(archived_source, :active?)
+    assert_response(:success)
   end
 
   test "unarchive with turbo stream returns correct response format" do
@@ -706,12 +706,12 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     patch unarchive_calendar_source_path(archived_source),
       headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :success
-    assert_match "turbo-stream", response.body
-    assert_match "remove", response.body
-    assert_match "prepend", response.body
-    assert_match "sources-list", response.body
-    assert_match "toast-anchor", response.body
+    assert_response(:success)
+    assert_match("turbo-stream", response.body)
+    assert_match("remove", response.body)
+    assert_match("prepend", response.body)
+    assert_match("sources-list", response.body)
+    assert_match("toast-anchor", response.body)
   end
 
   test "unarchive removes archived section when no more archived sources" do
@@ -722,13 +722,13 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     patch unarchive_calendar_source_path(archived_source),
       headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :success
-    assert_match "remove", response.body
-    assert_match "archived-sources", response.body
+    assert_response(:success)
+    assert_match("remove", response.body)
+    assert_match("archived-sources", response.body)
   end
 
   test "unarchive handles non-existent source" do
-    patch(unarchive_calendar_source_path(99999))
+    patch(unarchive_calendar_source_path(99_999))
 
     assert_response(:not_found)
   end
@@ -741,9 +741,9 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     active_source.reload
 
-    assert_nil active_source.deleted_at
-    assert_predicate active_source, :active?
-    assert_redirected_to calendar_events_path
+    assert_nil(active_source.deleted_at)
+    assert_predicate(active_source, :active?)
+    assert_redirected_to(calendar_events_path)
   end
 
   # SYNC HISTORY ON SHOW PAGE TESTS
@@ -752,9 +752,9 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     # ics_feed has the failed_sync fixture
     get calendar_source_path(source)
 
-    assert_response :success
-    assert_match "Sync History", response.body
-    assert_match "failed_sync".present? ? "Failed" : "", response.body
+    assert_response(:success)
+    assert_match("Sync History", response.body)
+    assert_match("failed_sync".present? ? "Failed" : "", response.body)
   end
 
   test "show displays empty state when source has no sync attempts" do
@@ -764,19 +764,19 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     get calendar_source_path(source)
 
-    assert_response :success
-    assert_match "Sync History", response.body
-    assert_match I18n.t("ui.sources.no_sync_history"), response.body
+    assert_response(:success)
+    assert_match("Sync History", response.body)
+    assert_match(I18n.t("ui.sources.no_sync_history"), response.body)
   end
 
   test "show displays sync attempt details in history table" do
     source = calendar_sources(:test_source)
     get calendar_source_path(source)
 
-    assert_response :success
+    assert_response(:success)
     # The test_source has successful_sync and queued_sync fixtures
-    assert_match "Success", response.body
-    assert_match "Queued", response.body
+    assert_match("Success", response.body)
+    assert_match("Queued", response.body)
   end
 
   # PRIVATE METHOD TESTS (via integration)
@@ -786,13 +786,13 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     # These actions should work with archived sources
     patch unarchive_calendar_source_path(archived_source)
 
-    assert_response :redirect
+    assert_response(:redirect)
 
     archived_source.update!(deleted_at: Time.current) # Re-archive
 
     delete purge_calendar_source_path(archived_source)
 
-    assert_response :redirect
+    assert_response(:redirect)
   end
 
   test "apply_credentials handles missing credentials parameter" do
@@ -833,8 +833,8 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     source = CalendarSource.last
 
-    assert_equal "testuser", source.credentials["http_basic_username"]
-    assert_nil source.credentials["http_basic_password"]
+    assert_equal("testuser", source.credentials["http_basic_username"])
+    assert_nil(source.credentials["http_basic_password"])
   end
 
   test "apply_credentials handles all blank credentials" do
@@ -878,9 +878,9 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     source.reload
     credentials = source.credentials
 
-    assert_equal "existing_value", credentials["existing_key"]  # Preserved
-    assert_equal "newuser", credentials["http_basic_username"]  # Updated
-    assert_equal "newpass", credentials["http_basic_password"]  # Added
+    assert_equal("existing_value", credentials["existing_key"])  # Preserved
+    assert_equal("newuser", credentials["http_basic_username"])  # Updated
+    assert_equal("newpass", credentials["http_basic_password"])  # Added
   end
 
   # TEST ICS FEED ACTION TESTS
@@ -891,13 +891,13 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     post test_ics_feed_path, params: { url: "https://example.com/test.ics" }, as: :json
 
-    assert_response :success
+    assert_response(:success)
     json = JSON.parse(response.body)
 
-    assert json["success"]
-    assert_equal 2, json["event_count"]
-    assert_includes json["sample_titles"], "Initial Consultation"
-    assert_includes json["sample_titles"], "Follow Up"
+    assert(json["success"])
+    assert_equal(2, json["event_count"])
+    assert_includes(json["sample_titles"], "Initial Consultation")
+    assert_includes(json["sample_titles"], "Follow Up")
   end
 
   test "test_ics_feed returns error on HTTP failure" do
@@ -906,10 +906,10 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     post test_ics_feed_path, params: { url: "https://example.com/bad.ics" }, as: :json
 
-    assert_response :success
+    assert_response(:success)
     json = JSON.parse(response.body)
 
-    refute json["success"]
+    refute(json["success"])
     assert_match(/HTTP 404/, json["error"])
   end
 
@@ -919,21 +919,21 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     post test_ics_feed_path, params: { url: "https://example.com/timeout.ics" }, as: :json
 
-    assert_response :success
+    assert_response(:success)
     json = JSON.parse(response.body)
 
-    refute json["success"]
+    refute(json["success"])
     assert_match(/Could not fetch URL/, json["error"])
   end
 
   test "test_ics_feed returns error when URL is blank" do
     post test_ics_feed_path, params: { url: "" }, as: :json
 
-    assert_response :unprocessable_entity
+    assert_response(:unprocessable_entity)
     json = JSON.parse(response.body)
 
-    refute json["success"]
-    assert_equal "URL is required", json["error"]
+    refute(json["success"])
+    assert_equal("URL is required", json["error"])
   end
 
   test "test_ics_feed limits sample titles to 5" do
@@ -947,12 +947,12 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     post test_ics_feed_path, params: { url: "https://example.com/many.ics" }, as: :json
 
-    assert_response :success
+    assert_response(:success)
     json = JSON.parse(response.body)
 
-    assert json["success"]
-    assert_equal 8, json["event_count"]
-    assert_equal 5, json["sample_titles"].length
+    assert(json["success"])
+    assert_equal(8, json["event_count"])
+    assert_equal(5, json["sample_titles"].length)
   end
 
   test "test_ics_feed does not create or modify any records" do
@@ -964,7 +964,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
       post test_ics_feed_path, params: { url: "https://example.com/readonly.ics" }, as: :json
     end
 
-    assert_response :success
+    assert_response(:success)
   end
 
   # DISCOVER_APPLE_CALENDARS ACTION TESTS (FEAT-007)
@@ -978,7 +978,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     post discover_apple_calendars_path, as: :json
 
-    assert_response :success
+    assert_response(:success)
     json = JSON.parse(response.body)
 
     assert(json["success"])
@@ -994,7 +994,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     post discover_apple_calendars_path, as: :json
 
-    assert_response :success
+    assert_response(:success)
     json = JSON.parse(response.body)
 
     refute(json["success"])

@@ -6,55 +6,55 @@ class RealtimeControllerTest < ActionDispatch::IntegrationTest
   test "should get show" do
     get "/realtime"
 
-    assert_response :success
-    refute_nil session[:realtime_token]
+    assert_response(:success)
+    refute_nil(session[:realtime_token])
   end
 
   test "should get show with token from params" do
     token = "test123"
     get "/realtime", params: { token: token }
 
-    assert_response :success
-    assert_equal token, session[:realtime_token]
+    assert_response(:success)
+    assert_equal(token, session[:realtime_token])
   end
 
   test "should get show with existing session token" do
     existing_token = "existing456"
     get "/realtime", params: { token: existing_token }
 
-    assert_response :success
+    assert_response(:success)
 
     get "/realtime"
 
-    assert_response :success
-    assert_equal existing_token, session[:realtime_token]
+    assert_response(:success)
+    assert_equal(existing_token, session[:realtime_token])
   end
 
   test "should get show with blank token param and use session" do
     existing_token = "existing789"
     get "/realtime", params: { token: existing_token }
 
-    assert_response :success
+    assert_response(:success)
 
     get "/realtime", params: { token: "" }
 
-    assert_response :success
-    assert_equal existing_token, session[:realtime_token]
+    assert_response(:success)
+    assert_equal(existing_token, session[:realtime_token])
   end
 
   test "should generate new token when none provided" do
     get "/realtime"
 
-    assert_response :success
-    refute_nil session[:realtime_token]
+    assert_response(:success)
+    refute_nil(session[:realtime_token])
     assert_match(/^[a-f0-9]{12}$/, session[:realtime_token])
   end
 
   test "should handle ActionCable config variations" do
     get "/realtime"
 
-    assert_response :success
-    assert_select "h1", text: "Realtime Diagnostics"
+    assert_response(:success)
+    assert_select("h1", text: "Realtime Diagnostics")
   end
 
   # Test ActionCable adapter detection with different config scenarios
@@ -64,8 +64,8 @@ class RealtimeControllerTest < ActionDispatch::IntegrationTest
 
     get "/realtime"
 
-    assert_response :success
-    assert_includes response.body, "redis"
+    assert_response(:success)
+    assert_includes(response.body, "redis")
   end
 
   test "should handle ActionCable config as hash with string adapter key" do
@@ -74,8 +74,8 @@ class RealtimeControllerTest < ActionDispatch::IntegrationTest
 
     get "/realtime"
 
-    assert_response :success
-    assert_includes response.body, "postgresql"
+    assert_response(:success)
+    assert_includes(response.body, "postgresql")
   end
 
   test "should handle ActionCable config as non-hash" do
@@ -83,8 +83,8 @@ class RealtimeControllerTest < ActionDispatch::IntegrationTest
 
     get "/realtime"
 
-    assert_response :success
-    assert_includes response.body, "unknown"
+    assert_response(:success)
+    assert_includes(response.body, "unknown")
   end
 
   test "should handle ActionCable config exception" do
@@ -92,8 +92,8 @@ class RealtimeControllerTest < ActionDispatch::IntegrationTest
 
     get "/realtime"
 
-    assert_response :success
-    assert_includes response.body, "unknown"
+    assert_response(:success)
+    assert_includes(response.body, "unknown")
   end
 
   test "should handle ActionCable config with no adapter key" do
@@ -102,8 +102,8 @@ class RealtimeControllerTest < ActionDispatch::IntegrationTest
 
     get "/realtime"
 
-    assert_response :success
-    assert_includes response.body, "unknown"
+    assert_response(:success)
+    assert_includes(response.body, "unknown")
   end
 
   test "should post ping with turbo_stream format" do
@@ -119,8 +119,8 @@ class RealtimeControllerTest < ActionDispatch::IntegrationTest
 
     post "/realtime/ping", params: { token: token }, headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :ok
-    assert_equal token, session[:realtime_token]
+    assert_response(:ok)
+    assert_equal(token, session[:realtime_token])
   end
 
   test "should post ping with html format" do
@@ -136,9 +136,9 @@ class RealtimeControllerTest < ActionDispatch::IntegrationTest
 
     post "/realtime/ping", params: { token: token }
 
-    assert_redirected_to "/realtime?token=#{token}"
-    assert_equal "Broadcast sent", flash[:notice]
-    assert_equal token, session[:realtime_token]
+    assert_redirected_to("/realtime?token=#{token}")
+    assert_equal("Broadcast sent", flash[:notice])
+    assert_equal(token, session[:realtime_token])
   end
 
   test "should post ping without token and use existing session" do
@@ -155,8 +155,8 @@ class RealtimeControllerTest < ActionDispatch::IntegrationTest
 
     post "/realtime/ping", headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :ok
-    assert_equal existing_token, session[:realtime_token]
+    assert_response(:ok)
+    assert_equal(existing_token, session[:realtime_token])
   end
 
   test "should post ping without token and generate new one" do
@@ -171,8 +171,8 @@ class RealtimeControllerTest < ActionDispatch::IntegrationTest
 
     post "/realtime/ping", headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :ok
-    refute_nil session[:realtime_token]
+    assert_response(:ok)
+    refute_nil(session[:realtime_token])
     assert_match(/^[a-f0-9]{12}$/, session[:realtime_token])
   end
 
@@ -191,7 +191,7 @@ class RealtimeControllerTest < ActionDispatch::IntegrationTest
 
     post "/realtime/ping", params: { token: token }, headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :ok
+    assert_response(:ok)
   end
 
   test "should handle ping with blank token param" do
@@ -208,7 +208,7 @@ class RealtimeControllerTest < ActionDispatch::IntegrationTest
 
     post "/realtime/ping", params: { token: "" }, headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :ok
-    assert_equal existing_token, session[:realtime_token]
+    assert_response(:ok)
+    assert_equal(existing_token, session[:realtime_token])
   end
 end

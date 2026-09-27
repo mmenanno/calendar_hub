@@ -2,7 +2,6 @@
 
 require "json"
 require "fileutils"
-require "pathname"
 require "time"
 
 module CalendarHub

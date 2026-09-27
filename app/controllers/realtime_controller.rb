@@ -7,7 +7,7 @@ class RealtimeController < ApplicationController
     @adapter = begin
       cfg = ActionCable.server.config.cable
       cfg.is_a?(Hash) ? (cfg[:adapter] || cfg["adapter"]) : nil
-    rescue
+    rescue StandardError
       nil
     end
   end

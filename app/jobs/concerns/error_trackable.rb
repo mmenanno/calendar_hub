@@ -15,8 +15,8 @@ module ErrorTrackable
   rescue ActiveRecord::RecordNotFound
     # Let RecordNotFound bubble up without logging as error
     raise
-  rescue => e
-    Rails.logger.error("[#{self.class.name}] #{context} failed: #{e.message}")
+  rescue StandardError => exception
+    Rails.logger.error("[#{self.class.name}] #{context} failed: #{exception.message}")
     raise
   end
 end

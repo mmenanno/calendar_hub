@@ -44,16 +44,14 @@ module CalendarHub
         @current_key = new_key
         @current_encryptor = new_encryptor
       end
-    rescue => e
+    rescue StandardError => exception
       reset_cached_encryptor!
       remove_instance_variable(:@legacy_encryptor) if instance_variable_defined?(:@legacy_encryptor)
-      raise KeyRotationError, e.message
+      raise KeyRotationError, exception.message
     end
 
     def ensure_key!
-      if instance_variable_defined?(:@current_key) && @current_key.present?
-        return @current_key
-      end
+      return @current_key if instance_variable_defined?(:@current_key) && @current_key.present?
 
       mutex.synchronize do
         unless instance_variable_defined?(:@current_key) && @current_key.present?
@@ -180,7 +178,7 @@ module CalendarHub
       @legacy_encryptor ||= begin
         secret = rails_key_generator.generate_key("calendar_source_credentials", ActiveSupport::MessageEncryptor.key_len)
         ActiveSupport::MessageEncryptor.new(secret, cipher: "aes-256-gcm")
-      rescue
+      rescue StandardError
         nil
       end
     end

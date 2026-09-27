@@ -174,8 +174,8 @@ class CalendarSourcesController < ApplicationController
     url = client.send(:discover_calendar_url, @calendar_source.calendar_identifier)
     notice = t("ui.sources.confirm.dest_found", path: URI.parse(url).request_uri)
     redirect_back_or_to(calendar_sources_path, notice: notice)
-  rescue StandardError => e
-    alert = t("ui.sources.confirm.dest_error", error: e.message)
+  rescue StandardError => exception
+    alert = t("ui.sources.confirm.dest_error", error: exception.message)
     redirect_back_or_to(calendar_sources_path, alert: alert)
   end
 
@@ -207,14 +207,14 @@ class CalendarSourcesController < ApplicationController
     client = AppleCalendar::Client.new
     calendars = client.discover_calendars
     render(json: { success: true, calendars: calendars })
-  rescue StandardError => e
-    render(json: { success: false, error: e.message }, status: :ok)
+  rescue StandardError => exception
+    render(json: { success: false, error: exception.message }, status: :ok)
   end
 
   def test_ics_feed
     url = params[:url].to_s.strip
     if url.blank?
-      render(json: { success: false, error: "URL is required" }, status: :unprocessable_entity)
+      render(json: { success: false, error: "URL is required" }, status: :unprocessable_content)
       return
     end
 
@@ -235,10 +235,10 @@ class CalendarSourcesController < ApplicationController
       titles = events.first(5).map(&:summary)
 
       render(json: { success: true, event_count: events.size, sample_titles: titles })
-    rescue Faraday::Error => e
-      render(json: { success: false, error: "Could not fetch URL: #{e.message}" })
-    rescue => e
-      render(json: { success: false, error: "Failed to parse feed: #{e.message}" })
+    rescue Faraday::Error => exception
+      render(json: { success: false, error: "Could not fetch URL: #{exception.message}" })
+    rescue StandardError => exception
+      render(json: { success: false, error: "Failed to parse feed: #{exception.message}" })
     end
   end
 

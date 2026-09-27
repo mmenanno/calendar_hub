@@ -165,7 +165,6 @@ class ApplicationHelperTest < ActiveSupport::TestCase
   def test_format_duration_ms_nil
     assert_equal("\u2014", @helper.format_duration_ms(nil))
   end
-
 end
 
 class ApplicationHelperFormFieldErrorTest < ActionView::TestCase

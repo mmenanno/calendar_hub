@@ -47,14 +47,14 @@ module ApplicationHelper
     end
   end
 
-  def calendar_hub_logo(type: :textless, **options)
+  def calendar_hub_logo(type: :textless, **)
     case type
     when :text
-      image_tag("logos/text_logo.png", alt: "Calendar Hub", **options)
+      image_tag("logos/text_logo.png", alt: "Calendar Hub", **)
     when :textless
-      image_tag("logos/textless_logo.png", alt: "Calendar Hub", **options)
+      image_tag("logos/textless_logo.png", alt: "Calendar Hub", **)
     when :favicon
-      image_tag("logos/favicon.png", alt: "Calendar Hub", **options)
+      image_tag("logos/favicon.png", alt: "Calendar Hub", **)
     end
   end
 
@@ -87,7 +87,7 @@ module ApplicationHelper
 
   # Extract meaningful field changes from an audit record, filtering out
   # internal fields like updated_at, fingerprint, etc.
-  AUDIT_SKIP_FIELDS = %w[id created_at updated_at fingerprint synced_at source_updated_at calendar_source_id external_id].freeze
+  AUDIT_SKIP_FIELDS = ["id", "created_at", "updated_at", "fingerprint", "synced_at", "source_updated_at", "calendar_source_id", "external_id"].freeze
 
   def audit_changed_fields(audit)
     from = audit.changes_from || {}

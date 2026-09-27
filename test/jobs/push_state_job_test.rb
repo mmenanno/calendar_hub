@@ -13,7 +13,7 @@ class PushStateJobTest < ActiveJob::TestCase
 
     PushStateJob.perform_now(source.id, attempt_id: attempt.id)
 
-    assert_equal "success", attempt.reload.status
+    assert_equal("success", attempt.reload.status)
   end
 
   test "marks attempt as failed on error" do
@@ -28,7 +28,7 @@ class PushStateJobTest < ActiveJob::TestCase
       PushStateJob.perform_now(source.id, attempt_id: attempt.id)
     end
 
-    assert_equal "failed", attempt.reload.status
-    assert_equal "Apple Calendar unavailable", attempt.message
+    assert_equal("failed", attempt.reload.status)
+    assert_equal("Apple Calendar unavailable", attempt.message)
   end
 end

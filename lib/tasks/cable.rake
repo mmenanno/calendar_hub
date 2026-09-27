@@ -5,9 +5,7 @@ namespace :db do
     desc "Prepare the cable database by loading db/cable_schema.rb"
     task prepare: :environment do
       path = Rails.root.join("db/cable_schema.rb")
-      unless File.exist?(path)
-        abort "Missing db/cable_schema.rb; ensure solid_cable is installed and schema present"
-      end
+      abort "Missing db/cable_schema.rb; ensure solid_cable is installed and schema present" unless File.exist?(path)
 
       # Establish a temporary connection directly to the cable DB and load schema
       configs = ActiveRecord::Base.configurations
@@ -15,9 +13,7 @@ namespace :db do
         cfgs = configs.configs_for(env_name: Rails.env, name: "cable")
         cfgs.is_a?(Array) ? cfgs.first : cfgs
       end
-      unless cable_cfg&.respond_to?(:configuration_hash)
-        abort "No cable database configuration for #{Rails.env}."
-      end
+      abort "No cable database configuration for #{Rails.env}." unless cable_cfg&.respond_to?(:configuration_hash)
 
       puts "Loading #{path} into cable database..."
       previous = ActiveRecord::Base.remove_connection

@@ -50,13 +50,13 @@ class SyncFilterRulesJobTest < ActiveJob::TestCase
 
   test "handles RecordNotFound gracefully" do
     assert_nothing_raised do
-      SyncFilterRulesJob.perform_now(99999)
+      SyncFilterRulesJob.perform_now(99_999)
     end
   end
 
   test "handles RecordNotFound for calendar_source_id gracefully" do
     assert_nothing_raised do
-      SyncFilterRulesJob.perform_now(calendar_source_id: 99999)
+      SyncFilterRulesJob.perform_now(calendar_source_id: 99_999)
     end
   end
 
@@ -72,6 +72,7 @@ class SyncFilterRulesJobTest < ActiveJob::TestCase
   test "FilterSyncService does not contain sleep calls for lock contention" do
     # Read the service source to verify sleep has been removed
     source_file = Rails.root.join("app/services/calendar_hub/sync/filter_sync_service.rb").read
+
     refute_match(/\bsleep\b/, source_file, "FilterSyncService should not call sleep for lock contention")
   end
 end

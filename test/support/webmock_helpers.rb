@@ -13,8 +13,8 @@ module WebMockHelpers
       .to_return(status: status, body: body, headers: default_headers.merge(headers))
   end
 
-  def stub_ics_request_with_auth(source, username: "testuser", password: "testpass", **options)
-    stub_ics_request(source, **options)
+  def stub_ics_request_with_auth(source, username: "testuser", password: "testpass", **)
+    stub_ics_request(source, **)
       .with(headers: { "Authorization" => basic_auth_header(username, password) })
   end
 
