@@ -281,6 +281,82 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     assert_equal("oldpass", source.credentials["http_basic_password"]) # Should be preserved
   end
 
+  test "update keeps the saved password when the URL changes on the same host" do
+    source = calendar_sources(:provider)
+    source.update!(credentials: { http_basic_username: "user", http_basic_password: "secret" })
+
+    patch calendar_source_path(source), params: {
+      calendar_source: {
+        ingestion_url: "https://EXAMPLE.com/other-path.ics",
+        credentials: { http_basic_username: "user", http_basic_password: "" },
+      },
+    }
+
+    assert_redirected_to(calendar_events_path(source_id: source.id))
+    assert_equal("secret", source.reload.credentials["http_basic_password"])
+    assert_equal(I18n.t("flashes.calendar_sources.updated"), flash[:notice])
+  end
+
+  test "update drops the saved password when the feed host changes" do
+    source = calendar_sources(:provider)
+    source.update!(credentials: { http_basic_username: "user", http_basic_password: "secret" })
+
+    patch calendar_source_path(source), params: {
+      calendar_source: {
+        ingestion_url: "https://attacker.example.net/feed.ics",
+        credentials: { http_basic_username: "user", http_basic_password: "" },
+      },
+    }
+
+    source.reload
+
+    assert_equal("https://attacker.example.net/feed.ics", source.ingestion_url)
+    assert_nil(source.credentials["http_basic_password"])
+    assert_equal("user", source.credentials["http_basic_username"])
+    assert_includes(flash[:notice], I18n.t("flashes.calendar_sources.feed_password_cleared"))
+  end
+
+  test "update drops the saved password on host change even when no credential fields are sent" do
+    source = calendar_sources(:provider)
+    source.update!(credentials: { http_basic_username: "user", http_basic_password: "secret" })
+
+    patch calendar_source_path(source), params: { calendar_source: { ingestion_url: "https://attacker.example.net/feed.ics" } }
+
+    assert_nil(source.reload.credentials["http_basic_password"])
+    assert_includes(flash[:notice], I18n.t("flashes.calendar_sources.feed_password_cleared"))
+  end
+
+  test "update toast mentions the cleared password for turbo stream requests" do
+    source = calendar_sources(:provider)
+    source.update!(credentials: { http_basic_username: "user", http_basic_password: "secret" })
+
+    patch calendar_source_path(source),
+      params: { calendar_source: { ingestion_url: "webcal://other.example.org/feed.ics", credentials: { http_basic_password: "" } } },
+      as: :turbo_stream
+
+    assert_response(:success)
+    assert_includes(response.body, CGI.escapeHTML(I18n.t("flashes.calendar_sources.feed_password_cleared")))
+    assert_nil(source.reload.credentials["http_basic_password"])
+  end
+
+  test "update saves a new password typed for the new host" do
+    source = calendar_sources(:provider)
+    source.update!(credentials: { http_basic_username: "user", http_basic_password: "secret" })
+
+    patch calendar_source_path(source), params: {
+      calendar_source: {
+        ingestion_url: "https://new-host.example.org/feed.ics",
+        credentials: { http_basic_username: "newuser", http_basic_password: "newsecret" },
+      },
+    }
+
+    source.reload
+
+    assert_equal("newsecret", source.credentials["http_basic_password"])
+    assert_equal("newuser", source.credentials["http_basic_username"])
+    assert_equal(I18n.t("flashes.calendar_sources.updated"), flash[:notice])
+  end
+
   # DESTROY ACTION TESTS
   test "destroys calendar source with HTML format" do
     source = calendar_sources(:provider)
@@ -1065,6 +1141,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     assert_select("[data-controller=mobile-nav]")
     assert_select("label[for=calendar_source_credentials_http_basic_username]")
+    assert_select("p", text: I18n.t("ui.sources.http_basic_hint"))
     assert_select("input#calendar_source_credentials_http_basic_username")
 
     source = calendar_sources(:provider)

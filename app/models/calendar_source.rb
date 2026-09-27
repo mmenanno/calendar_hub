@@ -25,6 +25,7 @@ class CalendarSource < ApplicationRecord
   validates :sync_frequency_minutes, allow_nil: true, numericality: { greater_than: 0 }
 
   before_validation :normalize_ingestion_url
+  before_save :drop_password_on_host_change, if: :persisted?
   before_create :set_import_start_date
 
   class << self
@@ -275,6 +276,18 @@ class CalendarSource < ApplicationRecord
     return if ingestion_url.blank?
 
     self.ingestion_url = CalendarHub::Shared::HttpClient.normalize_url(ingestion_url)
+  end
+
+  # Saved feed passwords never follow the feed to another host (whether the
+  # URL was changed in the UI, the console or by an import). Credentials
+  # assigned in the same save are taken as-is.
+  def drop_password_on_host_change
+    return unless will_save_change_to_ingestion_url?
+    return if will_save_change_to_credentials?
+    return if CalendarHub::Shared::HttpClient.same_host?(ingestion_url_in_database, ingestion_url)
+
+    current = credentials
+    self.credentials = current.except("http_basic_password") if current.key?("http_basic_password")
   end
 
   def set_import_start_date
