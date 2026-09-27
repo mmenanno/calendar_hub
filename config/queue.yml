@@ -3,7 +3,17 @@ default: &default
     - polling_interval: 1
       batch_size: 500
   workers:
-    - queues: "*"
+    # Calendar syncs are long, write-heavy jobs. SQLite allows a single writer,
+    # so run them one at a time on a dedicated queue instead of letting several
+    # syncs contend for the write lock (and starve the web process).
+    - queues: [sync]
+      threads: 1
+      processes: 1
+      polling_interval: 0.1
+    # Everything else: ApplicationJob, Turbo broadcasts and mailers use
+    # "default"; recurring `command:` tasks run as SolidQueue::RecurringJob on
+    # "solid_queue_recurring". Not "*": that would also pick up sync jobs.
+    - queues: [default, solid_queue_recurring]
       threads: 3
       processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
       polling_interval: 0.1

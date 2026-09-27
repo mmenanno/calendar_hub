@@ -7,20 +7,18 @@
 default: &default
   adapter: sqlite3
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  timeout: 30000
+  # Rails installs this as a GVL-releasing busy handler (busy_handler_timeout),
+  # so other Ruby threads keep running while a connection waits for a lock.
+  # Do NOT also set `pragmas: busy_timeout` -- that replaces the handler with
+  # SQLite's blocking one, which holds the GVL and freezes the whole process.
+  timeout: 10000
+  # Rails 8.1 already applies foreign_keys, journal_mode=wal, synchronous=normal,
+  # mmap_size=128MB and journal_size_limit=64MB by default
+  # (ActiveRecord::ConnectionAdapters::SQLite3Adapter::DEFAULT_PRAGMAS).
   pragmas:
-    # Enable Write-Ahead Logging (WAL) mode for better concurrent access
-    # WAL allows multiple readers and one writer simultaneously, reducing lock contention
-    journal_mode: wal
-    # Set synchronous mode to NORMAL for better performance with WAL
-    # NORMAL is safe with WAL mode and provides good performance
-    synchronous: normal
-    # Set a reasonable cache size (negative value = KB, positive = pages)
-    cache_size: -64000  # 64MB cache
-    # Enable memory-mapped I/O for better read performance (bytes)
-    mmap_size: 134217728  # 128MB
-    # Increase busy timeout (milliseconds) - how long to retry when locked
-    busy_timeout: 30000  # 30 seconds
+    # Default is 2000 pages (~8MB); a 64MB page cache keeps the events table and
+    # its indexes in memory. Negative value = KiB.
+    cache_size: -64000
 
 development:
   primary:
