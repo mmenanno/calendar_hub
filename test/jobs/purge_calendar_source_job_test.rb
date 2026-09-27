@@ -21,11 +21,15 @@ class PurgeCalendarSourceJobTest < ActiveSupport::TestCase
   end
 
   test "handles non-existent source gracefully" do
-    non_existent_id = 99999
+    non_existent_id = 99_999
 
     # Should not raise an error when source doesn't exist
     assert_nothing_raised do
       PurgeCalendarSourceJob.perform_now(non_existent_id)
     end
+  end
+
+  test "runs on the sync queue" do
+    assert_equal("sync", PurgeCalendarSourceJob.new.queue_name)
   end
 end
