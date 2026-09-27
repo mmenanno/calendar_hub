@@ -17,10 +17,10 @@ ActiveSupport::Notifications.subscribe("calendar_hub.sync") do |_name, _start, _
       occurred_at: Time.current,
       upserts_count: payload[:upserts].to_i,
       deletes_count: payload[:deletes].to_i,
-      errors_count: payload.fetch(:errors, 0).to_i,
+      errors_count: payload[:errors].to_i,
       duration_ms: payload[:duration_ms].to_i,
     )
-  rescue => e
-    Rails.logger.warn("[SyncMetrics] Failed to persist sync metric: #{e.message}")
+  rescue StandardError => exception
+    Rails.logger.warn("[SyncMetrics] Failed to persist sync metric: #{exception.message}")
   end
 end

@@ -7,6 +7,7 @@ module CalendarHub
 
       def initialize(source:, apple_client: AppleCalendar::Client.new, observer: nil)
         @source = source
+        @apple_client = apple_client
         @apple_syncer = ::CalendarHub::Shared::AppleEventSyncer.new(source: source, apple_client: apple_client)
         @observer = observer || ::CalendarHub::Shared::NullObserver.new
       end
@@ -20,7 +21,8 @@ module CalendarHub
         deletes = 0
 
         relation.find_each(batch_size: 500) do |event|
-          result = apple_syncer.sync_event(event, observer: observer)
+          # "Push state" deliberately re-sends every upcoming event.
+          result = apple_syncer.sync_event(event, observer: observer, force: true)
           case result
           when :upserted then upserts += 1
           when :deleted then deletes += 1
@@ -29,6 +31,8 @@ module CalendarHub
 
         observer.finish(status: :success)
         { upserts: upserts, deletes: deletes }
+      ensure
+        @apple_client.finish if @apple_client.respond_to?(:finish)
       end
     end
   end
