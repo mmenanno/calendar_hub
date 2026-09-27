@@ -33,7 +33,8 @@ module CalendarHub
     end
 
     test "handles invalid URLs gracefully" do
-      @source1.update!(ingestion_url: "not-a-valid-url")
+      # Rows saved before ingestion URLs were validated.
+      @source1.update_column(:ingestion_url, "not-a-valid-url")
 
       domain = ::CalendarHub::DomainOptimizer.extract_apex_domain(@source1.ingestion_url)
 
@@ -161,16 +162,19 @@ module CalendarHub
     end
 
     test "group_sources_by_domain handles sources with unknown domains" do
-      source_invalid = CalendarSource.create!(
+      # Rows saved before ingestion URLs were validated.
+      source_invalid = CalendarSource.new(
         name: "Invalid URL Source",
         ingestion_url: "invalid-url",
         calendar_identifier: "invalid",
       )
-      source_no_host = CalendarSource.create!(
+      source_invalid.save!(validate: false)
+      source_no_host = CalendarSource.new(
         name: "No Host Source",
         ingestion_url: "file:///local/file.ics",
         calendar_identifier: "nohost",
       )
+      source_no_host.save!(validate: false)
 
       sources = [@source1, source_invalid, source_no_host]
       groups = ::CalendarHub::DomainOptimizer.group_sources_by_domain(sources)

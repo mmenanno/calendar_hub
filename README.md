@@ -159,6 +159,8 @@ The default location sits inside the `storage/` volume, so it protects against b
   - `WEB_CONCURRENCY`, `JOB_CONCURRENCY`, `RAILS_MAX_THREADS` – tune Puma and Solid Queue concurrency.
   - `RAILS_LOG_LEVEL` – set log verbosity (`info` by default).
   - `HONEYBADGER_SQL_EVENT_SAMPLE_RATE` – percentage (0-100) of SQL Insights events sent to Honeybadger (default `5`).
+  - `CALENDAR_HUB_BLOCK_PRIVATE_FEEDS=true` – refuse to fetch feeds (including "Test Feed" and every redirect hop) whose host resolves to a loopback, private (RFC 1918 / IPv6 ULA), link-local (incl. cloud metadata `169.254.169.254`), CGNAT, multicast or unspecified address; connections are pinned to the checked address. Off by default so feeds on your LAN keep working; turn it on if untrusted users can add sources.
+  - `CALENDAR_HUB_MAX_FEED_BYTES` – maximum feed download size in bytes (default `10485760`, 10 MB). Feed fetches must also finish within 45 seconds in total, and only `http://`, `https://` and `webcal://` URLs are accepted.
   - `CALENDAR_HUB_BACKUP_DIR`, `CALENDAR_HUB_BACKUP_KEEP` – backup location (default `storage/backups`) and number of snapshots to keep (default `7`). See [Backups & restore](#backups--restore).
 
 ## Troubleshooting

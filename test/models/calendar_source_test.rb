@@ -355,6 +355,21 @@ class CalendarSourceTest < ActiveSupport::TestCase
     assert_equal(test_credentials, decrypted)
   end
 
+  test "ingestion_url must be an http(s) URL with a host" do
+    ["ftp://example.com/feed.ics", "file:///etc/passwd", "javascript:alert(1)", "example.com/feed.ics", "https://"].each do |url|
+      source = CalendarSource.new(name: "Bad", calendar_identifier: "cal", ingestion_url: url)
+
+      refute_predicate(source, :valid?, url)
+      assert_includes(source.errors[:ingestion_url], I18n.t("activerecord.errors.models.calendar_source.attributes.ingestion_url.not_http_url"))
+    end
+  end
+
+  test "ingestion_url accepts http, https and webcal URLs" do
+    ["http://192.168.1.5/cal.ics", "https://example.com/cal.ics", "webcal://example.com/cal.ics"].each do |url|
+      assert_predicate(CalendarSource.new(name: "Ok", calendar_identifier: "cal", ingestion_url: url), :valid?, url)
+    end
+  end
+
   test "changing the feed host drops the saved password" do
     source = calendar_sources(:provider)
     source.update!(credentials: { http_basic_username: "user", http_basic_password: "secret" })

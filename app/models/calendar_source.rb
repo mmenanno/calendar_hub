@@ -21,6 +21,7 @@ class CalendarSource < ApplicationRecord
   validates :name, presence: true
   validates :calendar_identifier, presence: true
   validates :ingestion_url, presence: true, if: :requires_ingestion_url?
+  validate :ingestion_url_must_be_fetchable, if: -> { ingestion_url.present? }
   validates :sync_window_start_hour, :sync_window_end_hour, allow_nil: true, inclusion: { in: 0..23 }
   validates :sync_frequency_minutes, allow_nil: true, numericality: { greater_than: 0 }
 
@@ -270,6 +271,10 @@ class CalendarSource < ApplicationRecord
 
   def requires_ingestion_url?
     true
+  end
+
+  def ingestion_url_must_be_fetchable
+    errors.add(:ingestion_url, :not_http_url) unless CalendarHub::Shared::HttpClient.fetchable_url?(ingestion_url)
   end
 
   def normalize_ingestion_url

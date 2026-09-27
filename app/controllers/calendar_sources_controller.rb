@@ -221,28 +221,20 @@ class CalendarSourcesController < ApplicationController
       return
     end
 
-    begin
-      response = Faraday.get(url) do |req|
-        req.headers["User-Agent"] = "CalendarHub/1.0"
-        req.options.timeout = 10
-        req.options.open_timeout = 5
-      end
-
-      unless response.success?
-        render(json: { success: false, error: "HTTP #{response.status}: #{response.reason_phrase}" }, status: :ok)
-        return
-      end
-
-      parser = CalendarHub::ICS::Parser.new(response.body)
-      events = parser.events
-      titles = events.first(5).map(&:summary)
-
-      render(json: { success: true, event_count: events.size, sample_titles: titles })
-    rescue Faraday::Error => exception
-      render(json: { success: false, error: "Could not fetch URL: #{exception.message}" })
-    rescue StandardError => exception
-      render(json: { success: false, error: "Failed to parse feed: #{exception.message}" })
+    result = CalendarHub::Shared::HttpClient.new(CalendarSource.new(ingestion_url: url)).get_with_caching(url, conditional: false)
+    body = result[:body].to_s
+    unless body.include?("BEGIN:VCALENDAR")
+      render(json: { success: false, error: t("ui.sources.test_feed_errors.not_icalendar") })
+      return
     end
+
+    events = CalendarHub::ICS::Parser.new(body).events
+    render(json: { success: true, event_count: events.size, sample_titles: events.first(5).map(&:summary) })
+  rescue CalendarHub::Ingestion::Error => exception
+    render(json: { success: false, error: test_feed_error_message(exception) })
+  rescue StandardError => exception
+    Rails.logger.info("[test_ics_feed] Feed could not be parsed: #{exception.class}")
+    render(json: { success: false, error: t("ui.sources.test_feed_errors.not_icalendar") })
   end
 
   def unarchive
@@ -288,6 +280,23 @@ class CalendarSourcesController < ApplicationController
   end
 
   private
+
+  # Deliberately generic: exception messages can contain internal hosts,
+  # ports or addresses, which would turn the endpoint into a network probe.
+  def test_feed_error_message(exception)
+    case exception
+    when CalendarHub::Ingestion::BlockedAddressError
+      t("ui.sources.test_feed_errors.blocked")
+    when CalendarHub::Ingestion::FeedTooLargeError
+      t("ui.sources.test_feed_errors.too_large", size: ActiveSupport::NumberHelper.number_to_human_size(CalendarHub::Shared::HttpClient.max_body_bytes))
+    when CalendarHub::Ingestion::FeedHTTPError
+      t("ui.sources.test_feed_errors.http_status", status: exception.status)
+    when CalendarHub::Ingestion::InvalidFeedURLError
+      t("ui.sources.test_feed_errors.invalid_url")
+    else
+      t("ui.sources.test_feed_errors.connection_failed")
+    end
+  end
 
   def archived_sources
     CalendarSource.unscoped.where.not(deleted_at: nil).order(:name)
