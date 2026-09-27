@@ -93,10 +93,6 @@ class CalendarSource < ApplicationRecord
     nil
   end
 
-  def translator
-    CalendarHub::Translators::EventTranslator.new(self)
-  end
-
   def ingestion_adapter
     CalendarHub::Ingestion::GenericICSAdapter.new(self)
   end
