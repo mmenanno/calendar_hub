@@ -1,5 +1,6 @@
-<% failing_sources = CalendarSource.failing.includes(:latest_sync_attempt).order(:name) %>
+<% failing_sources = CalendarSource.preload_latest_sync_attempts(CalendarSource.failing.order(:name)) %>
 <% if failing_sources.any? %>
+  <% failures_by_attempt = SyncEventResult.first_failures_by_attempt(failing_sources.filter_map { |s| s.latest_sync_attempt&.id }) %>
   <div id="sync-failure-alerts" class="mx-auto max-w-6xl px-6 pt-4 space-y-2">
     <% failing_sources.each do |source| %>
       <% failure_count = source.consecutive_sync_failures.to_i %>
@@ -16,7 +17,7 @@
             <% if latest.message.present? %>
               <p class="text-xs opacity-80 font-mono truncate max-w-2xl" title="<%= latest.message %>"><%= latest.message.truncate(200) %></p>
             <% end %>
-            <% event_errors = latest.sync_event_results.failures.limit(3) %>
+            <% event_errors = failures_by_attempt.fetch(latest.id, []) %>
             <% if event_errors.any? %>
               <div class="text-xs opacity-70 space-y-0.5">
                 <% event_errors.each do |result| %>

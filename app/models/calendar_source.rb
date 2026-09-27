@@ -3,7 +3,10 @@
 class CalendarSource < ApplicationRecord
   has_many :calendar_events, dependent: :destroy
   has_many :sync_attempts, dependent: :destroy
-  has_one :latest_sync_attempt, -> { order(created_at: :desc) }, class_name: "SyncAttempt"
+  # Do not `includes(:latest_sync_attempt)`: has_one preloading applies no
+  # per-owner LIMIT, so it loads every attempt of every source. Use
+  # CalendarSource.preload_latest_sync_attempts instead.
+  has_one :latest_sync_attempt, -> { order(created_at: :desc, id: :desc) }, class_name: "SyncAttempt", inverse_of: false, dependent: nil
   has_many :sync_metrics, dependent: :destroy
   has_many :event_mappings, dependent: :destroy
   has_many :filter_rules, dependent: :destroy
@@ -22,6 +25,26 @@ class CalendarSource < ApplicationRecord
   validates :sync_frequency_minutes, allow_nil: true, numericality: { greater_than: 0 }
 
   before_create :set_import_start_date
+
+  class << self
+    # Loads the latest sync attempt for each source with two indexed queries
+    # (one LIMIT 1 seek per source, then the attempts by primary key) and
+    # assigns it to the latest_sync_attempt association. Returns an array.
+    def preload_latest_sync_attempts(sources)
+      sources = sources.to_a
+      return sources if sources.empty?
+
+      latest_id = SyncAttempt
+        .where("sync_attempts.calendar_source_id = calendar_sources.id")
+        .order(created_at: :desc, id: :desc)
+        .limit(1)
+        .select(:id)
+      attempt_ids = unscoped.where(id: sources.map(&:id)).pluck(Arel.sql("(#{latest_id.to_sql})")).compact
+      attempts = SyncAttempt.where(id: attempt_ids).index_by(&:calendar_source_id)
+
+      sources.each { |source| source.association(:latest_sync_attempt).target = attempts[source.id] }
+    end
+  end
 
   def time_zone
     super.presence || AppSetting.instance.default_time_zone || "UTC"
