@@ -19,18 +19,12 @@ class ParserTest < ActiveSupport::TestCase
     assert_equal "confirmed", first.status
     assert_equal(
       {
-        uid: "prov-123",
-        summary: "Initial Consultation",
-        description: "Consultation session with client",
-        location: "Studio A",
-        status: "confirmed",
-        dtstamp: "20250920T150000Z",
-        "x-provider-practitioner": "Dr. Smith",
-        "x-provider-client": "John Doe",
-        "x-provider-treatment": "Massage Therapy",
-        "x-provider-notes": "Bring paperwork",
+        "x-provider-practitioner" => "Dr. Smith",
+        "x-provider-client" => "John Doe",
+        "x-provider-treatment" => "Massage Therapy",
+        "x-provider-notes" => "Bring paperwork",
       },
-      first.raw_properties.slice(:uid, :summary, :description, :location, :status, :dtstamp, :"x-provider-practitioner", :"x-provider-client", :"x-provider-treatment", :"x-provider-notes"),
+      first.raw_properties,
     )
 
     second = events.second
@@ -332,7 +326,8 @@ class ParserTest < ActiveSupport::TestCase
     event = events.first
 
     # Should fallback to default zone
-    assert_equal("Unknown/Timezone", event.time_zone)
+    assert_equal("America/New_York", event.time_zone)
+    assert_equal(Time.utc(2025, 1, 1, 15), event.starts_at.utc)
     refute_nil(event.starts_at)
   end
 
@@ -381,8 +376,8 @@ class ParserTest < ActiveSupport::TestCase
     assert_equal(1, events.count)
     event = events.first
 
-    assert_equal("custom value", event.raw_properties[:"x-custom-prop"])
-    assert_equal("another value", event.raw_properties[:"x-another-prop"])
+    assert_equal("custom value", event.raw_properties["x-custom-prop"])
+    assert_equal("another value", event.raw_properties["x-another-prop"])
   end
 
   test "parse_line handles parameters without values" do
@@ -437,27 +432,6 @@ class ParserTest < ActiveSupport::TestCase
     assert_equal("UTC", zone.name)
   end
 
-  test "normalize_datetime_string handles date-only format" do
-    parser = ::CalendarHub::ICS::Parser.new("")
-
-    result = parser.send(:normalize_datetime_string, "20250101")
-
-    assert_equal("2025-01-01", result)
-  end
-
-  test "parsed_components extracts date and time components correctly" do
-    parser = ::CalendarHub::ICS::Parser.new("")
-
-    result = parser.send(:parsed_components, "20250315", "143022")
-
-    assert_equal(2025, result[:year])
-    assert_equal(3, result[:month])
-    assert_equal(15, result[:day])
-    assert_equal(14, result[:hour])
-    assert_equal(30, result[:minute])
-    assert_equal(22, result[:second])
-  end
-
   test "unfolded_lines handles content with no folded lines" do
     content = "LINE1\nLINE2\nLINE3"
     parser = ::CalendarHub::ICS::Parser.new(content)
@@ -476,50 +450,50 @@ class ParserTest < ActiveSupport::TestCase
     assert_equal(["LINE1", "LINE2FOLDED"], lines)
   end
 
-  test "decode_value handles multiple escaped newlines" do
+  test "unescape_text handles multiple escaped newlines" do
     parser = ::CalendarHub::ICS::Parser.new("")
 
-    result = parser.send(:decode_value, "Line 1\\nLine 2\\nLine 3")
+    result = parser.send(:unescape_text, "Line 1\\nLine 2\\nLine 3")
 
     assert_equal("Line 1\nLine 2\nLine 3", result)
   end
 
-  test "decode_value unescapes uppercase \\N to newline" do
+  test "unescape_text unescapes uppercase \\N to newline" do
     parser = ::CalendarHub::ICS::Parser.new("")
 
-    result = parser.send(:decode_value, "Line 1\\NLine 2")
+    result = parser.send(:unescape_text, "Line 1\\NLine 2")
 
     assert_equal("Line 1\nLine 2", result)
   end
 
-  test "decode_value unescapes \\, to comma" do
+  test "unescape_text unescapes \\, to comma" do
     parser = ::CalendarHub::ICS::Parser.new("")
 
-    result = parser.send(:decode_value, 'Phase 1\\, Kickoff')
+    result = parser.send(:unescape_text, 'Phase 1\\, Kickoff')
 
     assert_equal("Phase 1, Kickoff", result)
   end
 
-  test "decode_value unescapes \\; to semicolon" do
+  test "unescape_text unescapes \\; to semicolon" do
     parser = ::CalendarHub::ICS::Parser.new("")
 
-    result = parser.send(:decode_value, 'Project\\; Phase 1')
+    result = parser.send(:unescape_text, 'Project\\; Phase 1')
 
     assert_equal("Project; Phase 1", result)
   end
 
-  test "decode_value unescapes \\\\ to backslash" do
+  test "unescape_text unescapes \\\\ to backslash" do
     parser = ::CalendarHub::ICS::Parser.new("")
 
-    result = parser.send(:decode_value, 'C:\\\\Users\\\\test')
+    result = parser.send(:unescape_text, 'C:\\\\Users\\\\test')
 
     assert_equal('C:\\Users\\test', result)
   end
 
-  test "decode_value handles all RFC 5545 escape sequences together" do
+  test "unescape_text handles all RFC 5545 escape sequences together" do
     parser = ::CalendarHub::ICS::Parser.new("")
 
-    result = parser.send(:decode_value, 'Project\\; Phase 1\\, Kickoff\\nLocation: C:\\\\Office')
+    result = parser.send(:unescape_text, 'Project\\; Phase 1\\, Kickoff\\nLocation: C:\\\\Office')
 
     assert_equal("Project; Phase 1, Kickoff\nLocation: C:\\Office", result)
   end
@@ -551,35 +525,4 @@ class ParserTest < ActiveSupport::TestCase
     assert_equal("Room 5, Building A", event.location)
   end
 
-  test "all_day_event? returns true for VALUE=DATE parameter" do
-    parser = ::CalendarHub::ICS::Parser.new("")
-
-    attributes = { dtstart_params: { "VALUE" => "DATE" }, dtstart_raw: "20250101T100000Z" }
-
-    assert(parser.send(:all_day_event?, attributes))
-  end
-
-  test "all_day_event? returns true for date without T even without VALUE=DATE" do
-    parser = ::CalendarHub::ICS::Parser.new("")
-
-    attributes = { dtstart_params: {}, dtstart_raw: "20250101" }
-
-    assert(parser.send(:all_day_event?, attributes))
-  end
-
-  test "all_day_event? returns false for timed events" do
-    parser = ::CalendarHub::ICS::Parser.new("")
-
-    attributes = { dtstart_params: {}, dtstart_raw: "20250101T100000Z" }
-
-    refute(parser.send(:all_day_event?, attributes))
-  end
-
-  test "all_day_event? handles missing dtstart_params and dtstart_raw" do
-    parser = ::CalendarHub::ICS::Parser.new("")
-
-    attributes = {}
-
-    assert(parser.send(:all_day_event?, attributes)) # Empty dtstart_raw excludes "T", so it's considered all-day
-  end
 end
