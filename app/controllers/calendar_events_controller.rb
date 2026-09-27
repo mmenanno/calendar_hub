@@ -39,7 +39,7 @@ class CalendarEventsController < ApplicationController
   end
 
   def show
-    @event = CalendarEvent.find(params[:id])
+    @event = CalendarEvent.find(params.expect(:id))
     audits = CalendarEventAudit.where(calendar_event_id: @event.id)
     # Latest AUDIT_TRAIL_LIMIT entries, displayed oldest first.
     @audits = audits.order(occurred_at: :desc, id: :desc).limit(AUDIT_TRAIL_LIMIT).to_a.reverse
@@ -47,7 +47,7 @@ class CalendarEventsController < ApplicationController
   end
 
   def toggle_sync
-    @event = CalendarEvent.find(params[:id])
+    @event = CalendarEvent.find(params.expect(:id))
     # Stored as a manual override so filter-rule re-evaluation cannot undo it.
     @event.toggle_sync_exempt!
     SyncEventToAppleJob.perform_later(@event.id)

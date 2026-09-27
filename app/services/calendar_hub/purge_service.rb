@@ -33,7 +33,7 @@ module CalendarHub
       deleted_counts = {}
       DEPENDENT_MODELS.each do |config|
         count = config[:scope].call(@source).delete_all
-        deleted_counts[config[:model].name] = count if count > 0
+        deleted_counts[config[:model].name] = count if count.positive?
       end
 
       @source.destroy!

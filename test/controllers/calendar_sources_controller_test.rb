@@ -892,7 +892,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     post test_ics_feed_path, params: { url: "https://example.com/test.ics" }, as: :json
 
     assert_response(:success)
-    json = JSON.parse(response.body)
+    json = response.parsed_body
 
     assert(json["success"])
     assert_equal(2, json["event_count"])
@@ -907,7 +907,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     post test_ics_feed_path, params: { url: "https://example.com/bad.ics" }, as: :json
 
     assert_response(:success)
-    json = JSON.parse(response.body)
+    json = response.parsed_body
 
     refute(json["success"])
     assert_match(/HTTP 404/, json["error"])
@@ -920,7 +920,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     post test_ics_feed_path, params: { url: "https://example.com/timeout.ics" }, as: :json
 
     assert_response(:success)
-    json = JSON.parse(response.body)
+    json = response.parsed_body
 
     refute(json["success"])
     assert_match(/Could not fetch URL/, json["error"])
@@ -930,7 +930,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     post test_ics_feed_path, params: { url: "" }, as: :json
 
     assert_response(:unprocessable_entity)
-    json = JSON.parse(response.body)
+    json = response.parsed_body
 
     refute(json["success"])
     assert_equal("URL is required", json["error"])
@@ -948,7 +948,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     post test_ics_feed_path, params: { url: "https://example.com/many.ics" }, as: :json
 
     assert_response(:success)
-    json = JSON.parse(response.body)
+    json = response.parsed_body
 
     assert(json["success"])
     assert_equal(8, json["event_count"])
@@ -979,7 +979,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     post discover_apple_calendars_path, as: :json
 
     assert_response(:success)
-    json = JSON.parse(response.body)
+    json = response.parsed_body
 
     assert(json["success"])
     assert_equal(2, json["calendars"].length)
@@ -995,7 +995,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     post discover_apple_calendars_path, as: :json
 
     assert_response(:success)
-    json = JSON.parse(response.body)
+    json = response.parsed_body
 
     refute(json["success"])
     assert_equal("Connection failed", json["error"])

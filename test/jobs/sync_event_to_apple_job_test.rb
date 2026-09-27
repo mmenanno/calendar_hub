@@ -15,7 +15,7 @@ class SyncEventToAppleJobTest < ActiveJob::TestCase
 
   test "skips sync when source is inactive" do
     event = calendar_events(:future_event)
-    event.calendar_source.update_columns(active: false) # rubocop:disable Rails/SkipsModelValidations
+    event.calendar_source.update_columns(active: false)
 
     CalendarHub::Shared::AppleEventSyncer.expects(:new).never
 

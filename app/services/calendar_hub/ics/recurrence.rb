@@ -34,7 +34,7 @@ module CalendarHub
 
       def occurrences(window_start:, window_end:)
         starts = rule_occurrences(window_start, window_end)
-        starts.concat(@rdates.map { |time| time.in_time_zone(zone) }.select { |time| time.between?(window_start, window_end) })
+        starts.concat(@rdates.map { |time| time.in_time_zone(zone) }.grep(window_start..window_end))
         starts.reject! { |time| excluded?(time) }
         starts.uniq(&:to_i).sort.first(MAX_OCCURRENCES)
       end
@@ -175,8 +175,8 @@ module CalendarHub
 
       def matches_filters?(date)
         return false unless month_allowed?(date)
-        return false if rule[:bymonthday] && rule[:bymonthday].none? { |day| monthday_matches?(date, day) }
-        return false if rule[:byday] && rule[:byday].none? { |_ordinal, wday| date.wday == wday }
+        return false if rule[:bymonthday]&.none? { |day| monthday_matches?(date, day) }
+        return false if rule[:byday]&.none? { |_ordinal, wday| date.wday == wday }
 
         true
       end

@@ -28,7 +28,7 @@ module CalendarHub
 
         CalendarEvent.where(calendar_source_id: source.id).where.not(last_synced_to_calendar: nil).find_each do |event|
           syncer.delete_event(event)
-          event.update_columns(
+          event.update_columns( # rubocop:disable Rails/SkipsModelValidations -- sync bookkeeping, must not re-trigger audits/broadcasts
             last_synced_to_calendar: nil,
             synced_fingerprint: ::CalendarHub::Shared::AppleEventSyncer::DELETED_SIGNATURE,
           )

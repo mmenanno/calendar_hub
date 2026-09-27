@@ -65,24 +65,24 @@ class EventMappingTest < ActiveSupport::TestCase
 
   # Destination override
 
-  test "has_destination_override? returns false when target_calendar_identifier is blank" do
+  test "destination_override? returns false when target_calendar_identifier is blank" do
     mapping = EventMapping.create!(
       match_type: "contains",
       pattern: "Test",
       replacement: "Replaced",
     )
 
-    refute_predicate(mapping, :has_destination_override?)
+    refute_predicate(mapping, :destination_override?)
   end
 
-  test "has_destination_override? returns true when target_calendar_identifier is present" do
+  test "destination_override? returns true when target_calendar_identifier is present" do
     mapping = EventMapping.create!(
       match_type: "contains",
       pattern: "Test",
       target_calendar_identifier: "Work",
     )
 
-    assert_predicate(mapping, :has_destination_override?)
+    assert_predicate(mapping, :destination_override?)
   end
 
   test "replacement is optional when target_calendar_identifier is present" do

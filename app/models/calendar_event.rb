@@ -84,16 +84,19 @@ class CalendarEvent < ApplicationRecord
 
   # Suppress per-event Turbo broadcasts during bulk operations (e.g., sync).
   # Callers should fire a single source-level broadcast after the batch completes.
-  def self.suppress_broadcasts
-    Thread.current[:suppress_calendar_event_broadcasts] = true
-    yield
-  ensure
-    Thread.current[:suppress_calendar_event_broadcasts] = false
+  class << self
+    def suppress_broadcasts
+      Thread.current[:suppress_calendar_event_broadcasts] = true
+      yield
+    ensure
+      Thread.current[:suppress_calendar_event_broadcasts] = false
+    end
+
+    def broadcasts_suppressed?
+      Thread.current[:suppress_calendar_event_broadcasts] == true
+    end
   end
 
-  def self.broadcasts_suppressed?
-    Thread.current[:suppress_calendar_event_broadcasts] == true
-  end
   after_create_commit { audit!(:created) }
   after_update_commit { audit!(:updated) unless only_bookkeeping_changed? }
   after_destroy_commit { audit!(:deleted) }
@@ -126,7 +129,7 @@ class CalendarEvent < ApplicationRecord
   # Records a filter-rule decision without touching the manual override.
   def apply_rule_exclusion(excluded)
     self.excluded_by_rule = excluded
-    self[:sync_exempt] = effective_sync_exempt
+    self[:sync_exempt] = effective_sync_exempt?
   end
 
   def toggle_sync_exempt!
@@ -134,7 +137,7 @@ class CalendarEvent < ApplicationRecord
   end
 
   # Effective exclusion: a manual override wins over filter rules.
-  def effective_sync_exempt
+  def effective_sync_exempt?
     case manual_sync_override
     when "exclude" then true
     when "include" then false
@@ -228,7 +231,7 @@ class CalendarEvent < ApplicationRecord
   end
 
   def derive_sync_exempt
-    self[:sync_exempt] = effective_sync_exempt
+    self[:sync_exempt] = effective_sync_exempt?
   end
 
   def fingerprint_data

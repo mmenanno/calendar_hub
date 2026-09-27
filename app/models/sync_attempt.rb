@@ -74,7 +74,7 @@ class SyncAttempt < ApplicationRecord
     self.upserts = upserts.to_i + pending_counts[:upserts]
     self.deletes = deletes.to_i + pending_counts[:deletes]
     self.errors_count = errors_count.to_i + pending_counts[:errors_count]
-    update_columns(upserts: upserts, deletes: deletes, errors_count: errors_count, updated_at: now)
+    update_columns(upserts: upserts, deletes: deletes, errors_count: errors_count, updated_at: now) # rubocop:disable Rails/SkipsModelValidations -- batched progress flush on the sync hot path
     insert_failures(now)
     reset_pending_progress
     @last_flush_at = monotonic_now
@@ -134,7 +134,7 @@ class SyncAttempt < ApplicationRecord
     rows = pending_failures.map do |row|
       row.merge(sync_attempt_id: id, occurred_at: now, created_at: now, updated_at: now)
     end
-    SyncEventResult.insert_all(rows)
+    SyncEventResult.insert_all(rows) # rubocop:disable Rails/SkipsModelValidations -- batched progress flush on the sync hot path
   rescue ActiveRecord::ActiveRecordError => exception
     Rails.logger.warn("[SyncAttempt] Failed to record event results: #{exception.message}")
   end
@@ -162,7 +162,7 @@ class SyncAttempt < ApplicationRecord
       locals: { attempt: self },
     )
 
-    return unless finished_at.present?
+    return if finished_at.blank?
 
     broadcast_replace_to(
       "calendar_sources",

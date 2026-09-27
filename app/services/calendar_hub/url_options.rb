@@ -19,7 +19,7 @@ module CalendarHub
         opts = { host: host, protocol: protocol }
         port_i = port.to_i if port
         # Always include the port when explicitly provided (fixes localhost links in Apple apps)
-        opts[:port] = port_i if port_i && port_i > 0
+        opts[:port] = port_i if port_i&.positive?
         opts
       end
 
