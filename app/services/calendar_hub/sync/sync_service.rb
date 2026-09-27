@@ -44,6 +44,7 @@ module CalendarHub
         end
         source.mark_synced!(token: generate_sync_token, timestamp: Time.current)
         observer.finish(status: :success)
+        broadcast_events_refresh
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round
 
         ActiveSupport::Notifications.instrument(
@@ -63,8 +64,6 @@ module CalendarHub
       end
 
       private
-
-      def initialize_adapter; end
 
       # Wraps all event saves in a single transaction to ensure atomicity.
       # If any individual save fails, the entire batch is rolled back so the
@@ -115,17 +114,16 @@ module CalendarHub
         { canceled: canceled }
       end
 
+      # Per-event broadcasts are suppressed during sync; send one refresh so
+      # open event lists pick up all changes at once.
+      def broadcast_events_refresh
+        Turbo::StreamsChannel.broadcast_refresh_later_to("calendar_events")
+      rescue StandardError => e
+        Rails.logger.warn("[CalendarSync] Failed to broadcast events refresh: #{e.message}")
+      end
+
       def generate_sync_token
         SecureRandom.hex(16)
-      end
-
-      # Delegate methods for backward compatibility with tests
-      def composite_uid_for(event)
-        ::CalendarHub::Shared::UidGenerator.composite_uid_for(event)
-      end
-
-      def event_url_for(event)
-        apple_syncer.send(:event_url_for, event)
       end
     end
   end
