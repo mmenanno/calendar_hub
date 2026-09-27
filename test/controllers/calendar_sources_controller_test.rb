@@ -6,6 +6,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
   include ActiveJob::TestHelper
   include TurboStreamHelpers
   include ICSTestHelpers
+  include EnvHelpers
 
   # INDEX ACTION TESTS
   test "index displays active and archived sources" do
@@ -986,7 +987,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     json = response.parsed_body
 
     refute(json["success"])
-    assert_match(/HTTP 404/, json["error"])
+    assert_equal(I18n.t("ui.sources.test_feed_errors.http_status", status: 404), json["error"])
   end
 
   test "test_ics_feed returns error on network failure" do
@@ -999,7 +1000,86 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     json = response.parsed_body
 
     refute(json["success"])
-    assert_match(/Could not fetch URL/, json["error"])
+    assert_equal(I18n.t("ui.sources.test_feed_errors.connection_failed"), json["error"])
+  end
+
+  test "test_ics_feed does not echo connection error details" do
+    stub_request(:get, "https://example.com/refused.ics")
+      .to_raise(Faraday::ConnectionFailed.new("Failed to open TCP connection to 10.1.2.3:8443 (Connection refused)"))
+
+    post test_ics_feed_path, params: { url: "https://example.com/refused.ics" }, as: :json
+
+    json = response.parsed_body
+
+    assert_equal(I18n.t("ui.sources.test_feed_errors.connection_failed"), json["error"])
+    refute_includes(json["error"], "10.1.2.3")
+    refute_includes(json["error"], "8443")
+  end
+
+  test "test_ics_feed reports blocked private addresses generically" do
+    with_env("CALENDAR_HUB_BLOCK_PRIVATE_FEEDS" => "true") do
+      post test_ics_feed_path, params: { url: "http://169.254.169.254/latest/meta-data/" }, as: :json
+    end
+
+    json = response.parsed_body
+
+    refute(json["success"])
+    assert_equal(I18n.t("ui.sources.test_feed_errors.blocked"), json["error"])
+    assert_not_requested(:get, /169\.254\.169\.254/)
+  end
+
+  test "test_ics_feed allows private addresses when blocking is off" do
+    stub = stub_request(:get, "http://192.168.1.20/cal.ics")
+      .to_return(status: 200, body: file_fixture("provider.ics").read)
+
+    with_env("CALENDAR_HUB_BLOCK_PRIVATE_FEEDS" => nil) do
+      post test_ics_feed_path, params: { url: "http://192.168.1.20/cal.ics" }, as: :json
+    end
+
+    assert_requested(stub)
+    assert(response.parsed_body["success"])
+  end
+
+  test "test_ics_feed reports oversized feeds" do
+    stub_request(:get, "https://example.com/huge.ics").to_return(status: 200, body: "X" * 2048)
+
+    with_env("CALENDAR_HUB_MAX_FEED_BYTES" => "1024") do
+      post test_ics_feed_path, params: { url: "https://example.com/huge.ics" }, as: :json
+    end
+
+    json = response.parsed_body
+
+    refute(json["success"])
+    assert_equal(I18n.t("ui.sources.test_feed_errors.too_large", size: "1 KB"), json["error"])
+  end
+
+  test "test_ics_feed reports non-iCalendar responses" do
+    stub_request(:get, "https://example.com/page.html").to_return(status: 200, body: "<html>hello</html>")
+
+    post test_ics_feed_path, params: { url: "https://example.com/page.html" }, as: :json
+
+    json = response.parsed_body
+
+    refute(json["success"])
+    assert_equal(I18n.t("ui.sources.test_feed_errors.not_icalendar"), json["error"])
+  end
+
+  test "test_ics_feed rejects non-http URLs without fetching" do
+    post test_ics_feed_path, params: { url: "file:///etc/passwd" }, as: :json
+
+    json = response.parsed_body
+
+    refute(json["success"])
+    assert_equal(I18n.t("ui.sources.test_feed_errors.invalid_url"), json["error"])
+  end
+
+  test "test_ics_feed accepts webcal URLs" do
+    stub = stub_request(:get, "https://example.com/webcal.ics").to_return(status: 200, body: file_fixture("provider.ics").read)
+
+    post test_ics_feed_path, params: { url: "webcal://example.com/webcal.ics" }, as: :json
+
+    assert_requested(stub)
+    assert(response.parsed_body["success"])
   end
 
   test "test_ics_feed returns error when URL is blank" do

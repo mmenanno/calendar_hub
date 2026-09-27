@@ -1,4 +1,12 @@
 en:
+  activerecord:
+    errors:
+      models:
+        calendar_source:
+          attributes:
+            ingestion_url:
+              not_http_url: "must be an http://, https:// or webcal:// URL"
+
   app:
     tagline: "Aggregate, normalize, and sync care calendars without exposing private data."
     title: "Calendar Hub"
@@ -515,6 +523,13 @@ en:
       used_when_feed_lacks_tz: "Used when the feed lacks a time zone."
       username: "Username"
       test_feed: "Test Feed"
+      test_feed_errors:
+        blocked: "That address is not allowed (private network feeds are blocked on this server)"
+        connection_failed: "Couldn't connect to the feed's server"
+        http_status: "The feed returned HTTP %{status}"
+        invalid_url: "Enter an http://, https:// or webcal:// feed URL"
+        not_icalendar: "That URL didn't return an iCalendar feed"
+        too_large: "The feed is larger than %{size}"
       sync_history: "Sync History"
       no_sync_history: "No sync attempts yet for this source."
       sync_history_cols:
