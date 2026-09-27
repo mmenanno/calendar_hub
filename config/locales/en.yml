@@ -142,6 +142,27 @@ en:
   realtime:
     pong: "pong"
 
+  rules_transfer:
+    errors:
+      blank: "The document is empty."
+      invalid_json: "The document is not valid JSON."
+      no_rules: "The document contains no event_mappings or filter_rules list."
+      not_a_list: "%{key} must be a list."
+      not_an_object: "The document must be a JSON object."
+      row_blank: "%{field} can't be blank"
+      row_enum: "%{field} must be one of: %{allowed}"
+      row_missing: "%{field} is required"
+      row_not_object: "Row must be a JSON object"
+      row_regex: "Invalid regular expression: %{message}"
+      row_too_long: "%{field} is longer than %{limit} characters"
+      row_type: "%{field} must be %{type}"
+      row_unknown_keys: "Unknown keys: %{keys}"
+      too_large: "The document is too large (maximum %{limit})."
+      too_many_rows: "Too many rules (maximum %{limit})."
+      unknown_keys: "Unknown top-level keys: %{keys}."
+      unsupported_version: "Unsupported document version (expected %{version})."
+      wrong_format: "This is not a Calendar Hub rules export (expected format \"%{expected}\")."
+
   ui:
     forms:
       error_summary:
