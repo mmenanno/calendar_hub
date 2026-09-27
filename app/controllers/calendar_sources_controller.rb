@@ -335,7 +335,7 @@ class CalendarSourcesController < ApplicationController
 
   def set_calendar_source
     scope = ["purge", "unarchive"].include?(action_name) ? CalendarSource.unscoped : CalendarSource
-    @calendar_source = scope.find(params[:id])
+    @calendar_source = scope.find(params.expect(:id))
   end
 
   def calendar_source_params

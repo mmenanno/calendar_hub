@@ -87,7 +87,7 @@ module CalendarHub
 
         cleanup_old_destination(event, destination)
         upsert_event(event, calendar_identifier: destination, payload: payload)
-        event.update_columns(synced_at: Time.current, last_synced_to_calendar: destination, synced_fingerprint: signature)
+        event.update_columns(synced_at: Time.current, last_synced_to_calendar: destination, synced_fingerprint: signature) # rubocop:disable Rails/SkipsModelValidations -- sync bookkeeping, must not re-trigger audits/broadcasts
         observer&.upsert_success(event)
         :upserted
       end
@@ -107,7 +107,7 @@ module CalendarHub
       end
 
       def mark_removed(event)
-        event.update_columns(synced_at: Time.current, last_synced_to_calendar: nil, synced_fingerprint: DELETED_SIGNATURE)
+        event.update_columns(synced_at: Time.current, last_synced_to_calendar: nil, synced_fingerprint: DELETED_SIGNATURE) # rubocop:disable Rails/SkipsModelValidations -- sync bookkeeping, must not re-trigger audits/broadcasts
       end
 
       def resolve_destination(event)

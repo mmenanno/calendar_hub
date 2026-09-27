@@ -28,7 +28,7 @@ module CalendarHub
       resolved_path = path || resolve_store_path
       @store_path = Pathname.new(resolved_path).expand_path
       @mutex = Mutex.new
-      @data = nil
+      @store = nil
     end
 
     def credential_key
@@ -59,8 +59,8 @@ module CalendarHub
       ENV[STORE_ENV_KEY].presence || Rails.root.join("storage", DEFAULT_FILENAME).to_s
     end
 
-    def load_store
-      @data ||= read_store
+    def store
+      @store ||= read_store
     end
 
     def read_store
@@ -81,7 +81,7 @@ module CalendarHub
     end
 
     def read_value(key_name)
-      entry = load_store[key_name]
+      entry = store[key_name]
       case entry
       when Hash
         entry["value"]
@@ -91,7 +91,7 @@ module CalendarHub
     end
 
     def extract_timestamp(key_name)
-      entry = load_store[key_name]
+      entry = store[key_name]
       raw = entry.is_a?(Hash) ? entry["generated_at"] : nil
       return if raw.blank?
 
@@ -102,7 +102,7 @@ module CalendarHub
 
     def write_value(key_name, value, include_timestamp:)
       @mutex.synchronize do
-        data = load_store
+        data = store
         payload = { "value" => value }
         payload["generated_at"] = current_timestamp if include_timestamp
         data[key_name] = payload
@@ -113,7 +113,7 @@ module CalendarHub
 
     def persist_store
       FileUtils.mkdir_p(store_path.dirname)
-      store_path.write(JSON.pretty_generate(load_store))
+      store_path.write(JSON.pretty_generate(store))
       store_path.chmod(0o600) unless Gem.win_platform?
     end
 

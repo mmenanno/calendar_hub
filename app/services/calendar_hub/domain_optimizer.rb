@@ -28,7 +28,7 @@ module CalendarHub
         domain_groups = group_sources_by_domain(sources)
         schedule = {}
 
-        domain_groups.each do |_domain, domain_sources|
+        domain_groups.each_value do |domain_sources|
           next_slot = Time.current
 
           domain_sources.sort_by(&:id).each do |source|

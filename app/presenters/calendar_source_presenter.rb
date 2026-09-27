@@ -108,7 +108,7 @@ class CalendarSourcePresenter < ApplicationPresenter
   end
 
   def health_badge_visible?
-    source.consecutive_sync_failures.to_i > 0
+    source.consecutive_sync_failures.to_i.positive?
   end
 
   def health_badge_class

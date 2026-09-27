@@ -43,7 +43,7 @@ class FilterRulesController < ApplicationController
   end
 
   def edit
-    @filter_rule = FilterRule.find(params[:id])
+    @filter_rule = FilterRule.find(params.expect(:id))
   end
 
   def create
@@ -87,7 +87,7 @@ class FilterRulesController < ApplicationController
   end
 
   def update
-    @filter_rule = FilterRule.find(params[:id])
+    @filter_rule = FilterRule.find(params.expect(:id))
     if @filter_rule.update(filter_rule_params)
       respond_to do |format|
         format.turbo_stream do
@@ -126,7 +126,7 @@ class FilterRulesController < ApplicationController
   private
 
   def set_filter_rule
-    @filter_rule = FilterRule.find(params[:id])
+    @filter_rule = FilterRule.find(params.expect(:id))
   end
 
   def filter_rule_params

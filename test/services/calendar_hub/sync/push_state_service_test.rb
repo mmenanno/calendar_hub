@@ -28,7 +28,7 @@ module CalendarHub
       end
 
       test "returns zero counts when no upcoming events" do
-        @source.calendar_events.update_all(starts_at: 2.days.ago, ends_at: 1.day.ago) # rubocop:disable Rails/SkipsModelValidations
+        @source.calendar_events.update_all(starts_at: 2.days.ago, ends_at: 1.day.ago)
 
         @observer.expects(:start).with(total: 0)
         @observer.expects(:finish).with(status: :success)

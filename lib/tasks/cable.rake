@@ -13,7 +13,7 @@ namespace :db do
         cfgs = configs.configs_for(env_name: Rails.env, name: "cable")
         cfgs.is_a?(Array) ? cfgs.first : cfgs
       end
-      abort "No cable database configuration for #{Rails.env}." unless cable_cfg&.respond_to?(:configuration_hash)
+      abort "No cable database configuration for #{Rails.env}." unless cable_cfg.respond_to?(:configuration_hash)
 
       puts "Loading #{path} into cable database..."
       previous = ActiveRecord::Base.remove_connection

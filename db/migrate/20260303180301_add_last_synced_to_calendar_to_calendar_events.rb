@@ -6,7 +6,7 @@ class AddLastSyncedToCalendarToCalendarEvents < ActiveRecord::Migration[8.1]
 
     # Backfill previously-synced events: they were all synced to their source's
     # default calendar (destination override was broken before this release).
-    execute(<<~SQL)
+    execute(<<~SQL.squish)
       UPDATE calendar_events
       SET last_synced_to_calendar = (
         SELECT calendar_sources.calendar_identifier

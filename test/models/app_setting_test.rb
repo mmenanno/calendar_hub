@@ -269,7 +269,7 @@ class AppSettingTest < ActiveSupport::TestCase
   test "concurrent calls to instance only create one row" do
     AppSetting.delete_all
 
-    threads = 5.times.map do
+    threads = Array.new(5) do
       Thread.new { AppSetting.instance }
     end
     threads.each(&:join)
@@ -592,7 +592,7 @@ class AppSettingTest < ActiveSupport::TestCase
 
     # A fresh thread isn't inside the test's executor run, so each wrap resets
     # CurrentAttributes like a real request or job does.
-    zones = Thread.new do # rubocop:disable ThreadSafety/NewThread
+    zones = Thread.new do
       Rails.application.executor.wrap do
         before = AppSetting.instance.default_time_zone
         # Simulate another process (e.g. the web server) saving: no callbacks run here.
@@ -607,7 +607,7 @@ class AppSettingTest < ActiveSupport::TestCase
 
   test "instance is not shared between threads" do
     main = AppSetting.instance
-    other = Thread.new { AppSetting.instance }.value # rubocop:disable ThreadSafety/NewThread
+    other = Thread.new { AppSetting.instance }.value
 
     assert_equal(main.id, other.id)
     refute_same(main, other)

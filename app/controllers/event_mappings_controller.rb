@@ -16,7 +16,7 @@ class EventMappingsController < ApplicationController
   end
 
   def toggle
-    mapping = EventMapping.find(params[:id])
+    mapping = EventMapping.find(params.expect(:id))
     toggle_field(mapping, :active, "flashes.mappings", row_partial: "event_mappings/row", locals: { mapping: mapping })
   end
 
@@ -33,7 +33,7 @@ class EventMappingsController < ApplicationController
   end
 
   def edit
-    @mapping = EventMapping.find(params[:id])
+    @mapping = EventMapping.find(params.expect(:id))
   end
 
   def create
@@ -66,7 +66,7 @@ class EventMappingsController < ApplicationController
   end
 
   def update
-    @mapping = EventMapping.find(params[:id])
+    @mapping = EventMapping.find(params.expect(:id))
     if @mapping.update(event_mapping_params)
       respond_to do |format|
         format.turbo_stream do
@@ -85,7 +85,7 @@ class EventMappingsController < ApplicationController
   end
 
   def duplicate
-    original = EventMapping.find(params[:id])
+    original = EventMapping.find(params.expect(:id))
     duplicate_record(original, row_partial: "event_mappings/row", success_message_key: "flashes.mappings", locals: { mapping: original })
   end
 
@@ -107,7 +107,7 @@ class EventMappingsController < ApplicationController
   private
 
   def set_mapping
-    @mapping = EventMapping.find(params[:id])
+    @mapping = EventMapping.find(params.expect(:id))
   end
 
   def event_mapping_params

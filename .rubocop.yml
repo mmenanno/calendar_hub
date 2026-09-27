@@ -26,6 +26,11 @@ AllCops:
 Rails:
   Enabled: true
 
+Rails/SkipsModelValidations:
+  Exclude:
+    - db/migrate/**/*
+    - test/**/*
+
 Rails/UnknownEnv:
   Environments:
     - production
@@ -56,6 +61,18 @@ Minitest/MultipleAssertions:
 
 ThreadSafety:
   Enabled: true
+
+ThreadSafety/NewThread:
+  Exclude:
+    - test/**/*
+
+# Long by nature (crypto helpers, helper bag, ICS fixtures); splitting them
+# would not make them clearer.
+Metrics/ModuleLength:
+  Exclude:
+    - app/helpers/application_helper.rb
+    - app/services/calendar_hub/credential_encryption.rb
+    - test/support/**/*
 
 Naming/PredicateMethod:
   AllowedMethods:

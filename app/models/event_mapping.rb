@@ -24,7 +24,7 @@ class EventMapping < ApplicationRecord
   after_commit :reset_name_mapper_cache
   after_commit :schedule_affected_syncs
 
-  def has_destination_override?
+  def destination_override?
     target_calendar_identifier.present?
   end
 

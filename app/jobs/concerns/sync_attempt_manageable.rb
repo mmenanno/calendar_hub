@@ -26,7 +26,7 @@ module SyncAttemptManageable
     return if attempt.finished_at.present?
     return if attempt.job_id.present? && attempt.job_id != job_id
 
-    attempt.update_column(:job_id, job_id) if attempt.job_id.blank?
+    attempt.update_column(:job_id, job_id) if attempt.job_id.blank? # rubocop:disable Rails/SkipsModelValidations -- bookkeeping column, no callbacks wanted
     attempt
   end
 end

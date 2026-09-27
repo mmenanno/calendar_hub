@@ -58,7 +58,7 @@ class AppSetting < ApplicationRecord
     reload
     reset_credential_store!
 
-    return unless plaintext.present?
+    return if plaintext.blank?
 
     plaintext.each { |key, value| upsert_credential(key, value) }
     persist_credentials

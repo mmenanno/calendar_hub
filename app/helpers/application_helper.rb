@@ -120,10 +120,10 @@ module ApplicationHelper
   # < 1000 ms  -> "847 ms"
   # 1000..59999 -> "74.1 s"
   # >= 60000   -> "1m 14s"
-  def format_duration_ms(ms)
-    return "\u2014" if ms.nil?
+  def format_duration_ms(milliseconds)
+    return "\u2014" if milliseconds.nil?
 
-    ms = ms.to_f
+    ms = milliseconds.to_f
     if ms < 1000
       "#{ms.round} ms"
     elsif ms < 60_000

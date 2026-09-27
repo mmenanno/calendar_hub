@@ -77,7 +77,7 @@ class CalendarSource < ApplicationRecord
     # Mark stale active attempts (no progress heartbeat for 2h) as failed so
     # they don't block new syncs.
     sync_attempts.stale
-      .update_all(status: "failed", finished_at: Time.current, message: "Marked failed: stale attempt")
+      .update_all(status: "failed", finished_at: Time.current, message: "Marked failed: stale attempt") # rubocop:disable Rails/SkipsModelValidations -- bookkeeping write, no callbacks wanted
 
     # Rely on the DB unique partial index (idx_unique_active_sync_attempt_per_source)
     # to prevent duplicate active attempts. If another thread already created one,
@@ -86,7 +86,7 @@ class CalendarSource < ApplicationRecord
     job_options = { attempt_id: attempt.id }
     job_options[:force] = true if full
     job = SyncCalendarJob.perform_later(id, **job_options)
-    attempt.update_column(:job_id, job.job_id) if job.respond_to?(:job_id)
+    attempt.update_column(:job_id, job.job_id) if job.respond_to?(:job_id) # rubocop:disable Rails/SkipsModelValidations -- bookkeeping write, no callbacks wanted
     attempt
   rescue ActiveRecord::RecordNotUnique
     # Another worker already has an active sync for this source -- that's fine.
@@ -229,7 +229,7 @@ class CalendarSource < ApplicationRecord
 
   def record_sync_failure!
     self.consecutive_sync_failures ||= 0
-    increment!(:consecutive_sync_failures)
+    increment!(:consecutive_sync_failures) # rubocop:disable Rails/SkipsModelValidations -- bookkeeping write, no callbacks wanted
   end
 
   def healthy?

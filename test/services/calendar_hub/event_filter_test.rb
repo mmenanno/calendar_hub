@@ -283,7 +283,7 @@ module CalendarHub
     test "apply_filters with batch uses O(1) filter rule queries" do
       build_filter_rule(pattern: "Meeting", field_name: :title, match_type: :contains, active: true)
 
-      events = 5.times.map do |i|
+      events = Array.new(5) do |i|
         event = @event.dup
         event.title = "Meeting #{i}"
         event

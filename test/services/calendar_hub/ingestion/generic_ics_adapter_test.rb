@@ -253,8 +253,8 @@ module CalendarHub
         adapter = GenericICSAdapter.new(@source)
 
         # Create a mock ICS event using Struct
-        MockEventStruct = Struct.new(:uid, :summary, :description, :location, :starts_at, :ends_at, :status, :all_day, :raw_properties)
-        mock_event = MockEventStruct.new(
+        mock_event_struct = Struct.new(:uid, :summary, :description, :location, :starts_at, :ends_at, :status, :all_day, :raw_properties)
+        mock_event = mock_event_struct.new(
           "test-123",
           "Test Event",
           "Test Description",
@@ -279,8 +279,8 @@ module CalendarHub
       test "to_fetched_event sets correct status and metadata" do
         adapter = GenericICSAdapter.new(@source)
 
-        MockEventStruct2 = Struct.new(:uid, :summary, :description, :location, :starts_at, :ends_at, :status, :all_day, :raw_properties)
-        mock_event = MockEventStruct2.new(
+        mock_event_struct = Struct.new(:uid, :summary, :description, :location, :starts_at, :ends_at, :status, :all_day, :raw_properties)
+        mock_event = mock_event_struct.new(
           "test-123",
           "Test Event",
           "Test Description",
@@ -303,8 +303,8 @@ module CalendarHub
       test "to_fetched_event handles blank summary" do
         adapter = GenericICSAdapter.new(@source)
 
-        MockEventStruct3 = Struct.new(:uid, :summary, :description, :location, :starts_at, :ends_at, :status, :all_day, :raw_properties)
-        mock_event = MockEventStruct3.new(
+        mock_event_struct = Struct.new(:uid, :summary, :description, :location, :starts_at, :ends_at, :status, :all_day, :raw_properties)
+        mock_event = mock_event_struct.new(
           "test-123",
           "",
           nil,

@@ -164,7 +164,8 @@ module CalendarHub
       assert_equal("value", result[:key])
 
       # Test object that responds to to_h
-      obj = Struct.new(:to_h).new({ key: "value" })
+      obj = Object.new
+      def obj.to_h = { key: "value" }
       result = CredentialEncryption.send(:coerce_payload, obj)
 
       assert_equal("value", result[:key])
@@ -333,7 +334,7 @@ module CalendarHub
         CredentialEncryption.send(:read_key)
       end
     ensure
-      File.delete(path) if File.exist?(path)
+      FileUtils.rm_f(path)
     end
 
     test "key_location returns path as string" do
@@ -353,7 +354,7 @@ module CalendarHub
         ingestion_url: "https://example.com/feed.ics",
         calendar_identifier: "Inbox",
       )
-      source.update_column(:credentials, nil) # rubocop:disable Rails/SkipsModelValidations
+      source.update_column(:credentials, nil)
 
       # Should not raise any errors
       assert_nothing_raised do
@@ -421,7 +422,7 @@ module CalendarHub
     test "key_status when key file doesn't exist" do
       # Remove the key file
       path = CredentialEncryption.send(:key_path)
-      File.delete(path) if File.exist?(path)
+      FileUtils.rm_f(path)
       CredentialEncryption.reset!
 
       status = CredentialEncryption.key_status
@@ -577,7 +578,7 @@ module CalendarHub
         calendar_identifier: "Inbox",
       )
       # Set invalid ciphertext that will fail to decrypt
-      source.update_column(:credentials, "invalid-ciphertext") # rubocop:disable Rails/SkipsModelValidations
+      source.update_column(:credentials, "invalid-ciphertext")
 
       # Should handle the decrypt failure gracefully and skip this source
       assert_nothing_raised do

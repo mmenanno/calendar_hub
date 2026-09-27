@@ -70,7 +70,7 @@ class SyncMetricTest < ActiveSupport::TestCase
 
     trend = SyncMetric.daily_trend(@source.id, days: 7)
 
-    zero_days = trend.select { |d| d[:syncs] == 0 }
+    zero_days = trend.select { |d| d[:syncs].zero? }
 
     assert_equal(7, zero_days.length) # all days except today
   end
