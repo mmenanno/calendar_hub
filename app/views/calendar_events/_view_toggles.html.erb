@@ -1,0 +1,24 @@
+<%# Links keep the active source and search (events_filter_params) and reset the page. %>
+<% filters = events_filter_params %>
+<div id="events-view-toggles" class="flex flex-wrap items-center gap-3">
+  <div class="inline-flex rounded-lg border border-slate-700 bg-slate-800/50 p-0.5">
+    <%= link_to t("ui.events.upcoming"),
+          calendar_events_path(filters.except(:show_past)),
+          class: "rounded-md px-3 py-1 text-sm font-medium transition #{show_past ? "text-slate-400 hover:text-slate-200" : "bg-indigo-500 text-white shadow-sm"}",
+          data: { action: "click->events-toggle#loading" } %>
+    <%= link_to t("ui.events.past"),
+          calendar_events_path(filters.merge(show_past: true)),
+          class: "rounded-md px-3 py-1 text-sm font-medium transition #{show_past ? "bg-indigo-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}",
+          data: { action: "click->events-toggle#loading" } %>
+  </div>
+  <%= link_to calendar_events_path(show_excluded ? filters.except(:show_excluded) : filters.merge(show_excluded: true)),
+        role: "button",
+        "aria-pressed": show_excluded.to_s,
+        data: { action: "click->events-toggle#loading" },
+        class: "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition #{show_excluded ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : "border-slate-700 bg-slate-800/50 text-slate-300 hover:border-slate-600"}" do %>
+    <span class="relative inline-flex h-4 w-8 items-center rounded-full transition <%= show_excluded ? "bg-amber-600/70" : "bg-slate-700" %>">
+      <span class="inline-block h-3 w-3 transform rounded-full bg-white transition <%= show_excluded ? "translate-x-4" : "translate-x-1" %>"></span>
+    </span>
+    <%= show_excluded ? t("ui.events.hide_excluded") : t("ui.events.show_excluded") %>
+  <% end %>
+</div>

@@ -91,7 +91,8 @@ class CalendarEventsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response(:success)
     # Should render partial instead of full page
-    refute_match("Upcoming Events", response.body) # H2 title not in partial
+    assert_select("turbo-frame#events-search-form", count: 0)
+    assert_select("turbo-frame#events-list", count: 1)
   end
 
   test "renders show action successfully" do
@@ -177,34 +178,6 @@ class CalendarEventsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response(:success)
     assert_match(event.title, response.body)
-  end
-
-  test "event_search_data is cached" do
-    # Temporarily enable caching for this test
-    original_cache_store = Rails.cache
-    Rails.cache = ActiveSupport::Cache::MemoryStore.new
-
-    event = calendar_events(:provider_consult)
-    event.update!(
-      starts_at: 1.week.from_now,
-      ends_at: 1.week.from_now + 1.hour,
-    )
-
-    # First call should cache the data by triggering the search
-    # Use a search term that will match the event
-    get(calendar_events_path(q: "consultation"))
-
-    assert_response(:success)
-
-    # Verify cache key exists - the private method should have been called
-    cache_key = "event_search_data/#{event.id}/#{event.reload.updated_at.to_i}"
-    cached_data = Rails.cache.read(cache_key)
-
-    refute_nil(cached_data, "Cache should contain search data after search request")
-    assert_equal(event.title.downcase, cached_data[:original_title])
-  ensure
-    # Restore original cache store
-    Rails.cache = original_cache_store
   end
 
   test "search handles events with nil location" do

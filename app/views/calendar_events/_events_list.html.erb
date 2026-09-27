@@ -1,15 +1,8 @@
+<%# Response to events-list frame requests (search, source filter, paging). %>
 <turbo-frame id="events-list">
-  <div id="calendar-events" class="space-y-4">
-    <% if events.any? %>
-      <%= render partial: "calendar_events/calendar_event", collection: events, as: :calendar_event %>
-    <% else %>
-      <div class="rounded-xl border border-dashed border-slate-800 bg-slate-900/50 p-6 text-center text-sm text-slate-400">
-        <% if selected_source %>
-          <%= t("ui.events.none_for_selected", name: selected_source.name) %>
-        <% else %>
-          <%= t("ui.events.none_connect") %>
-        <% end %>
-      </div>
-    <% end %>
-  </div>
+  <%# The heading and view toggles sit outside the frame. Refresh them so they
+      show, and their links keep, the new source and search. %>
+  <%= turbo_stream.replace("events-list-heading", partial: "calendar_events/list_heading", locals: { show_past: @show_past, selected_source: selected_source }) %>
+  <%= turbo_stream.replace("events-view-toggles", partial: "calendar_events/view_toggles", locals: { show_past: @show_past, show_excluded: @show_excluded }) %>
+  <%= render "calendar_events/events_page", events: events, selected_source: selected_source, page: @page, prev_page: @prev_page, next_page: @next_page %>
 </turbo-frame>

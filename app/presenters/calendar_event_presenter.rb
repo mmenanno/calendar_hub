@@ -8,14 +8,11 @@ class CalendarEventPresenter < ApplicationPresenter
     @event = event
   end
 
-  # Returns the mapped title if a mapping rule applies; otherwise the original
+  # Returns the mapped title if a mapping rule applies; otherwise the original.
+  # Not cached per event: applying the (already cached) mappings is cheaper
+  # than a Solid Cache round trip per row.
   def title
-    @mapped_title ||= begin
-      cache_key = "mapped_title/#{event.id}/#{event.updated_at.to_i}"
-      Rails.cache.fetch(cache_key, expires_in: 1.hour) do
-        CalendarHub::NameMapper.apply(event.title, source: event.calendar_source)
-      end
-    end
+    @title ||= CalendarHub::NameMapper.apply(event.title, source: event.calendar_source)
   end
 
   def original_title

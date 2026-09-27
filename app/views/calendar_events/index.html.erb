@@ -10,12 +10,7 @@
       <div data-controller="events-toggle">
         <div class="mb-4 space-y-3">
           <div class="flex items-center justify-between">
-            <div>
-              <h2 class="text-lg font-semibold"><%= @show_past ? t("ui.events.past") : t("ui.events.upcoming") %></h2>
-              <% if @selected_source %>
-                <p class="text-sm text-slate-400"><%= t("ui.events.filtered_to", name: @selected_source.name) %></p>
-              <% end %>
-            </div>
+            <%= render "calendar_events/list_heading", show_past: @show_past, selected_source: @selected_source %>
             <%= link_to sync_all_calendar_sources_path, class: "inline-flex items-center gap-2 rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-500/20 transition hover:bg-indigo-400", data: { turbo_method: :post } do %>
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -23,56 +18,23 @@
               <%= t("navigation.sync_all") %>
             <% end %>
           </div>
-          <div class="flex flex-wrap items-center gap-3">
-            <div class="inline-flex rounded-lg border border-slate-700 bg-slate-800/50 p-0.5">
-              <%= link_to t("ui.events.upcoming"),
-                    calendar_events_path(source_id: params[:source_id], q: params[:q], show_excluded: @show_excluded),
-                    class: "rounded-md px-3 py-1 text-sm font-medium transition #{@show_past ? "text-slate-400 hover:text-slate-200" : "bg-indigo-500 text-white shadow-sm"}",
-                    data: { action: "click->events-toggle#loading" } %>
-              <%= link_to t("ui.events.past"),
-                    calendar_events_path(source_id: params[:source_id], q: params[:q], show_excluded: @show_excluded, show_past: true),
-                    class: "rounded-md px-3 py-1 text-sm font-medium transition #{@show_past ? "bg-indigo-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}",
-                    data: { action: "click->events-toggle#loading" } %>
-            </div>
-            <%= link_to calendar_events_path(source_id: params[:source_id], q: params[:q], show_excluded: !@show_excluded, show_past: @show_past),
-                  role: "button",
-                  "aria-pressed": @show_excluded.to_s,
-                  data: { action: "click->events-toggle#loading" },
-                  class: "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition #{@show_excluded ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : "border-slate-700 bg-slate-800/50 text-slate-300 hover:border-slate-600"}" do %>
-              <span class="relative inline-flex h-4 w-8 items-center rounded-full transition <%= @show_excluded ? "bg-amber-600/70" : "bg-slate-700" %>">
-                <span class="inline-block h-3 w-3 transform rounded-full bg-white transition <%= @show_excluded ? "translate-x-4" : "translate-x-1" %>"></span>
-              </span>
-              <%= @show_excluded ? t("ui.events.hide_excluded") : t("ui.events.show_excluded") %>
-            <% end %>
-          </div>
+          <%= render "calendar_events/view_toggles", show_past: @show_past, show_excluded: @show_excluded %>
           <turbo-frame id="events-search-form">
-            <%= form_with url: calendar_events_path, method: :get, data: { controller: "search", search_target: "form", turbo_frame: "events-list" }, class: "flex flex-wrap items-center gap-2" do |form| %>
+            <%= form_with url: calendar_events_path, method: :get, data: { controller: "search", search_target: "form", turbo_frame: "events-list", turbo_action: "advance" }, class: "flex flex-wrap items-center gap-2" do |form| %>
               <div class="select-chevron">
                 <%= form.collection_select(:source_id, @calendar_sources, :id, :name, { include_blank: t("ui.events.all_sources"), selected: params[:source_id].presence || @selected_source&.id }, class: select_class, data: { action: "change->search#submitForm" }) %>
               </div>
-              <%= form.text_field(:q, value: params[:q], placeholder: t("ui.events.search_placeholder"), class: "#{input_class} flex-1 min-w-[12rem]", data: { search_target: "input", action: "input->search#search" }) %>
-              <%= form.hidden_field(:show_excluded, value: @show_excluded) %>
-              <%= form.hidden_field(:show_past, value: @show_past) %>
-              <% if params[:source_id].present? || params[:q].present? %>
-                <%= link_to t("common.actions.clear"), calendar_events_path(show_excluded: @show_excluded, show_past: @show_past), class: "text-sm text-slate-400 hover:text-slate-200" %>
+              <%= form.text_field(:q, value: @query, placeholder: t("ui.events.search_placeholder"), class: "#{input_class} flex-1 min-w-[12rem]", data: { search_target: "input", action: "input->search#search" }) %>
+              <%= form.hidden_field(:show_excluded, value: true) if @show_excluded %>
+              <%= form.hidden_field(:show_past, value: true) if @show_past %>
+              <% if @selected_source || @query.present? %>
+                <%= link_to t("common.actions.clear"), calendar_events_path(events_filter_params.except(:source_id, :q)), class: "text-sm text-slate-400 hover:text-slate-200", data: { turbo_frame: "_top" } %>
               <% end %>
             <% end %>
           </turbo-frame>
         </div>
         <turbo-frame id="events-list" data-events-toggle-target="list">
-          <div id="calendar-events" class="space-y-4">
-            <% if @events.any? %>
-              <%= render partial: "calendar_events/calendar_event", collection: @events, as: :calendar_event %>
-            <% else %>
-              <div class="rounded-xl border border-dashed border-slate-800 bg-slate-900/50 p-6 text-center text-sm text-slate-400">
-                <% if @selected_source %>
-                  <%= t("ui.events.none_for_selected", name: @selected_source.name) %>
-                <% else %>
-                  <%= t("ui.events.none_connect") %>
-                <% end %>
-              </div>
-            <% end %>
-          </div>
+          <%= render "calendar_events/events_page", events: @events, selected_source: @selected_source, page: @page, prev_page: @prev_page, next_page: @next_page %>
         </turbo-frame>
       </div>
 
