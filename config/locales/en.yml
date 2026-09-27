@@ -194,6 +194,12 @@ en:
       click_sync: "Click Sync manually or let auto-sync handle it: events are normalized, mapped, and queued in the background."
       review_events: "Review in Events: filter by source to verify imported items."
       tip: "Tip: Event mappings can rename titles and are applied before syncing to Apple Calendar."
+      rules_transfer:
+        export: "Use Export on the Mappings or Filter Rules page to download your rules as a JSON file (one kind or both), for backup or to copy them to another Calendar Hub."
+        header: "Importing & Exporting Rules"
+        import: "Use Import to upload (or paste) an export. You'll see a preview of what will be added, skipped as a duplicate, or rejected as invalid before anything changes."
+        modes: "Append keeps your existing rules and skips duplicates. Replace deletes existing rules of the imported kinds first and must be confirmed. Affected sources are resynced once the import is applied."
+        sources: "Rules refer to sources by name. If a source name doesn't exist here, choose whether to skip those rules or import them as global rules."
 
     events:
       all_sources: "All sources"

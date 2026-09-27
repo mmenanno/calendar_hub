@@ -47,6 +47,13 @@ class HelpControllerTest < ActionDispatch::IntegrationTest
     assert_select "ol li", text: I18n.t("ui.help.review_events")
   end
 
+  test "renders import and export section" do
+    get help_path
+
+    assert_response(:success)
+    assert_select("h2", text: I18n.t("ui.help.rules_transfer.header"))
+  end
+
   test "renders tip section" do
     get help_path
 

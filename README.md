@@ -7,6 +7,7 @@ Calendar Hub consolidates subscribed calendars (for example, healthcare portals 
 - Unify multiple ICS feeds into one Apple Calendar collection with per-source overrides.
 - UI for managing sources, testing destinations, and monitoring upcoming events in real time.
 - Event mapping and filter rules to normalize titles or drop noise before syncing.
+- Import and export of mappings and filter rules as versioned JSON, with a preview step (duplicates, unknown sources, invalid rows) and append or replace modes.
 - Background sync pipeline backed by Solid Queue, plus manual sync and pause controls.
 - Credential encryption with automatic key management and rotation tools in Settings.
 
