@@ -41,3 +41,6 @@
 
 # Ignore planning directory.
 /.planning/
+
+# Playwright MCP session artifacts
+/.playwright-mcp/
