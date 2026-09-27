@@ -21,7 +21,7 @@ module CalendarHub
 
         result = http_client.get_with_caching(source.ingestion_url, conditional: conditional)
         @cache_headers = result[:cache_headers]
-        return nil unless result[:changed] # 304 Not Modified — nil signals "no change" to callers
+        return unless result[:changed] # 304 Not Modified — nil signals "no change" to callers
 
         parser = ::CalendarHub::ICS::Parser.new(
           result[:body],
@@ -34,9 +34,7 @@ module CalendarHub
 
         # Applied to expanded occurrences (not series masters) so a series
         # that began before import_start_date still yields later occurrences.
-        if source.import_start_date.present?
-          events = events.select { |event| event.starts_at >= source.import_start_date }
-        end
+        events = events.select { |event| event.starts_at >= source.import_start_date } if source.import_start_date.present?
 
         events
       end

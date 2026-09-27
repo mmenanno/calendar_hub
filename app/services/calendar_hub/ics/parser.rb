@@ -22,8 +22,19 @@ module CalendarHub
       # Properties mapped to dedicated Event fields (or used for expansion);
       # everything else ends up in raw_properties.
       CORE_PROPERTIES = [
-        "UID", "SUMMARY", "DESCRIPTION", "LOCATION", "STATUS", "DTSTART", "DTEND", "DURATION",
-        "RRULE", "RDATE", "EXDATE", "EXRULE", "RECURRENCE-ID",
+        "UID",
+        "SUMMARY",
+        "DESCRIPTION",
+        "LOCATION",
+        "STATUS",
+        "DTSTART",
+        "DTEND",
+        "DURATION",
+        "RRULE",
+        "RDATE",
+        "EXDATE",
+        "EXRULE",
+        "RECURRENCE-ID",
       ].freeze
       # Properties that change on every export without the event changing.
       VOLATILE_PROPERTIES = ["DTSTAMP", "LAST-MODIFIED", "CREATED", "SEQUENCE"].freeze
@@ -153,9 +164,7 @@ module CalendarHub
             when "VTIMEZONE"
               current_timezone[:tzid] = value.strip if name == "TZID" && current_timezone
             when "STANDARD", "DAYLIGHT"
-              if name == "TZOFFSETTO" && current_timezone && current_observance
-                current_timezone[current_observance] = parse_utc_offset(value)
-              end
+              current_timezone[current_observance] = parse_utc_offset(value) if name == "TZOFFSETTO" && current_timezone && current_observance
             end
           end
         end
@@ -212,7 +221,7 @@ module CalendarHub
         return if match.nil? || match[1] == "-"
 
         weeks, days, hours, minutes, seconds = match[2..6].map(&:to_i)
-        starts_at + (weeks * 7 + days).days + hours.hours + minutes.minutes + seconds.seconds
+        starts_at + ((weeks * 7) + days).days + hours.hours + minutes.minutes + seconds.seconds
       end
 
       # --- Recurrence ------------------------------------------------------

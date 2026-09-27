@@ -18,14 +18,12 @@ module CalendarHub
         filtered_count = ::CalendarHub::EventFilter.apply_backwards_filtering(source)
         re_included_count = ::CalendarHub::EventFilter.apply_reverse_filtering(source)
 
-        if filtered_count > 0 || re_included_count > 0
-          trigger_apple_sync
-        end
+        trigger_apple_sync if filtered_count > 0 || re_included_count > 0
 
         Rails.logger.info("[FilterSyncService] source=#{source.id} filtered=#{filtered_count} re_included=#{re_included_count}")
         { filtered: filtered_count, re_included: re_included_count }
-      rescue => e
-        Rails.logger.error("[FilterSyncService] Unexpected error during filter sync for source=#{source.id}: #{e.message}")
+      rescue StandardError => exception
+        Rails.logger.error("[FilterSyncService] Unexpected error during filter sync for source=#{source.id}: #{exception.message}")
         raise
       end
 

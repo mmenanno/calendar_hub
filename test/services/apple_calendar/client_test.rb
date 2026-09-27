@@ -743,7 +743,6 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
     @client.unstub(:cached_collection_url)
   end
 
-
   test "escape_ics keeps backslashes and normalizes CR and CRLF" do
     result = @client.send(:escape_ics, "C:\\new\r\nnext\rlast\u0007bell")
 
@@ -854,6 +853,7 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
     stub_request(:propfind, "#{base}/calendars/user/").to_return(status: 207, body: "<d:multistatus xmlns:d=\"DAV:\"></d:multistatus>")
 
     payload = { uid: "abc123", summary: "Test", starts_at: Time.utc(2025, 1, 1, 10), ends_at: Time.utc(2025, 1, 1, 11) }
+
     3.times do
       assert_raises(AppleCalendar::Client::CalendarNotFoundError) do
         @client.upsert_event(calendar_identifier: "Missing", payload: payload)

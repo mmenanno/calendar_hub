@@ -9,14 +9,14 @@ class ParserTest < ActiveSupport::TestCase
     parser = ::CalendarHub::ICS::Parser.new(file_fixture("provider.ics").read, default_time_zone: "America/Toronto")
     events = parser.events
 
-    assert_equal 2, events.count
+    assert_equal(2, events.count)
 
     first = events.first
 
-    assert_equal "prov-123", first.uid
-    assert_equal "Initial Consultation", first.summary
-    assert_equal Time.find_zone!("America/Toronto").parse("2025-09-22 14:00"), first.starts_at
-    assert_equal "confirmed", first.status
+    assert_equal("prov-123", first.uid)
+    assert_equal("Initial Consultation", first.summary)
+    assert_equal(Time.find_zone!("America/Toronto").parse("2025-09-22 14:00"), first.starts_at)
+    assert_equal("confirmed", first.status)
     assert_equal(
       {
         "x-provider-practitioner" => "Dr. Smith",
@@ -29,7 +29,7 @@ class ParserTest < ActiveSupport::TestCase
 
     second = events.second
 
-    assert_equal "cancelled", second.status
+    assert_equal("cancelled", second.status)
   end
 
   test "handles empty ics content" do
@@ -524,5 +524,4 @@ class ParserTest < ActiveSupport::TestCase
     assert_equal("Review docs, prepare notes; bring laptop", event.description)
     assert_equal("Room 5, Building A", event.location)
   end
-
 end

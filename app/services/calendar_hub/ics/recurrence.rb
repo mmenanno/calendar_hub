@@ -82,7 +82,7 @@ module CalendarHub
       def each_period(last_date)
         MAX_PERIODS.times do |index|
           period_start = period_start_date(index)
-          return if period_start > last_date || beyond_until?(period_start)
+          break if period_start > last_date || beyond_until?(period_start)
 
           yield(candidates_for_period(index).sort)
         end
@@ -182,7 +182,7 @@ module CalendarHub
       end
 
       def monthday_matches?(date, day)
-        day.positive? ? date.day == day : date.day == date.end_of_month.day + day + 1
+        date.day == (day.positive? ? day : date.end_of_month.day + day + 1)
       end
 
       def month_allowed?(date)
@@ -234,7 +234,7 @@ module CalendarHub
         {
           freq: parts["FREQ"].upcase,
           interval: [parts["INTERVAL"].to_i, 1].max,
-          count: parts["COUNT"].present? ? parts["COUNT"].to_i : nil,
+          count: parts["COUNT"].presence&.to_i,
           until: parse_until(parts["UNTIL"]),
           byday: parse_byday(parts["BYDAY"]),
           bymonthday: parse_int_list(parts["BYMONTHDAY"]),
