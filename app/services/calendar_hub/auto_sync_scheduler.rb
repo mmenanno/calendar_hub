@@ -38,7 +38,7 @@ module CalendarHub
         source = sources_by_id[source_id] || CalendarSource.find(source_id)
 
         begin
-          attempt = SyncAttempt.create!(calendar_source: source, status: :queued)
+          attempt = SyncAttempt.create!(calendar_source: source, status: :queued, trigger: "auto")
         rescue ActiveRecord::RecordNotUnique
           # Another worker already created an active attempt for this source
           # (enforced by idx_unique_active_sync_attempt_per_source) between

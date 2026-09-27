@@ -1,6 +1,10 @@
-<div class="min-h-screen bg-slate-950 text-slate-100">
-  <div class="mx-auto w-full max-w-3xl px-6 py-10">
-    <h1 class="mb-6 text-2xl font-semibold">New Calendar Source</h1>
-    <%= render "form", calendar_source: @calendar_source %>
-  </div>
-</div>
+<% content_for :title, t("ui.sources.new_source") %>
+<%= render "shared/page_header",
+      nav_active: :sources,
+      max_width: "max-w-3xl",
+      icon: sources_icon,
+      title: t("ui.sources.new_source"),
+      subtitle: t("ui.sources.new_subheader") do %>
+  <%= render "shared/breadcrumb", breadcrumbs: [[t("navigation.sources"), calendar_sources_path], [t("ui.sources.new_source")]] %>
+  <%= render "form", calendar_source: @calendar_source %>
+<% end %>

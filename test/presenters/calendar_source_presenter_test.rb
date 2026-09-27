@@ -292,4 +292,27 @@ class CalendarSourcePresenterTest < ActiveSupport::TestCase
 
     assert_equal(I18n.t("ui.sources.health.failures", count: 3), presenter.health_badge_label)
   end
+
+  test "next_sync_text says auto-sync is off when auto-sync is disabled" do
+    source = build_source(auto_sync_enabled: false)
+    source.stubs(:within_sync_window?).returns(true)
+
+    assert_equal(I18n.t("ui.sources.auto_sync_off"), presenter_for(source).next_sync_text)
+  end
+
+  test "failure_acknowledged? is true only when acknowledged after the latest attempt" do
+    source = build_source(consecutive_sync_failures: 2)
+    presenter = presenter_for(source)
+
+    refute_predicate(presenter, :failure_acknowledged?)
+
+    source.sync_attempts.create!(status: :failed, created_at: 2.hours.ago)
+    source.update!(failure_acknowledged_at: 1.hour.ago)
+
+    assert_predicate(presenter_for(source.reload), :failure_acknowledged?)
+
+    source.sync_attempts.create!(status: :failed)
+
+    refute_predicate(presenter_for(source.reload), :failure_acknowledged?)
+  end
 end

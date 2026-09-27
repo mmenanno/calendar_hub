@@ -40,9 +40,10 @@ class CalendarSourcesController < ApplicationController
               partial: "shared/toast",
               locals: { message: t("flashes.calendar_sources.created") },
             ),
-            turbo_stream.replace(
-              "new_source_form",
-              render_to_string(partial: "calendar_sources/form", locals: { calendar_source: CalendarSource.new }),
+            turbo_stream.update(
+              "new_source_form_body",
+              partial: "calendar_sources/form",
+              locals: { calendar_source: CalendarSource.new },
             ),
           ])
         end
@@ -52,9 +53,10 @@ class CalendarSourcesController < ApplicationController
       respond_to do |format|
         format.turbo_stream do
           render(
-            turbo_stream: turbo_stream.replace(
-              "new_source_form",
-              render_to_string(partial: "calendar_sources/form", locals: { calendar_source: @calendar_source }),
+            turbo_stream: turbo_stream.update(
+              "new_source_form_body",
+              partial: "calendar_sources/form",
+              locals: { calendar_source: @calendar_source },
             ),
             status: :unprocessable_content,
           )
@@ -93,10 +95,10 @@ class CalendarSourcesController < ApplicationController
       format.turbo_stream do
         render(turbo_stream: [
           turbo_stream.remove(view_context.dom_id(@calendar_source, :card)),
-          turbo_stream.replace(
+          turbo_stream.update(
             "archived-sources-section",
             partial: "calendar_sources/archived_section",
-            locals: { archived_sources: CalendarSource.unscoped.where.not(deleted_at: nil).order(:name) },
+            locals: { archived_sources: archived_sources },
           ),
           turbo_stream.append(
             "toast-anchor",
@@ -145,52 +147,23 @@ class CalendarSourcesController < ApplicationController
 
   def sync
     attempt = @calendar_source.schedule_sync
-    respond_to do |format|
-      if attempt
-        format.turbo_stream do
-          render(turbo_stream: turbo_stream.replace(
-            "sync_status_source_#{@calendar_source.id}",
-            partial: "calendar_sources/sync_status",
-            locals: { attempt: attempt },
-          ))
-        end
-        format.html { redirect_back_or_to(calendar_events_path(source_id: @calendar_source.id), notice: t("flashes.calendar_sources.sync_scheduled", count: 1)) }
-      else
-        format.turbo_stream { head(:unprocessable_content) }
-        format.html { redirect_back_or_to(calendar_events_path(source_id: @calendar_source.id), alert: t("flashes.calendar_sources.sync_inactive")) }
-      end
-    end
+    respond_to_sync_request(attempt, force: false)
   end
 
   def force_sync
     attempt = @calendar_source.schedule_sync(force: true)
-    respond_to do |format|
-      if attempt
-        format.turbo_stream do
-          render(turbo_stream: turbo_stream.replace(
-            "sync_status_source_#{@calendar_source.id}",
-            partial: "calendar_sources/sync_status",
-            locals: { attempt: attempt },
-          ))
-        end
-        format.html { redirect_back_or_to(calendar_events_path(source_id: @calendar_source.id), notice: t("flashes.calendar_sources.sync_scheduled", count: 1)) }
-      else
-        format.turbo_stream { head(:unprocessable_content) }
-        format.html { redirect_back_or_to(calendar_events_path(source_id: @calendar_source.id), alert: t("flashes.calendar_sources.sync_inactive")) }
-      end
-    end
+    respond_to_sync_request(attempt, force: true)
   end
 
   def push_state
-    attempt = SyncAttempt.create!(calendar_source: @calendar_source, status: :queued)
+    attempt = SyncAttempt.create!(calendar_source: @calendar_source, status: :queued, trigger: "manual")
     PushStateJob.perform_later(@calendar_source.id, attempt_id: attempt.id)
     respond_to do |format|
       format.turbo_stream do
-        render(turbo_stream: turbo_stream.replace(
-          "sync_status_source_#{@calendar_source.id}",
-          partial: "calendar_sources/sync_status",
-          locals: { attempt: attempt },
-        ))
+        render(turbo_stream: [
+          sync_status_stream(attempt),
+          toast_stream(t("flashes.calendar_sources.push_state_scheduled"), variant: :success),
+        ])
       end
       format.html { redirect_back_or_to(calendar_events_path(source_id: @calendar_source.id), notice: t("flashes.calendar_sources.push_state_scheduled")) }
     end
@@ -273,8 +246,6 @@ class CalendarSourcesController < ApplicationController
     @calendar_source.update!(deleted_at: nil, active: true)
     respond_to do |format|
       format.turbo_stream do
-        remaining_archived_count = CalendarSource.unscoped.where.not(deleted_at: nil).count
-
         streams = [
           turbo_stream.remove(view_context.dom_id(@calendar_source, :card)),
           turbo_stream.prepend(
@@ -288,15 +259,11 @@ class CalendarSourcesController < ApplicationController
           ),
         ]
 
-        streams << if remaining_archived_count.zero?
-          turbo_stream.remove("archived-sources")
-        else
-          turbo_stream.replace(
-            "archived-sources-section",
-            partial: "calendar_sources/archived_section",
-            locals: { archived_sources: CalendarSource.unscoped.where.not(deleted_at: nil).order(:name) },
-          )
-        end
+        streams << turbo_stream.update(
+          "archived-sources-section",
+          partial: "calendar_sources/archived_section",
+          locals: { archived_sources: archived_sources },
+        )
 
         render(turbo_stream: streams)
       end
@@ -304,8 +271,10 @@ class CalendarSourcesController < ApplicationController
     end
   end
 
+  # Hides the failure banner until the next failed attempt. The failure count
+  # (and the health badge) is left untouched: only a successful sync resets it.
   def acknowledge_failure
-    @calendar_source.record_sync_success!
+    @calendar_source.update!(failure_acknowledged_at: Time.current)
 
     respond_to do |format|
       format.turbo_stream do
@@ -316,6 +285,53 @@ class CalendarSourcesController < ApplicationController
   end
 
   private
+
+  def archived_sources
+    CalendarSource.unscoped.where.not(deleted_at: nil).order(:name)
+  end
+
+  def sync_status_stream(attempt)
+    turbo_stream.replace(
+      "sync_status_source_#{@calendar_source.id}",
+      partial: "calendar_sources/sync_status",
+      locals: { attempt: attempt, source: @calendar_source },
+    )
+  end
+
+  def respond_to_sync_request(attempt, force:)
+    fallback = calendar_events_path(source_id: @calendar_source.id)
+
+    respond_to do |format|
+      if attempt
+        message = t("flashes.calendar_sources.sync_scheduled", count: 1)
+        format.turbo_stream { render(turbo_stream: [sync_status_stream(attempt), toast_stream(message, variant: :success)]) }
+        format.html { redirect_back_or_to(fallback, notice: message) }
+      else
+        message = sync_refusal_message(force: force)
+        format.turbo_stream { render(turbo_stream: toast_stream(message, variant: :error), status: :unprocessable_content) }
+        format.html { redirect_back_or_to(fallback, alert: message) }
+      end
+    end
+  end
+
+  # Explains why CalendarSource#schedule_sync declined to queue a sync.
+  def sync_refusal_message(force:)
+    source = @calendar_source
+    if !source.active?
+      t("flashes.calendar_sources.sync_refused.paused", name: source.name)
+    elsif !source.syncable?
+      t("flashes.calendar_sources.sync_inactive")
+    elsif !force && !source.within_sync_window?
+      t(
+        "flashes.calendar_sources.sync_refused.outside_window",
+        start: format("%d:00", source.sync_window_start_hour),
+        end: format("%d:00", source.sync_window_end_hour),
+        time_zone: source.time_zone,
+      )
+    else
+      t("flashes.calendar_sources.sync_refused.already_running")
+    end
+  end
 
   def set_calendar_source
     scope = ["purge", "unarchive"].include?(action_name) ? CalendarSource.unscoped : CalendarSource

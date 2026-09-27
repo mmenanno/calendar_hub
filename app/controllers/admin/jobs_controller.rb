@@ -23,8 +23,8 @@ module Admin
       @recent_attempts = @recent_attempts.first(per_page)
 
       # Auto-sync vs Manual sync breakdown (last 24 hours)
-      recent_attempts_24h = SyncAttempt.includes(:calendar_source).where("sync_attempts.created_at > ?", 24.hours.ago)
-      @auto_sync_attempts = recent_attempts_24h.joins(:calendar_source).where(calendar_sources: { auto_sync_enabled: true }).count
+      recent_attempts_24h = SyncAttempt.where("sync_attempts.created_at > ?", 24.hours.ago)
+      @auto_sync_attempts = recent_attempts_24h.where(trigger: "auto").count
       @manual_sync_attempts = recent_attempts_24h.count - @auto_sync_attempts
 
       # Auto-sync sources stats

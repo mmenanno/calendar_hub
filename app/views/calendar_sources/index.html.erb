@@ -12,7 +12,9 @@
             key: "add-source",
             title: t("ui.sources.add_source"),
             default_open: @calendar_sources.blank? do %>
-        <%= render "form", calendar_source: @new_source %>
+        <div id="new_source_form_body">
+          <%= render "form", calendar_source: @new_source %>
+        </div>
       <% end %>
 
       <section id="sources-list" class="space-y-4">

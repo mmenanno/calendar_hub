@@ -22,11 +22,11 @@ class CalendarSourceUnarchiveTest < ActionDispatch::IntegrationTest
     assert_match(/turbo-stream.*action="append".*target="toast-anchor"/, response.body)
     assert_match(/Source unarchived/, response.body)
 
-    # 4. Either removing archived section or replacing it (depending on remaining count)
-    assert_match(/turbo-stream.*action="(remove|replace)".*target="archived-sources/, response.body)
+    # 4. Re-rendering the archived section's contents inside its persistent wrapper
+    assert_match(/turbo-stream action="update" target="archived-sources-section"/, response.body)
   end
 
-  test "unarchive last archived source removes entire archived section" do
+  test "unarchive last archived source empties the archived section" do
     # Ensure we only have one archived source
     CalendarSource.unscoped.where.not(deleted_at: nil).where.not(id: calendar_sources(:archived_source).id).destroy_all
 
@@ -37,8 +37,9 @@ class CalendarSourceUnarchiveTest < ActionDispatch::IntegrationTest
 
     assert_response :success
 
-    # Should remove the entire archived-sources section
-    assert_match(/turbo-stream.*action="remove".*target="archived-sources"/, response.body)
+    # The wrapper stays (so later archives can repopulate it) but renders nothing
+    assert_match(%r{<turbo-stream action="update" target="archived-sources-section"><template>\s*</template></turbo-stream>}, response.body)
+    refute_match(/id="archived-sources"/, response.body)
   end
 
   test "unarchive with remaining archived sources updates archived section" do
@@ -58,8 +59,10 @@ class CalendarSourceUnarchiveTest < ActionDispatch::IntegrationTest
 
     assert_response :success
 
-    # Should replace the archived section (not remove it)
-    assert_match(/turbo-stream.*action="replace".*target="archived-sources-section"/, response.body)
+    # Should update the archived section's contents (keeping the wrapper id)
+    assert_match(/turbo-stream action="update" target="archived-sources-section"/, response.body)
+    assert_match(/id="archived-sources"/, response.body)
+    assert_match(/Another Archived/, response.body)
     refute_match(/turbo-stream.*action="remove".*target="archived-sources"/, response.body)
 
     # Cleanup

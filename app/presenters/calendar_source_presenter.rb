@@ -25,6 +25,7 @@ class CalendarSourcePresenter < ApplicationPresenter
 
   def next_sync_text
     return I18n.t("ui.sources.sync_paused") unless source.active?
+    return I18n.t("ui.sources.auto_sync_off") unless source.auto_sync_enabled?
 
     if source.within_sync_window?
       I18n.t("ui.sources.now")
@@ -95,6 +96,17 @@ class CalendarSourcePresenter < ApplicationPresenter
   end
 
   # Health indicator methods (FEAT-008)
+
+  # True when the user dismissed the failure banner after the latest attempt,
+  # i.e. no new failure has happened since.
+  def failure_acknowledged?
+    acknowledged_at = source.failure_acknowledged_at
+    return false if acknowledged_at.nil?
+
+    latest = source.latest_sync_attempt
+    latest.nil? || latest.created_at <= acknowledged_at
+  end
+
   def health_badge_visible?
     source.consecutive_sync_failures.to_i > 0
   end
