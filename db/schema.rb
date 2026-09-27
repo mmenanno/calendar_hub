@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_03_180301) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_27_020000) do
   create_table "app_settings", force: :cascade do |t|
     t.string "app_host"
     t.integer "app_port"
@@ -306,7 +306,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_180301) do
     t.index ["calendar_source_id"], name: "index_sync_metrics_on_calendar_source_id"
   end
 
-  add_foreign_key "calendar_event_audits", "calendar_events"
+  add_foreign_key "calendar_event_audits", "calendar_events", on_delete: :cascade
   add_foreign_key "calendar_events", "calendar_sources"
   add_foreign_key "event_mappings", "calendar_sources"
   add_foreign_key "filter_rules", "calendar_sources"
@@ -317,7 +317,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_180301) do
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "sync_attempts", "calendar_sources"
-  add_foreign_key "sync_event_results", "calendar_events"
-  add_foreign_key "sync_event_results", "sync_attempts"
+  add_foreign_key "sync_event_results", "calendar_events", on_delete: :cascade
+  add_foreign_key "sync_event_results", "sync_attempts", on_delete: :cascade
   add_foreign_key "sync_metrics", "calendar_sources"
 end
