@@ -159,6 +159,7 @@ en:
       audit_event_created: "Event was first synced into Calendar Hub."
       audit_event_deleted: "Event was removed."
       audit_trail: "Audit Trail"
+      audit_trail_truncated: "Showing the latest %{shown} of %{total} changes."
       description: "Description"
       direct_link: "Direct Link"
       duration: "Duration"

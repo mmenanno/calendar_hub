@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class CalendarEventsController < ApplicationController
+  AUDIT_TRAIL_LIMIT = 50
+
   def index
     @calendar_sources = CalendarSource.preload_latest_sync_attempts(CalendarSource.order(:name))
     @selected_source = params[:source_id].present? ? @calendar_sources.find { |s| s.id == params[:source_id].to_i } : nil
@@ -29,7 +31,10 @@ class CalendarEventsController < ApplicationController
 
   def show
     @event = CalendarEvent.find(params[:id])
-    @audits = CalendarEventAudit.where(calendar_event_id: @event.id).order(occurred_at: :asc)
+    audits = CalendarEventAudit.where(calendar_event_id: @event.id)
+    # Latest AUDIT_TRAIL_LIMIT entries, displayed oldest first.
+    @audits = audits.order(occurred_at: :desc, id: :desc).limit(AUDIT_TRAIL_LIMIT).to_a.reverse
+    @audits_total = @audits.size < AUDIT_TRAIL_LIMIT ? @audits.size : audits.count
   end
 
   def toggle_sync
