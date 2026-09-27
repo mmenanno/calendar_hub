@@ -226,7 +226,7 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
 
   test "escape_ics escapes special characters" do
     result = @client.send(:escape_ics, "Text with ; comma, backslash\\ and newline\n")
-    expected = "Text with \\; comma\\, backslash and newline\\n"
+    expected = "Text with \\; comma\\, backslash\\\\ and newline\\n"
 
     assert_equal(expected, result)
   end
@@ -303,9 +303,10 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
 
     assert_match(/UID:test-123/, ics)
     assert_match(/SUMMARY:/, ics) # Empty summary
-    assert_match(/DESCRIPTION:/, ics) # Empty description
-    assert_match(/LOCATION:/, ics) # Empty location
+    refute_match(/DESCRIPTION:/, ics) # No empty description line
+    refute_match(/LOCATION:/, ics) # No empty location line
     refute_match(/URL:/, ics) # No URL line when empty
+    refute_match(/\r\n\r\n/, ics) # No blank lines
   end
 
   test "upsert_event handles 412 without ETag gracefully" do
@@ -347,10 +348,11 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
   test "request raises error for non-2xx status codes" do
     stub_request(:get, "https://example.com/test").to_return(status: 500, body: "Internal Server Error")
 
-    error = assert_raises(RuntimeError) do
+    error = assert_raises(AppleCalendar::Client::HTTPError) do
       @client.send(:request, :get, "https://example.com/test")
     end
     assert_match(/CalDAV GET.*failed: 500/, error.message)
+    assert_equal(500, error.status)
   end
 
   test "perform_with_retries handles 429 rate limiting" do
@@ -358,6 +360,8 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
     stub_request(:get, "https://example.com/test")
       .to_return(status: 429, headers: { "Retry-After" => "1" })
       .then.to_return(status: 200)
+
+    @client.expects(:sleep).with { |seconds| seconds.between?(1, 1.2) }.once
 
     # Should not raise error - the retry logic is tested via integration
     result = @client.send(:request, :get, "https://example.com/test")
@@ -431,7 +435,7 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
   test "parse_calendar_home_set raises error when node not found" do
     xml = "<d:multistatus xmlns:d=\"DAV:\"></d:multistatus>"
 
-    assert_raises(RuntimeError, "calendar-home-set not found") do
+    assert_raises(AppleCalendar::Client::Error, "calendar-home-set not found") do
       @client.send(:parse_calendar_home_set, xml)
     end
   end
@@ -462,7 +466,7 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
         </d:multistatus>
       XML
 
-    assert_raises(RuntimeError, "Calendar 'NonExistent' not found") do
+    assert_raises(AppleCalendar::Client::CalendarNotFoundError) do
       @client.send(:find_calendar_collection, "https://caldav.example.test/calendars/user/", "NonExistent")
     end
   end
@@ -536,12 +540,11 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
 
     # Mock to always return 429 to hit the retry limit
     response = Net::HTTPTooManyRequests.new("1.1", "429", "Too Many Requests")
-    http.stubs(:request).returns(response)
+    http.expects(:request).returns(response).times(AppleCalendar::Client::MAX_STATUS_ATTEMPTS)
+    @client.stubs(:sleep)
 
-    # Should hit the retry limit and raise "retry"
-    assert_raises(RuntimeError, "retry") do
-      @client.send(:perform_with_retries, http, req, uri)
-    end
+    # Gives up and hands back the throttled response
+    assert_same(response, @client.send(:perform_with_retries, http, req, uri))
   ensure
     http.unstub(:request)
   end
@@ -556,7 +559,7 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
 
     payload = { uid: "abc123", title: "Test", starts_at: Time.utc(2025, 1, 1, 10), ends_at: Time.utc(2025, 1, 1, 11) }
 
-    error = assert_raises(RuntimeError) do
+    error = assert_raises(AppleCalendar::Client::HTTPError) do
       @client.upsert_event(calendar_identifier: "Work", payload: payload)
     end
 
@@ -738,6 +741,137 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
   ensure
     @client.unstub(:request)
     @client.unstub(:cached_collection_url)
+  end
+
+
+  test "escape_ics keeps backslashes and normalizes CR and CRLF" do
+    result = @client.send(:escape_ics, "C:\\new\r\nnext\rlast\u0007bell")
+
+    assert_equal("C:\\\\new\\nnext\\nlastbell", result)
+  end
+
+  test "build_ics uses CRLF line endings and folds long lines at 75 octets" do
+    payload = {
+      uid: "fold-1",
+      summary: "Réunion " * 30,
+      starts_at: Time.utc(2025, 1, 1, 10),
+      ends_at: Time.utc(2025, 1, 1, 11),
+    }
+
+    ics = @client.send(:build_ics, payload)
+
+    assert(ics.end_with?("\r\n"))
+    refute_match(/[^\r]\n/, ics)
+    physical_lines = ics.split("\r\n")
+
+    assert(physical_lines.all? { |line| line.bytesize <= 75 })
+    assert(physical_lines.all?(&:valid_encoding?))
+    unfolded = ics.gsub("\r\n ", "")
+
+    assert_includes(unfolded, "SUMMARY:#{"Réunion " * 30}".rstrip)
+  end
+
+  test "build_ics includes STATUS and TRANSP" do
+    payload = {
+      uid: "status-1",
+      summary: "Maybe",
+      status: "tentative",
+      transparency: "opaque",
+      starts_at: Time.utc(2025, 1, 1, 10),
+      ends_at: Time.utc(2025, 1, 1, 11),
+    }
+
+    ics = @client.send(:build_ics, payload)
+
+    assert_includes(ics, "STATUS:TENTATIVE\r\n")
+    assert_includes(ics, "TRANSP:OPAQUE\r\n")
+  end
+
+  test "build_ics formats all-day dates in the event time zone" do
+    zone = ActiveSupport::TimeZone["Asia/Tokyo"]
+    payload = {
+      uid: "tokyo-1",
+      summary: "Holiday",
+      all_day: true,
+      time_zone: "Asia/Tokyo",
+      starts_at: zone.local(2025, 5, 5),
+      ends_at: zone.local(2025, 5, 6),
+    }
+
+    ics = Time.use_zone("UTC") { @client.send(:build_ics, payload) }
+
+    assert_includes(ics, "DTSTART;VALUE=DATE:20250505\r\n")
+    assert_includes(ics, "DTEND;VALUE=DATE:20250506\r\n")
+  end
+
+  test "treats redirects on PUT as failures" do
+    stub_discovery
+    stub_request(:put, "https://caldav.example.test/calendars/user/Work/abc123.ics")
+      .to_return(status: 301, headers: { "Location" => "https://elsewhere.example.test/" })
+
+    payload = { uid: "abc123", summary: "Test", starts_at: Time.utc(2025, 1, 1, 10), ends_at: Time.utc(2025, 1, 1, 11) }
+
+    error = assert_raises(AppleCalendar::Client::HTTPError) do
+      @client.upsert_event(calendar_identifier: "Work", payload: payload)
+    end
+
+    assert_equal(301, error.status)
+  end
+
+  test "treats redirects on DELETE as failures" do
+    stub_discovery
+    stub_request(:delete, "https://caldav.example.test/calendars/user/Work/abc123.ics").to_return(status: 302)
+
+    assert_raises(AppleCalendar::Client::HTTPError) do
+      @client.delete_event(calendar_identifier: "Work", uid: "abc123")
+    end
+  end
+
+  test "caps Retry-After and raises a descriptive error when throttling persists" do
+    stub_request(:get, "https://example.com/test").to_return(status: 503, headers: { "Retry-After" => "3600" }, body: "busy")
+    sleeps = []
+    @client.stubs(:sleep).with { |seconds| sleeps << seconds }
+
+    error = assert_raises(AppleCalendar::Client::HTTPError) do
+      @client.send(:request, :get, "https://example.com/test")
+    end
+
+    assert_equal(503, error.status)
+    assert_match(/503.*still failing after 4 attempts/, error.message)
+    assert_equal(3, sleeps.size)
+    assert(sleeps.all? { |seconds| seconds <= AppleCalendar::Client::MAX_RETRY_AFTER + 0.2 })
+  end
+
+  test "remembers failed calendar discovery instead of re-discovering per event" do
+    base = @creds[:base_url]
+    well_known = stub_request(:propfind, "#{base}/.well-known/caldav")
+      .to_return(status: 301, headers: { "Location" => "#{base}/principals/user/" })
+    stub_request(:propfind, "#{base}/principals/user/").to_return(status: 207, body: <<~XML)
+      <d:multistatus xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
+        <d:response><d:propstat><d:prop><cal:calendar-home-set><d:href>/calendars/user/</d:href></cal:calendar-home-set></d:prop></d:propstat></d:response>
+      </d:multistatus>
+    XML
+    stub_request(:propfind, "#{base}/calendars/user/").to_return(status: 207, body: "<d:multistatus xmlns:d=\"DAV:\"></d:multistatus>")
+
+    payload = { uid: "abc123", summary: "Test", starts_at: Time.utc(2025, 1, 1, 10), ends_at: Time.utc(2025, 1, 1, 11) }
+    3.times do
+      assert_raises(AppleCalendar::Client::CalendarNotFoundError) do
+        @client.upsert_event(calendar_identifier: "Missing", payload: payload)
+      end
+    end
+
+    assert_requested(well_known, times: 1)
+  end
+
+  test "finish closes persistent connections" do
+    stub_request(:get, "https://example.com/test").to_return(status: 200)
+    @client.send(:request, :get, "https://example.com/test")
+    connections = @client.instance_variable_get(:@connections).values
+
+    @client.finish
+
+    assert(connections.none?(&:started?))
+    assert_empty(@client.instance_variable_get(:@connections))
   end
 
   private
