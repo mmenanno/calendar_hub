@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_27_020000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_27_020100) do
   create_table "app_settings", force: :cascade do |t|
     t.string "app_host"
     t.integer "app_port"
@@ -37,7 +37,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_020000) do
     t.datetime "occurred_at", null: false
     t.datetime "updated_at", null: false
     t.index ["calendar_event_id", "occurred_at"], name: "idx_on_calendar_event_id_occurred_at_49966bf71e"
-    t.index ["calendar_event_id"], name: "index_calendar_event_audits_on_calendar_event_id"
   end
 
   create_table "calendar_events", force: :cascade do |t|
@@ -59,16 +58,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_020000) do
     t.string "time_zone", default: "UTC", null: false
     t.string "title", null: false
     t.datetime "updated_at", null: false
-    t.index ["all_day"], name: "index_calendar_events_on_all_day"
     t.index ["calendar_source_id", "external_id"], name: "index_calendar_events_on_calendar_source_id_and_external_id", unique: true
     t.index ["calendar_source_id", "starts_at"], name: "idx_events_source_starts"
     t.index ["calendar_source_id", "status"], name: "index_calendar_events_on_source_and_status"
     t.index ["calendar_source_id", "synced_at"], name: "index_calendar_events_on_source_and_synced_at"
-    t.index ["calendar_source_id"], name: "index_calendar_events_on_calendar_source_id"
-    t.index ["starts_at", "sync_exempt"], name: "index_calendar_events_on_starts_at_and_sync_exempt"
     t.index ["starts_at"], name: "index_calendar_events_on_starts_at"
-    t.index ["status"], name: "index_calendar_events_on_status"
-    t.index ["sync_exempt"], name: "index_calendar_events_on_sync_exempt"
+    t.index ["sync_exempt", "starts_at"], name: "idx_events_sync_exempt_starts"
   end
 
   create_table "calendar_sources", force: :cascade do |t|
@@ -273,9 +268,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_020000) do
     t.integer "total_events", default: 0, null: false
     t.datetime "updated_at", null: false
     t.integer "upserts", default: 0, null: false
+    t.index ["calendar_source_id", "created_at"], name: "idx_sync_attempts_source_created"
     t.index ["calendar_source_id", "status", "created_at"], name: "index_sync_attempts_on_source_status_created_at"
     t.index ["calendar_source_id"], name: "idx_unique_active_sync_attempt_per_source", unique: true, where: "status IN ('queued', 'running')"
-    t.index ["calendar_source_id"], name: "index_sync_attempts_on_calendar_source_id"
+    t.index ["created_at"], name: "index_sync_attempts_on_created_at"
+    t.index ["status", "created_at"], name: "index_sync_attempts_on_status_and_created_at"
   end
 
   create_table "sync_event_results", force: :cascade do |t|
@@ -289,8 +286,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_020000) do
     t.integer "sync_attempt_id", null: false
     t.datetime "updated_at", null: false
     t.index ["calendar_event_id"], name: "index_sync_event_results_on_calendar_event_id"
-    t.index ["sync_attempt_id", "external_id"], name: "index_sync_event_results_on_sync_attempt_id_and_external_id"
-    t.index ["sync_attempt_id"], name: "index_sync_event_results_on_sync_attempt_id"
+    t.index ["sync_attempt_id", "success", "created_at"], name: "idx_sync_results_attempt_success_created"
   end
 
   create_table "sync_metrics", force: :cascade do |t|
@@ -303,7 +299,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_020000) do
     t.datetime "updated_at", null: false
     t.integer "upserts_count", default: 0, null: false
     t.index ["calendar_source_id", "occurred_at"], name: "idx_sync_metrics_source_occurred"
-    t.index ["calendar_source_id"], name: "index_sync_metrics_on_calendar_source_id"
   end
 
   add_foreign_key "calendar_event_audits", "calendar_events", on_delete: :cascade
