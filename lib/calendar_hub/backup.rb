@@ -92,12 +92,20 @@ module CalendarHub
       db&.close
     end
 
+    # Also copies key_store.json.bak (the store as it was before the last key
+    # rotation), in case credentials encrypted with the previous key remain.
     def copy_key_store(destination_dir)
-      return unless @key_store_path.exist?
+      { @key_store_path => "key_store.json", previous_key_store_path => "key_store.json.bak" }.each do |source, name|
+        next unless source.exist?
 
-      destination = destination_dir.join("key_store.json")
-      FileUtils.cp(@key_store_path, destination)
-      destination.chmod(0o600)
+        destination = destination_dir.join(name)
+        FileUtils.cp(source, destination)
+        destination.chmod(0o600)
+      end
+    end
+
+    def previous_key_store_path
+      Pathname.new("#{@key_store_path}#{CalendarHub::KeyStore::BACKUP_SUFFIX}")
     end
 
     def prune

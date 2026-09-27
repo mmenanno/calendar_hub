@@ -85,6 +85,7 @@ module CalendarHub
       # are returned rather than saved so the caller can persist them only
       # after the sync that used this body succeeded.
       def get_with_caching(url, conditional: true)
+        ensure_credentials_readable!
         current_url = self.class.normalize_url(url)
         @visited_urls = [current_url]
         start_deadline!
@@ -232,6 +233,13 @@ module CalendarHub
       # never to a host we were redirected to and never in cleartext.
       def send_credentials_to?(uri, origin_host)
         uri.scheme == "https" && uri.host == origin_host
+      end
+
+      # Fetching without the saved password would only fail with a
+      # misleading 401 (or silently return a public variant of the feed).
+      def ensure_credentials_readable!
+        error = source.credentials_decryption_error
+        raise CalendarHub::Ingestion::Error, "Feed credentials: #{error.message}" if error
       end
 
       def apply_authentication(request)

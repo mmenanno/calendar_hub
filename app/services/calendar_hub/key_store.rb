@@ -2,18 +2,26 @@
 
 require "json"
 require "fileutils"
+require "securerandom"
 require "time"
 
 module CalendarHub
   # KeyStore persists the application secrets (credential key and secret_key_base)
   # in a single JSON document to support rotation and metadata tracking.
+  #
+  # A missing file means "no keys yet"; an unreadable one raises
+  # CorruptStoreError rather than being replaced, since new keys would make
+  # every stored credential undecryptable. Writes are atomic and keep the
+  # previous document as key_store.json.bak.
   class KeyStore
     STORE_ENV_KEY = "CALENDAR_HUB_KEY_STORE_PATH"
     DEFAULT_FILENAME = "key_store.json"
+    BACKUP_SUFFIX = ".bak"
     CREDENTIAL_KEY_LENGTH = 64
     SECRET_KEY_BASE_LENGTH = 128
 
     class InvalidKeyError < StandardError; end
+    class CorruptStoreError < StandardError; end
     class << self
       def instance
         new
@@ -53,6 +61,11 @@ module CalendarHub
       write_value("secret_key_base", hex_secret, include_timestamp: true)
     end
 
+    # The previous store document, written before every overwrite.
+    def backup_path
+      Pathname.new("#{store_path}#{BACKUP_SUFFIX}")
+    end
+
     private
 
     def resolve_store_path
@@ -66,18 +79,25 @@ module CalendarHub
     def read_store
       return {} unless store_path.exist?
 
-      raw = store_path.read
-      parse_store(raw)
+      parse_store(store_path.read)
     end
 
     def parse_store(raw)
-      trimmed = raw.to_s.strip
-      return {} if trimmed.empty?
+      raise corrupt_store_error("is empty") if raw.to_s.strip.empty?
 
-      parsed = JSON.parse(trimmed)
-      parsed.is_a?(Hash) ? parsed : {}
+      parsed = JSON.parse(raw)
+      raise corrupt_store_error("does not contain a JSON object") unless parsed.is_a?(Hash)
+
+      parsed
     rescue JSON::ParserError
-      {}
+      raise corrupt_store_error("is not valid JSON")
+    end
+
+    def corrupt_store_error(problem)
+      CorruptStoreError.new(
+        "Key store #{store_path} #{problem}. Restore it from a backup (see README \"Backups & restore\"), " \
+        "or delete it to generate new keys — previously stored credentials will then have to be re-entered.",
+      )
     end
 
     def read_value(key_name)
@@ -102,19 +122,47 @@ module CalendarHub
 
     def write_value(key_name, value, include_timestamp:)
       @mutex.synchronize do
-        data = store
+        # Re-read so values written meanwhile (e.g. by another process) are kept.
+        data = read_store
         payload = { "value" => value }
         payload["generated_at"] = current_timestamp if include_timestamp
         data[key_name] = payload
-        persist_store
+        persist_store(data)
+        @store = data
       end
       value
     end
 
-    def persist_store
+    def persist_store(data)
       FileUtils.mkdir_p(store_path.dirname)
-      store_path.write(JSON.pretty_generate(store))
-      store_path.chmod(0o600) unless Gem.win_platform?
+      atomic_write(backup_path, store_path.binread) if store_path.exist?
+      atomic_write(store_path, JSON.pretty_generate(data))
+    end
+
+    # Writes to an owner-only temp file in the same directory, then renames
+    # it over the target, so readers never see a partial file.
+    def atomic_write(path, content)
+      temp_path = path.dirname.join(".#{path.basename}.#{SecureRandom.hex(6)}.tmp")
+      File.open(temp_path, File::WRONLY | File::CREAT | File::EXCL, 0o600) do |file|
+        file.write(content)
+        file.flush
+        file.fsync
+      end
+      File.rename(temp_path, path)
+      renamed = true
+      fsync_directory(path.dirname)
+    ensure
+      FileUtils.rm_f(temp_path) if temp_path && !renamed
+    end
+
+    # Makes the rename itself durable. Not supported everywhere; the rename
+    # is atomic either way.
+    def fsync_directory(directory)
+      return if Gem.win_platform?
+
+      File.open(directory, File::RDONLY, &:fsync)
+    rescue SystemCallError, IOError
+      nil
     end
 
     def validate_hex!(candidate, expected_length)

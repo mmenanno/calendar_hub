@@ -6,6 +6,7 @@ module CalendarHub
   module Shared
     class HttpClientTest < ActiveSupport::TestCase
       include EnvHelpers
+      include CredentialHelpers
 
       setup do
         @source = calendar_sources(:ics_feed)
@@ -109,6 +110,16 @@ module CalendarHub
 
         assert_requested(stub)
         assert_not_requested(:get, "http://example.com/feed.ics", headers: { "Authorization" => /Basic/ })
+      end
+
+      test "refuses to fetch without auth when the saved credentials can't be decrypted" do
+        @source.update_column(:credentials, foreign_ciphertext(http_basic_username: "u", http_basic_password: "p"))
+        source = CalendarSource.find(@source.id)
+
+        error = assert_raises(CalendarHub::Ingestion::Error) { HttpClient.new(source).get_with_caching(source.ingestion_url) }
+
+        assert_match(/can't be decrypted/, error.message)
+        assert_not_requested(:get, source.ingestion_url)
       end
 
       test "same_host? compares normalized hosts case-insensitively" do

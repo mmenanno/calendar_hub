@@ -2,6 +2,7 @@
 
 class SettingsController < ApplicationController
   before_action :set_settings
+  before_action :set_unreadable_credentials, only: [:show, :edit, :update]
 
   def show; end
   def edit; end
@@ -38,14 +39,13 @@ class SettingsController < ApplicationController
   end
 
   def reset
+    @settings.clear_apple_credentials
     @settings.update!(
       default_time_zone: "UTC",
       default_calendar_identifier: nil,
       app_host: nil,
       app_protocol: "http",
       app_port: nil,
-      apple_username: nil,
-      apple_app_password: nil,
     )
     respond_to do |format|
       msg = t("flashes.settings.reset")
@@ -125,6 +125,12 @@ class SettingsController < ApplicationController
 
   def set_settings
     @settings = AppSetting.instance
+  end
+
+  # Credentials the current key can't decrypt (lost or replaced key store).
+  def set_unreadable_credentials
+    @apple_credentials_unreadable = @settings.credentials_unreadable?
+    @unreadable_credential_sources = CalendarSource.unscoped.where.not(credentials: [nil, ""]).order(:name).select(&:credentials_unreadable?)
   end
 
   def settings_params

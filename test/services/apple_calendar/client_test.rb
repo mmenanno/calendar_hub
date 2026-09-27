@@ -4,6 +4,7 @@ require "test_helper"
 
 class AppleCalendarClientTest < ActiveSupport::TestCase
   include WebMockHelpers
+  include CredentialHelpers
 
   setup do
     @creds = {
@@ -170,6 +171,29 @@ class AppleCalendarClientTest < ActiveSupport::TestCase
     assert_empty(client.credentials)
   ensure
     AppSetting.unstub(:first)
+  end
+
+  test "default_credentials raises a clear error when the saved credentials can't be decrypted" do
+    AppSetting.instance.update_column(:apple_credentials_ciphertext, foreign_ciphertext(apple_username: "u", apple_app_password: "p"))
+    AppSetting.reset_instance!
+
+    error = assert_raises(CalendarHub::CredentialEncryption::DecryptionError) { AppleCalendar::Client.new }
+
+    assert_match(/Apple Calendar credentials/, error.message)
+    assert_match(/can't be decrypted/, error.message)
+  end
+
+  test "a sync fails with the decryption error instead of a missing username" do
+    source = calendar_sources(:provider)
+    AppSetting.instance.update_column(:apple_credentials_ciphertext, foreign_ciphertext(apple_username: "u", apple_app_password: "p"))
+    attempt = SyncAttempt.create!(calendar_source: source, status: :queued)
+
+    assert_raises(CalendarHub::CredentialEncryption::DecryptionError) do
+      SyncCalendarJob.perform_now(source.id, attempt_id: attempt.id)
+    end
+
+    assert_equal("failed", attempt.reload.status)
+    assert_match(/can't be decrypted/, attempt.message)
   end
 
   test "default_credentials returns empty hash when no credentials" do

@@ -64,8 +64,11 @@ bin/dev
 
 - On first boot the app generates:
   - `storage/key_store.json` – JSON document containing the credential encryption key and `secret_key_base`.
-- Rotate the credential key from Settings → *Rotate Credential Key*. Rotation re-encrypts all stored credentials in-place.
-- Override the key location with `CALENDAR_HUB_CREDENTIAL_KEY_PATH` if you need to store it outside the repository path.
+- Rotate the credential key from Settings → *Rotate Credential Key*. Rotation re-encrypts all stored credentials in-place. Other processes (e.g. a separate Solid Queue worker) notice the new key file on their next encrypt/decrypt; no restart is needed.
+- The key store is written atomically (owner-only `0600` temp file renamed into place), and the previous version is kept as `key_store.json.bak` next to it, so the key from before the last rotation is never lost.
+- If `key_store.json` exists but is empty or not valid JSON, the app refuses to start instead of generating new keys (which would make every stored credential undecryptable). Restore it from a backup, or delete it to start over with new keys and re-enter your credentials.
+- Credentials that can't be decrypted with the current key are never silently dropped: Settings shows a warning listing them, syncs fail with a message saying so, and saving other settings leaves them untouched. They're replaced only when you re-enter them.
+- Override the key store location with `CALENDAR_HUB_KEY_STORE_PATH` if you need to store it outside the repository path.
 - Persist the entire `storage/` directory (and optionally `log/`) between deployments or container restarts to retain credentials, secret keys, and SQLite databases.
 
 ### URL defaults
@@ -130,7 +133,7 @@ Everything the app needs lives in `storage/`: the SQLite databases (in productio
 - `BackupJob` takes a snapshot automatically once it is scheduled in `config/recurring.yml` (daily by default).
 - Run one on demand with `bin/rails calendar_hub:backup` (in Docker: `docker exec calendar_hub bin/rails calendar_hub:backup`).
 
-Each run writes `calendar_hub-YYYYMMDD-HHMMSS/` (UTC) under `CALENDAR_HUB_BACKUP_DIR` (default `storage/backups`). Every database is copied with SQLite's `VACUUM INTO`, which produces a consistent copy while the app is running, and `key_store.json` is copied alongside it. Snapshot files are readable only by the app user (`0600`). Only the newest `CALENDAR_HUB_BACKUP_KEEP` snapshots (default 7) are kept.
+Each run writes `calendar_hub-YYYYMMDD-HHMMSS/` (UTC) under `CALENDAR_HUB_BACKUP_DIR` (default `storage/backups`). Every database is copied with SQLite's `VACUUM INTO`, which produces a consistent copy while the app is running, and `key_store.json` (plus `key_store.json.bak`, the key store from before the last key rotation) is copied alongside it. Snapshot files are readable only by the app user (`0600`). Only the newest `CALENDAR_HUB_BACKUP_KEEP` snapshots (default 7) are kept.
 
 The default location sits inside the `storage/` volume, so it protects against bad migrations or accidental deletes but not against losing the volume. Point `CALENDAR_HUB_BACKUP_DIR` at a separate mount, or sync the directory off-host, for real disaster recovery.
 
@@ -153,7 +156,7 @@ The default location sits inside the `storage/` volume, so it protects against b
 - **Optional operational knobs:**
   - `SECRET_KEY_BASE` – supply your own secret; otherwise generated inside `storage/key_store.json`.
   - `CALENDAR_HUB_KEY_STORE_PATH` – custom path for the combined key store (defaults to `storage/key_store.json`).
-  - `CALENDAR_HUB_CREDENTIAL_KEY_PATH` – legacy path override for the credential key; still honored for compatibility.
+  - `CALENDAR_HUB_CREDENTIAL_KEY_PATH` – no longer read (the credential key lives in the key store); use `CALENDAR_HUB_KEY_STORE_PATH`.
   - `APPLE_READONLY=true` – sync without issuing CalDAV deletes.
   - `SOLID_QUEUE_SEPARATE_WORKER=true` – run jobs in a separate worker process instead of the web process (by default jobs run inside Puma).
   - `WEB_CONCURRENCY`, `JOB_CONCURRENCY`, `RAILS_MAX_THREADS` – tune Puma and Solid Queue concurrency.
@@ -168,4 +171,5 @@ The default location sits inside the `storage/` volume, so it protects against b
 - **Realtime updates in development:** ensure `bin/dev` is running (jobs run inside the `web` process); test broadcast connectivity at `/realtime` → "Send Test Broadcast".
 - **CalDAV 400/403 errors:** use "Check Destination" on the source to confirm the discovered collection is writable.
 - **No events syncing:** verify the source is Active with a valid ICS URL, the Pending count is > 0, and credentials are present; use "Force Sync" if the sync window blocks processing.
-- **Credential key mismatch:** if the credential key file is lost, restore it from backup or rotate the key in Settings; without it previously stored credentials cannot be decrypted.
+- **Credential key mismatch:** if `key_store.json` was lost or replaced, Settings shows a warning listing the credentials that can't be decrypted, and syncs fail with "Stored credentials can't be decrypted". Stop the app, restore `key_store.json` from a backup (see [Backups & restore](#backups--restore); `key_store.json.bak` holds the key from before the last rotation) and start it again, or re-enter the listed credentials in Settings and on each affected source. Rotating the key doesn't help: it can only re-encrypt credentials the current key can read.
+- **App won't start: "Key store … is not valid JSON" / "is empty":** the key store file is damaged. Restore it from a backup, or delete it to generate new keys and then re-enter all stored credentials.

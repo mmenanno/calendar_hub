@@ -48,6 +48,23 @@ class AppSetting < ApplicationRecord
     upsert_credential(:apple_app_password, value)
   end
 
+  # True when stored Apple credentials exist but can't be decrypted with the
+  # current credential key (see CredentialEncryption::DecryptionError).
+  def credentials_unreadable?
+    credential_store
+    @credentials_unreadable == true
+  end
+
+  def credentials_decryption_error
+    @credentials_decryption_error if credentials_unreadable?
+  end
+
+  # Explicitly forgets the Apple credentials, including unreadable ones.
+  def clear_apple_credentials
+    @credential_store = {}.with_indifferent_access
+    @credentials_assigned = true
+  end
+
   def credential_key_fingerprint
     CalendarHub::CredentialEncryption.key_fingerprint
   end
@@ -69,13 +86,22 @@ class AppSetting < ApplicationRecord
 
   def credential_store
     @credential_store ||= begin
+      @credentials_unreadable = false
       data = if apple_credentials_ciphertext.present?
-        CalendarHub::CredentialEncryption.decrypt(apple_credentials_ciphertext)
+        decrypt_credentials
       else
         legacy_payload
       end
       data.with_indifferent_access
     end
+  end
+
+  def decrypt_credentials
+    CalendarHub::CredentialEncryption.decrypt(apple_credentials_ciphertext)
+  rescue CalendarHub::CredentialEncryption::DecryptionError => exception
+    @credentials_unreadable = true
+    @credentials_decryption_error = exception
+    {}
   end
 
   def legacy_payload
@@ -91,6 +117,7 @@ class AppSetting < ApplicationRecord
     sanitized = sanitize(raw_value)
     if sanitized.present?
       credential_store[key] = sanitized
+      @credentials_assigned = true
     else
       credential_store.delete(key)
     end
@@ -105,6 +132,10 @@ class AppSetting < ApplicationRecord
 
   def persist_credentials
     return unless instance_variable_defined?(:@credential_store)
+    # Unreadable credentials are only replaced by newly entered ones: blank
+    # form fields must not wipe a ciphertext that restoring the key store
+    # from a backup would make readable again.
+    return if credentials_unreadable? && !@credentials_assigned
 
     normalized = credential_store.each_with_object({}) do |(key, value), memo|
       sanitized = sanitize(value)
@@ -122,7 +153,9 @@ class AppSetting < ApplicationRecord
   end
 
   def reset_credential_store!
-    remove_instance_variable(:@credential_store) if instance_variable_defined?(:@credential_store)
+    [:@credential_store, :@credentials_unreadable, :@credentials_decryption_error, :@credentials_assigned].each do |ivar|
+      remove_instance_variable(ivar) if instance_variable_defined?(ivar)
+    end
   end
 
   def invalidate_instance_cache!
