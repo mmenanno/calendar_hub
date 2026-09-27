@@ -3,6 +3,7 @@
 require "test_helper"
 
 class CalendarSourceTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
   include ModelBuilders
 
   test "within_sync_window? true when no window set" do
@@ -126,6 +127,7 @@ class CalendarSourceTest < ActiveSupport::TestCase
       calendar_source: source,
       status: :queued,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
     )
 
     # Should be able to schedule a new sync since the existing one is stale
@@ -142,6 +144,7 @@ class CalendarSourceTest < ActiveSupport::TestCase
       calendar_source: source,
       status: :running,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
       started_at: 3.hours.ago,
     )
 
@@ -575,6 +578,7 @@ class CalendarSourceTest < ActiveSupport::TestCase
       calendar_source: source,
       status: :queued,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
     )
 
     new_attempt = source.schedule_sync(force: true)
@@ -755,5 +759,25 @@ class CalendarSourceTest < ActiveSupport::TestCase
     result = source.send(:decrypt_payload, nil)
     # CalendarHub::CredentialEncryption.decrypt returns {} for nil input
     assert_empty(result)
+  end
+
+  test "schedule_sync records the job id and passes force for full syncs" do
+    source = calendar_sources(:provider)
+
+    attempt = source.schedule_sync(force: true)
+    job = enqueued_jobs.find { |enqueued| enqueued["job_class"] == "SyncCalendarJob" }
+
+    assert(job["arguments"].last["force"])
+    assert_equal(attempt.id, job["arguments"].last["attempt_id"])
+    assert_equal(job["job_id"], attempt.reload.job_id)
+  end
+
+  test "schedule_sync with full: false does not force a full sync" do
+    source = calendar_sources(:provider)
+
+    source.schedule_sync(force: true, full: false)
+    job = enqueued_jobs.find { |enqueued| enqueued["job_class"] == "SyncCalendarJob" }
+
+    refute_includes(job["arguments"].last.keys, "force")
   end
 end

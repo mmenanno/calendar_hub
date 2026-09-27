@@ -8,7 +8,7 @@ class SyncEventToAppleJobTest < ActiveJob::TestCase
     syncer = mock("AppleEventSyncer")
     syncer.expects(:sync_event).with(event)
 
-    CalendarHub::Shared::AppleEventSyncer.expects(:new).with(source: event.calendar_source).returns(syncer)
+    CalendarHub::Shared::AppleEventSyncer.expects(:new).with(source: event.calendar_source, apple_client: kind_of(AppleCalendar::Client)).returns(syncer)
 
     SyncEventToAppleJob.perform_now(event.id)
   end

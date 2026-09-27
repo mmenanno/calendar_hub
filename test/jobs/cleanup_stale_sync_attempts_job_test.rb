@@ -12,6 +12,7 @@ class CleanupStaleSyncAttemptsJobTest < ActiveJob::TestCase
       calendar_source: @source,
       status: :queued,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
     )
 
     CleanupStaleSyncAttemptsJob.perform_now
@@ -27,6 +28,7 @@ class CleanupStaleSyncAttemptsJobTest < ActiveJob::TestCase
       calendar_source: @source,
       status: :running,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
       started_at: 3.hours.ago,
     )
 
@@ -43,6 +45,7 @@ class CleanupStaleSyncAttemptsJobTest < ActiveJob::TestCase
       calendar_source: @source,
       status: :queued,
       created_at: 30.minutes.ago,
+      updated_at: 30.minutes.ago,
     )
 
     CleanupStaleSyncAttemptsJob.perform_now
@@ -57,6 +60,7 @@ class CleanupStaleSyncAttemptsJobTest < ActiveJob::TestCase
       calendar_source: @source,
       status: :success,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
       finished_at: 3.hours.ago,
     )
 
@@ -72,6 +76,7 @@ class CleanupStaleSyncAttemptsJobTest < ActiveJob::TestCase
       calendar_source: @source,
       status: :queued,
       created_at: 90.minutes.ago,
+      updated_at: 90.minutes.ago,
     )
 
     # With default 2 hour threshold, this should not be marked as stale
@@ -97,6 +102,7 @@ class CleanupStaleSyncAttemptsJobTest < ActiveJob::TestCase
         calendar_source: source,
         status: :queued,
         created_at: 3.hours.ago,
+        updated_at: 3.hours.ago,
       )
     end
 
@@ -113,6 +119,7 @@ class CleanupStaleSyncAttemptsJobTest < ActiveJob::TestCase
       calendar_source: @source,
       status: :queued,
       created_at: 30.minutes.ago,
+      updated_at: 30.minutes.ago,
     )
 
     assert_nothing_raised do
@@ -124,15 +131,21 @@ class CleanupStaleSyncAttemptsJobTest < ActiveJob::TestCase
     # Verify the source code does not contain LIKE-based argument matching,
     # ensuring the lookup is robust against serialization format changes.
     source_file = Rails.root.join("app/jobs/cleanup_stale_sync_attempts_job.rb").read
-    refute_match(/arguments LIKE/, source_file,
-      "find_failed_job should use json_extract or active_job_id instead of LIKE pattern matching")
+
+    refute_match(
+      /arguments LIKE/,
+      source_file,
+      "find_failed_job should use json_extract or active_job_id instead of LIKE pattern matching",
+    )
   end
 
-  test "find_failed_job uses active_job_id as primary lookup" do
+  test "find_failed_job uses the attempt's job_id as primary lookup" do
     stale_attempt = SyncAttempt.create!(
       calendar_source: @source,
       status: :queued,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
+      job_id: "job-uuid-123",
     )
 
     job = CleanupStaleSyncAttemptsJob.new
@@ -140,7 +153,7 @@ class CleanupStaleSyncAttemptsJobTest < ActiveJob::TestCase
     if defined?(SolidQueue::Job)
       SolidQueue::Job.expects(:find_by).with(
         class_name: "SyncCalendarJob",
-        active_job_id: stale_attempt.id.to_s,
+        active_job_id: stale_attempt.job_id,
       ).returns(nil)
 
       # Then fall back to json_extract (returns a relation mock)
@@ -150,6 +163,7 @@ class CleanupStaleSyncAttemptsJobTest < ActiveJob::TestCase
       relation_mock.stubs(:where).returns(relation_mock)
 
       result = job.send(:find_failed_job, stale_attempt)
+
       assert_nil(result)
     end
   end
@@ -159,11 +173,13 @@ class CleanupStaleSyncAttemptsJobTest < ActiveJob::TestCase
       calendar_source: @source,
       status: :queued,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
     )
 
     CleanupStaleSyncAttemptsJob.perform_now
 
     stale_attempt.reload
+
     assert_equal("failed", stale_attempt.status)
     assert_includes(stale_attempt.message, "timed out")
     # Should not include a failure reason when no job is found
