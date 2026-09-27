@@ -355,6 +355,36 @@ class CalendarSourceTest < ActiveSupport::TestCase
     assert_equal(test_credentials, decrypted)
   end
 
+  test "changing the feed host drops the saved password" do
+    source = calendar_sources(:provider)
+    source.update!(credentials: { http_basic_username: "user", http_basic_password: "secret" })
+
+    source.reload.update!(ingestion_url: "https://elsewhere.example.net/feed.ics")
+
+    assert_equal({ "http_basic_username" => "user" }, source.reload.credentials)
+  end
+
+  test "changing the feed path on the same host keeps the saved password" do
+    source = calendar_sources(:provider)
+    source.update!(credentials: { http_basic_username: "user", http_basic_password: "secret" })
+
+    source.reload.update!(ingestion_url: "webcal://Example.COM/moved.ics")
+
+    assert_equal("secret", source.reload.credentials["http_basic_password"])
+  end
+
+  test "credentials assigned together with a host change are kept" do
+    source = calendar_sources(:provider)
+    source.update!(credentials: { http_basic_username: "user", http_basic_password: "secret" })
+
+    source.reload.update!(
+      ingestion_url: "https://elsewhere.example.net/feed.ics",
+      credentials: { http_basic_username: "user", http_basic_password: "new-secret" },
+    )
+
+    assert_equal("new-secret", source.reload.credentials["http_basic_password"])
+  end
+
   test "set_import_start_date sets default on creation" do
     travel_to Time.zone.parse("2025-09-22 12:00") do
       source = calendar_sources(:test_source)

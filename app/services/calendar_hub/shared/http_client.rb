@@ -27,6 +27,21 @@ module CalendarHub
         rescue URI::Error
           "[feed URL]"
         end
+
+        # Lowercased host of a feed URL (after webcal normalization), or nil
+        # when the URL can't be parsed.
+        def host_for(url)
+          URI.parse(normalize_url(url)).host&.downcase.presence
+        rescue URI::Error
+          nil
+        end
+
+        # True when both URLs point at the same host. Unparsable URLs never
+        # match, so saved credentials are not carried over to them.
+        def same_host?(url, other_url)
+          host = host_for(url)
+          host.present? && host == host_for(other_url)
+        end
       end
 
       def initialize(source)
@@ -44,9 +59,10 @@ module CalendarHub
         origin_host = URI.parse(current_url).host
 
         (MAX_REDIRECTS + 1).times do
+          uri = URI.parse(current_url)
           response = http_client.get(current_url) do |request|
             apply_conditional_headers(request) if conditional
-            apply_authentication(request) if URI.parse(current_url).host == origin_host
+            apply_authentication(request) if send_credentials_to?(uri, origin_host)
           end
 
           if REDIRECT_STATUSES.include?(response.status)
@@ -116,8 +132,12 @@ module CalendarHub
         }
       end
 
-      # Credentials are only sent to the feed's original host, never to a
-      # host we were redirected to.
+      # Credentials are only sent over HTTPS to the feed's original host,
+      # never to a host we were redirected to and never in cleartext.
+      def send_credentials_to?(uri, origin_host)
+        uri.scheme == "https" && uri.host == origin_host
+      end
+
       def apply_authentication(request)
         credentials = (source.credentials || {}).with_indifferent_access
         username = credentials[:http_basic_username]

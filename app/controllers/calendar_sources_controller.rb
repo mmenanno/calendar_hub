@@ -70,6 +70,9 @@ class CalendarSourcesController < ApplicationController
     apply_credentials(@calendar_source)
 
     if @calendar_source.update(calendar_source_params)
+      message = t("flashes.calendar_sources.updated")
+      message = "#{message} #{t("flashes.calendar_sources.feed_password_cleared")}" if @feed_password_cleared
+
       respond_to do |format|
         format.turbo_stream do
           render(turbo_stream: [
@@ -79,10 +82,10 @@ class CalendarSourcesController < ApplicationController
               partial: "calendar_sources/source",
               locals: { source: @calendar_source },
             ),
-            turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t("flashes.calendar_sources.updated") }),
+            turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: message }),
           ])
         end
-        format.html { redirect_to(calendar_events_path(source_id: @calendar_source.id), notice: t("flashes.calendar_sources.updated")) }
+        format.html { redirect_to(calendar_events_path(source_id: @calendar_source.id), notice: message) }
       end
     else
       render(:edit, status: :unprocessable_content)
@@ -366,11 +369,23 @@ class CalendarSourcesController < ApplicationController
     sanitized.transform_values! { |v| v.is_a?(String) ? v.strip.presence : v }
     sanitized.compact!
 
-    sanitized[:http_basic_password] = source.credentials&.dig("http_basic_password") if sanitized[:http_basic_password].blank? && source.persisted?
-
-    return if sanitized.blank?
-
     existing = source.credentials || {}
+    # A blank password field keeps the saved password, but only while the
+    # feed stays on the same host: never send it to a new one.
+    if source.persisted? && sanitized[:http_basic_password].blank? && existing.key?("http_basic_password") && feed_host_changed?(source)
+      existing = existing.except("http_basic_password")
+      @feed_password_cleared = true
+    elsif sanitized.blank?
+      return
+    end
+
     source.credentials = existing.merge(sanitized)
+  end
+
+  def feed_host_changed?(source)
+    submitted_url = params.dig(:calendar_source, :ingestion_url)
+    return false if submitted_url.nil?
+
+    !CalendarHub::Shared::HttpClient.same_host?(source.ingestion_url, submitted_url.to_s)
   end
 end

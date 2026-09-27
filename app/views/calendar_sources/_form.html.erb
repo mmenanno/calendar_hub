@@ -115,6 +115,7 @@
 
   <fieldset class="space-y-3 rounded-lg border border-slate-800 bg-slate-950/40 p-4">
     <legend class="px-2 text-xs font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.sources.http_basic") %></legend>
+    <p class="text-xs text-slate-500"><%= t("ui.sources.http_basic_hint") %></p>
     <div>
       <%= form.label(:credentials_http_basic_username, t("ui.sources.username"), class: "block text-xs font-semibold uppercase tracking-wide text-slate-400") %>
       <%= form.text_field(:credentials_http_basic_username, value: calendar_source.credentials&.dig("http_basic_username"), name: "calendar_source[credentials][http_basic_username]", class: input_class, data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply" }, autocomplete: "off", autocapitalize: "none", spellcheck: "false", "data-1p-ignore": true, "data-lpignore": true) %>

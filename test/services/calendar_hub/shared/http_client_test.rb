@@ -77,6 +77,32 @@ module CalendarHub
         assert_not_requested(:get, "https://other.example.net/feed.ics", headers: { "Authorization" => /Basic/ })
       end
 
+      test "sends basic auth over https" do
+        @source.credentials = { http_basic_username: "user", http_basic_password: "secret" }
+        stub = stub_request(:get, @source.ingestion_url).with(basic_auth: ["user", "secret"]).to_return(status: 200, body: "BEGIN:VCALENDAR")
+
+        HttpClient.new(@source).get_with_caching(@source.ingestion_url)
+
+        assert_requested(stub)
+      end
+
+      test "never sends basic auth over plain http" do
+        @source.credentials = { http_basic_username: "user", http_basic_password: "secret" }
+        stub = stub_request(:get, "http://example.com/feed.ics").to_return(status: 200, body: "BEGIN:VCALENDAR")
+
+        HttpClient.new(@source).get_with_caching("http://example.com/feed.ics")
+
+        assert_requested(stub)
+        assert_not_requested(:get, "http://example.com/feed.ics", headers: { "Authorization" => /Basic/ })
+      end
+
+      test "same_host? compares normalized hosts case-insensitively" do
+        assert(HttpClient.same_host?("https://Example.com/a.ics", "webcal://example.COM/b.ics"))
+        refute(HttpClient.same_host?("https://example.com/a.ics", "https://example.org/a.ics"))
+        refute(HttpClient.same_host?("https://example.com/a.ics", "not a url"))
+        refute(HttpClient.same_host?(nil, "https://example.com/a.ics"))
+      end
+
       test "normalizes webcal URLs to https" do
         stub = stub_request(:get, "https://example.com/cal.ics").to_return(status: 200, body: "BEGIN:VCALENDAR")
 
