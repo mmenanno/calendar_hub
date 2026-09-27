@@ -40,79 +40,63 @@ class SyncAttemptTest < ActiveSupport::TestCase
     end
   end
 
-  test "should record upsert success" do
-    @sync_attempt.upsert_success(@calendar_event)
-
-    assert_equal(1, @sync_attempt.reload.upserts)
-    assert_equal(1, @sync_attempt.sync_event_results.count)
-
-    result = @sync_attempt.sync_event_results.first
-
-    assert_equal(@calendar_event, result.calendar_event)
-    assert_equal("upsert", result.action)
-    assert_predicate(result, :success?)
-  end
-
-  test "should record upsert error" do
-    error = StandardError.new("Test error message")
-
-    @sync_attempt.upsert_error(@calendar_event, error)
-
-    assert_equal(1, @sync_attempt.reload.errors_count)
-    assert_equal(1, @sync_attempt.sync_event_results.count)
-
-    result = @sync_attempt.sync_event_results.first
-
-    assert_equal(@calendar_event, result.calendar_event)
-    assert_equal("upsert", result.action)
-    refute_predicate(result, :success?)
-    assert_equal("Test error message", result.error_message)
-  end
-
-  test "should record delete success" do
-    @sync_attempt.delete_success(@calendar_event)
-
-    assert_equal(1, @sync_attempt.reload.deletes)
-    assert_equal(1, @sync_attempt.sync_event_results.count)
-
-    result = @sync_attempt.sync_event_results.first
-
-    assert_equal(@calendar_event, result.calendar_event)
-    assert_equal("delete", result.action)
-    assert_predicate(result, :success?)
-  end
-
-  test "should record delete error" do
-    error = StandardError.new("Delete error message")
-
-    @sync_attempt.delete_error(@calendar_event, error)
-
-    assert_equal(1, @sync_attempt.reload.errors_count)
-    assert_equal(1, @sync_attempt.sync_event_results.count)
-
-    result = @sync_attempt.sync_event_results.first
-
-    assert_equal(@calendar_event, result.calendar_event)
-    assert_equal("delete", result.action)
-    refute_predicate(result, :success?)
-    assert_equal("Delete error message", result.error_message)
-  end
-
-  test "should increment counters correctly for multiple operations" do
-    error = StandardError.new("Test error")
-
-    @sync_attempt.upsert_success(@calendar_event)
+  test "successes are counted without per-event result rows" do
     @sync_attempt.upsert_success(@calendar_event)
     @sync_attempt.delete_success(@calendar_event)
-    @sync_attempt.upsert_error(@calendar_event, error)
-    @sync_attempt.delete_error(@calendar_event, error)
+    @sync_attempt.finish(status: :success)
 
     @sync_attempt.reload
 
-    assert_equal(2, @sync_attempt.upserts)
+    assert_equal(1, @sync_attempt.upserts)
     assert_equal(1, @sync_attempt.deletes)
-    assert_equal(2, @sync_attempt.errors_count)
-    assert_equal(5, @sync_attempt.sync_event_results.count)
+    assert_equal(0, @sync_attempt.sync_event_results.count)
+  end
+
+  test "records failures as result rows on flush" do
+    @sync_attempt.upsert_error(@calendar_event, StandardError.new("Upsert failed"))
+    @sync_attempt.delete_error("external-9", StandardError.new("Delete failed"))
+
+    assert_equal(0, @sync_attempt.sync_event_results.count, "buffered until flush")
+
+    @sync_attempt.flush_progress!
+
+    results = @sync_attempt.sync_event_results.order(:id).to_a
+
+    assert_equal(2, @sync_attempt.reload.errors_count)
+    assert_equal(["upsert", "delete"], results.map(&:action))
+    assert_equal(@calendar_event, results.first.calendar_event)
+    assert_equal("external-9", results.second.external_id)
+    assert(results.none?(&:success?))
+    assert_equal("Upsert failed", results.first.error_message)
+  end
+
+  test "progress is buffered and flushed in batches with a throttled broadcast" do
+    @sync_attempt.start(total: 250)
+    @sync_attempt.expects(:update_columns).twice
+    @sync_attempt.expects(:broadcast_replace_later_to).twice
+
+    (SyncAttempt::FLUSH_EVERY_EVENTS * 2).times { @sync_attempt.upsert_success(@calendar_event) }
+  end
+
+  test "flush refreshes the updated_at heartbeat" do
+    @sync_attempt.update_columns(updated_at: 3.hours.ago)
+    @sync_attempt.upsert_success(@calendar_event)
+
+    @sync_attempt.flush_progress!
+
+    assert_operator(@sync_attempt.reload.updated_at, :>, 1.minute.ago)
+  end
+
+  test "finish flushes pending counters" do
+    @sync_attempt.upsert_success(@calendar_event)
+    @sync_attempt.upsert_error(@calendar_event, StandardError.new("boom"))
+
+    @sync_attempt.finish(status: :success)
+    @sync_attempt.reload
+
+    assert_equal(1, @sync_attempt.upserts)
+    assert_equal(1, @sync_attempt.errors_count)
+    assert_equal("success", @sync_attempt.status)
   end
 
   test "should finish with success status and message" do
@@ -141,57 +125,12 @@ class SyncAttemptTest < ActiveSupport::TestCase
     assert_equal(expected_stream_name, @sync_attempt.stream_name)
   end
 
-  test "should handle record_event with non-CalendarEvent object" do
-    external_event = Struct.new(:external_id, :to_s).new("external-123", "External Event")
+  test "failure recording problems are logged, not raised" do
+    SyncEventResult.stubs(:insert_all).raises(ActiveRecord::ActiveRecordError.new("Database error"))
+    Rails.logger.expects(:warn).with("[SyncAttempt] Failed to record event results: Database error")
 
-    @sync_attempt.send(
-      :record_event,
-      event: external_event,
-      action: "upsert",
-      success: true,
-    )
-
-    result = @sync_attempt.sync_event_results.first
-
-    assert_nil(result.calendar_event)
-    assert_equal("external-123", result.external_id)
-    assert_equal("upsert", result.action)
-    assert_predicate(result, :success?)
-  end
-
-  test "should handle record_event with object without external_id" do
-    simple_event = "Simple string event"
-
-    @sync_attempt.send(
-      :record_event,
-      event: simple_event,
-      action: "delete",
-      success: false,
-      error_message: "Failed to process",
-    )
-
-    result = @sync_attempt.sync_event_results.first
-
-    assert_nil(result.calendar_event)
-    assert_equal("Simple string event", result.external_id)
-    assert_equal("delete", result.action)
-    refute_predicate(result, :success?)
-    assert_equal("Failed to process", result.error_message)
-  end
-
-  test "should handle record_event failure gracefully" do
-    # Mock sync_event_results to raise an error
-    @sync_attempt.sync_event_results.stubs(:create!).raises(StandardError.new("Database error"))
-
-    # Should not raise an error, but log a warning
-    Rails.logger.expects(:warn).with("[SyncAttempt] Failed to record event result: Database error")
-
-    @sync_attempt.send(
-      :record_event,
-      event: @calendar_event,
-      action: "upsert",
-      success: true,
-    )
+    @sync_attempt.upsert_error(@calendar_event, StandardError.new("boom"))
+    @sync_attempt.flush_progress!(broadcast: false)
   end
 
   test "should have broadcast_snapshot callback set up" do
@@ -209,8 +148,9 @@ class SyncAttemptTest < ActiveSupport::TestCase
   end
 
   test "should destroy dependent sync_event_results" do
-    @sync_attempt.upsert_success(@calendar_event)
-    @sync_attempt.delete_success(@calendar_event)
+    @sync_attempt.upsert_error(@calendar_event, StandardError.new("a"))
+    @sync_attempt.delete_error(@calendar_event, StandardError.new("b"))
+    @sync_attempt.flush_progress!(broadcast: false)
 
     assert_equal(2, @sync_attempt.sync_event_results.count)
 
@@ -230,11 +170,13 @@ class SyncAttemptTest < ActiveSupport::TestCase
       calendar_source: stale_source,
       status: :queued,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
     )
     recent_queued = SyncAttempt.create!(
       calendar_source: recent_source,
       status: :queued,
       created_at: 30.minutes.ago,
+      updated_at: 30.minutes.ago,
     )
 
     stale_attempts = SyncAttempt.stale(threshold: 2.hours)
@@ -253,12 +195,14 @@ class SyncAttemptTest < ActiveSupport::TestCase
       calendar_source: stale_source,
       status: :running,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
       started_at: 3.hours.ago,
     )
     recent_running = SyncAttempt.create!(
       calendar_source: recent_source,
       status: :running,
       created_at: 30.minutes.ago,
+      updated_at: 30.minutes.ago,
       started_at: 30.minutes.ago,
     )
 
@@ -273,12 +217,14 @@ class SyncAttemptTest < ActiveSupport::TestCase
       calendar_source: @calendar_source,
       status: :success,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
       finished_at: 3.hours.ago,
     )
     old_failed = SyncAttempt.create!(
       calendar_source: @calendar_source,
       status: :failed,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
       finished_at: 3.hours.ago,
     )
 
@@ -295,6 +241,7 @@ class SyncAttemptTest < ActiveSupport::TestCase
       calendar_source: @calendar_source,
       status: :queued,
       created_at: 90.minutes.ago,
+      updated_at: 90.minutes.ago,
     )
 
     # Not stale with 2 hour threshold
@@ -311,6 +258,7 @@ class SyncAttemptTest < ActiveSupport::TestCase
       calendar_source: @calendar_source,
       status: :queued,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
     )
 
     assert_predicate(stale_attempt, :stale?)
@@ -323,6 +271,7 @@ class SyncAttemptTest < ActiveSupport::TestCase
       calendar_source: @calendar_source,
       status: :running,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
       started_at: 3.hours.ago,
     )
 
@@ -336,6 +285,7 @@ class SyncAttemptTest < ActiveSupport::TestCase
       calendar_source: @calendar_source,
       status: :queued,
       created_at: 30.minutes.ago,
+      updated_at: 30.minutes.ago,
     )
 
     refute_predicate(recent_attempt, :stale?)
@@ -346,10 +296,25 @@ class SyncAttemptTest < ActiveSupport::TestCase
       calendar_source: @calendar_source,
       status: :success,
       created_at: 3.hours.ago,
+      updated_at: 3.hours.ago,
       finished_at: 3.hours.ago,
     )
 
     refute_predicate(completed_attempt, :stale?)
+  end
+
+  test "a long-running attempt with a recent heartbeat is not stale" do
+    @sync_attempt.update!(status: :success, finished_at: Time.current)
+
+    attempt = SyncAttempt.create!(
+      calendar_source: @calendar_source,
+      status: :running,
+      created_at: 5.hours.ago,
+      updated_at: 1.minute.ago,
+    )
+
+    refute_predicate(attempt, :stale?)
+    refute_includes(SyncAttempt.stale, attempt)
   end
 
   test "stale? respects custom threshold" do
@@ -359,6 +324,7 @@ class SyncAttemptTest < ActiveSupport::TestCase
       calendar_source: @calendar_source,
       status: :queued,
       created_at: 90.minutes.ago,
+      updated_at: 90.minutes.ago,
     )
 
     # Not stale with 2 hour threshold
