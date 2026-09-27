@@ -2,5 +2,5 @@
 import "@hotwired/turbo-rails"
 import "controllers"
 
-// Show Turbo progress bar immediately (default is 500ms delay)
-Turbo.setProgressBarDelay(100)
+// Show Turbo progress bar quickly (default is 500ms delay)
+Turbo.config.drive.progressBarDelay = 100
