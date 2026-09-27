@@ -5,6 +5,7 @@
       title: t("ui.filter_rules.header"),
       subtitle: t("ui.filter_rules.subheader") do %>
   <%= turbo_stream_from "filter_rules" %>
+  <%= render("rules_transfers/actions", kind: :filter_rules) %>
 
     <div class="space-y-6">
       <%= render "shared/collapsible_section",

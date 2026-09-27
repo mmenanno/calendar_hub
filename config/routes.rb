@@ -52,6 +52,11 @@ Rails.application.routes.draw do
     end
   end
 
+  get "rules/export", to: "rules_transfers#export", as: :export_rules
+  get "rules/import", to: "rules_transfers#new", as: :new_rules_import
+  post "rules/import/preview", to: "rules_transfers#preview", as: :preview_rules_import
+  post "rules/import", to: "rules_transfers#apply", as: :apply_rules_import
+
   get "/realtime", to: "realtime#show", as: :realtime
   post "/realtime/ping", to: "realtime#ping", as: :realtime_ping
   namespace :admin do

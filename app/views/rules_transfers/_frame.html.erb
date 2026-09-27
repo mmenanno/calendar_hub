@@ -1,0 +1,27 @@
+<%# Renders import steps inside the shared "modal" turbo-frame, or as a full page when opened directly. %>
+<% if turbo_frame_request? %>
+  <turbo-frame id="modal">
+    <div class="modal-card">
+      <div class="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-semibold"><%= title %></h2>
+          <p class="text-sm text-slate-400"><%= subtitle %></p>
+        </div>
+        <button type="button" data-action="modal#close" class="cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"><%= t("common.actions.close") %></button>
+      </div>
+      <%= yield %>
+    </div>
+  </turbo-frame>
+<% else %>
+  <% content_for :title, title %>
+  <%= render "shared/page_header",
+        nav_active: kind == "filter_rules" ? :filter_rules : :mappings,
+        max_width: "max-w-4xl",
+        icon: content_tag(:svg, content_tag(:path, "", "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "1.5", d: "M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"), xmlns: "http://www.w3.org/2000/svg", class: "h-6 w-6", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor"),
+        title: title,
+        subtitle: subtitle do %>
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+      <%= yield %>
+    </div>
+  <% end %>
+<% end %>

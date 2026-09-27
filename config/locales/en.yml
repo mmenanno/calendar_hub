@@ -121,6 +121,15 @@ en:
     realtime:
       broadcast_sent: "Broadcast sent"
 
+    rules_transfer:
+      confirm_replace_required: "Tick the confirmation box to replace existing rules."
+      imported:
+        one: "Imported %{count} rule. Syncing affected sources in background..."
+        other: "Imported %{count} rules. Syncing affected sources in background..."
+      no_input: "Choose a file or paste JSON to import."
+      nothing_imported: "No changes: every rule was a duplicate or skipped."
+      token_invalid: "This import expired or could not be verified. Please upload the file again."
+
     settings:
       apple_test_failed: "Apple Calendar test failed: %{error}"
       apple_test_found: "Apple Calendar reachable. Destination found: %{path}"
@@ -339,6 +348,50 @@ en:
         synced: "Would be SYNCED to Apple Calendar"
         title: "Title"
       waiting: "Waiting for a broadcast…"
+
+    rules_transfer:
+      apply:
+        one: "Import %{count} rule"
+        other: "Import %{count} rules"
+      apply_replace: "Replace rules"
+      confirm_replace: "I understand this permanently deletes %{count} existing rules before importing."
+      counts:
+        add: "To add"
+        duplicate: "Duplicates (skipped)"
+        invalid: "Invalid (skipped)"
+        replaced: "Existing (deleted)"
+        unknown_source: "Unknown source (skipped)"
+      export: "Export"
+      export_all: "Export all"
+      export_hint: "Download as a JSON file you can import into another Calendar Hub"
+      export_kind:
+        event_mappings: "Export mappings"
+        filter_rules: "Export filters"
+      file_label: "JSON file"
+      global: "Global"
+      import: "Import"
+      import_header: "Import Rules"
+      import_subheader: "Add mappings and filter rules from a Calendar Hub export. Nothing changes until you confirm."
+      invalid_rows: "Invalid rows"
+      kinds:
+        event_mappings: "Mappings"
+        filter_rules: "Filter rules"
+      limits_hint: "JSON exported from Calendar Hub, up to %{size} and %{rows} rules."
+      mode_append: "Append: keep existing rules and skip duplicates"
+      mode_label: "Mode"
+      mode_replace: "Replace: delete existing %{kinds} first"
+      nothing_to_import: "Nothing new to import."
+      paste_label: "Or paste JSON"
+      preview: "Preview import"
+      preview_header: "Review Import"
+      preview_subheader: "Nothing has been changed yet."
+      row_label: "Row %{number}"
+      start_over: "Choose another file"
+      unknown_global: "Import them as global rules"
+      unknown_hint: "These source names don't exist here: %{names}"
+      unknown_label: "Rules for unknown sources"
+      unknown_skip: "Skip them"
+      update_preview: "Update preview"
 
     settings:
       advanced: "Advanced"
