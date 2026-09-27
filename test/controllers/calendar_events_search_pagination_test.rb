@@ -76,7 +76,7 @@ class CalendarEventsSearchPaginationTest < ActionDispatch::IntegrationTest
     get(calendar_events_path(source_id: @source.id, page: 2))
 
     assert_select("article", count: 3)
-    events.last(3).each { |event| assert_select("article##{ActionView::RecordIdentifier.dom_id(event)}") }
+    events.last(3).each { |event| assert_select("turbo-frame##{ActionView::RecordIdentifier.dom_id(event)} article") }
     assert_select("#events-pagination a[rel=prev][href=?]", calendar_events_path(source_id: @source.id))
     assert_select("#events-pagination a[rel=next]", count: 0)
   end
@@ -86,9 +86,9 @@ class CalendarEventsSearchPaginationTest < ActionDispatch::IntegrationTest
     events = Array.new(PER_PAGE + 1) { |i| create_event("Same time #{i}", starts_at: starts_at) }
 
     get(calendar_events_path(source_id: @source.id))
-    first_page = css_select("article").pluck("id")
+    first_page = css_select("turbo-frame:has(> article)").pluck("id")
     get(calendar_events_path(source_id: @source.id, page: 2))
-    second_page = css_select("article").pluck("id")
+    second_page = css_select("turbo-frame:has(> article)").pluck("id")
 
     assert_equal(events.map { |event| ActionView::RecordIdentifier.dom_id(event) }.sort, (first_page + second_page).sort)
   end
