@@ -4,8 +4,18 @@ import BaseController from "controllers/base_controller"
 // - Add data-controller="confirm" and data-confirm-message-value="..." to a link or to the form created by button_to
 // - For links using turbo_method, the default click will be re-triggered when confirmed.
 // - For forms, we will submit the form after confirmation.
+// - Set data-confirm-variant-value="neutral" for non-destructive confirmations
+//   (the confirm button is then styled as a primary action instead of red).
+const CONFIRM_BUTTON_CLASSES = {
+  danger: "cursor-pointer rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500",
+  neutral: "cursor-pointer rounded-lg bg-indigo-500 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-400",
+}
+
 export default class extends BaseController {
-  static values = { message: String }
+  static values = {
+    message: String,
+    variant: { type: String, default: "danger" },
+  }
 
   connect () {
     this.boundOnClick = this.onClick.bind(this)
@@ -39,6 +49,8 @@ export default class extends BaseController {
   openModal (message) {
     return new Promise(resolve => {
       const dialog = document.createElement('dialog')
+      dialog.setAttribute('aria-labelledby', 'confirm-dialog-title')
+      dialog.setAttribute('aria-describedby', 'confirm-dialog-message')
       dialog.className = "rounded-xl border border-slate-800 bg-slate-900/90 text-slate-100 p-0 max-w-md w-[92vw]"
       // Ensure the dialog is centered consistently across browsers/resets
       dialog.style.position = 'fixed'
@@ -46,11 +58,11 @@ export default class extends BaseController {
       dialog.style.margin = 'auto'
       dialog.innerHTML = `
         <form method="dialog" class="p-5">
-          <h2 class="mb-2 text-base font-semibold">${this.escapeHtml(this.translate('title') || 'Please Confirm')}</h2>
-          <p class="mb-5 text-sm text-slate-300">${this.escapeHtml(message || this.translate('default') || 'Are you sure?')}</p>
+          <h2 id="confirm-dialog-title" class="mb-2 text-base font-semibold">${this.escapeHtml(this.translate('title') || 'Please Confirm')}</h2>
+          <p id="confirm-dialog-message" class="mb-5 text-sm text-slate-300">${this.escapeHtml(message || this.translate('default') || 'Are you sure?')}</p>
           <div class="flex justify-end gap-2">
-            <button value="cancel" class="cursor-pointer rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:border-slate-500">${this.escapeHtml(this.translate('cancel') || 'Cancel')}</button>
-            <button value="confirm" class="cursor-pointer rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500">${this.escapeHtml(this.translate('confirm') || 'Confirm')}</button>
+            <button value="cancel" autofocus class="cursor-pointer rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:border-slate-500">${this.escapeHtml(this.translate('cancel') || 'Cancel')}</button>
+            <button value="confirm" class="${CONFIRM_BUTTON_CLASSES[this.variantValue] || CONFIRM_BUTTON_CLASSES.danger}">${this.escapeHtml(this.translate('confirm') || 'Confirm')}</button>
           </div>
         </form>`
 

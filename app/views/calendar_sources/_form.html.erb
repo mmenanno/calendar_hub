@@ -1,4 +1,4 @@
-<%= form_with model: calendar_source, class: "space-y-5", html: { autocomplete: "off", "data-1p-ignore": true, "data-lpignore": true, "data-controller": "ics-test" } do |form| %>
+<%= form_with model: calendar_source, namespace: (dom_id(calendar_source) if calendar_source.persisted?), class: "space-y-5", html: { autocomplete: "off", "data-1p-ignore": true, "data-lpignore": true, "data-controller": "ics-test" } do |form| %>
   <% if calendar_source.errors.any? %>
     <div class="rounded-lg border border-rose-700/40 bg-rose-950/40 p-4 text-sm text-rose-200">
       <p class="font-semibold"><%= t("ui.sources.issues_with_submission") %></p>
@@ -116,11 +116,11 @@
   <fieldset class="space-y-3 rounded-lg border border-slate-800 bg-slate-950/40 p-4">
     <legend class="px-2 text-xs font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.sources.http_basic") %></legend>
     <div>
-      <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400" for="credentials_http_basic_username"><%= t("ui.sources.username") %></label>
+      <%= form.label(:credentials_http_basic_username, t("ui.sources.username"), class: "block text-xs font-semibold uppercase tracking-wide text-slate-400") %>
       <%= form.text_field(:credentials_http_basic_username, value: calendar_source.credentials&.dig("http_basic_username"), name: "calendar_source[credentials][http_basic_username]", class: input_class, data: { controller: "trim", trimTarget: "field", action: "blur->trim#apply" }, autocomplete: "off", autocapitalize: "none", spellcheck: "false", "data-1p-ignore": true, "data-lpignore": true) %>
     </div>
     <div>
-      <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400" for="credentials_http_basic_password"><%= t("ui.sources.password") %></label>
+      <%= form.label(:credentials_http_basic_password, t("ui.sources.password"), class: "block text-xs font-semibold uppercase tracking-wide text-slate-400") %>
       <%= form.password_field(:credentials_http_basic_password, placeholder: calendar_source.persisted? ? "••••••" : "", name: "calendar_source[credentials][http_basic_password]", class: input_class, autocomplete: "new-password", "data-1p-ignore": true, "data-lpignore": true, autocapitalize: "none", spellcheck: "false") %>
     </div>
   </fieldset>

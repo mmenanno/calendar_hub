@@ -17,7 +17,7 @@
            icon_text = "text-rose-300"
            bar_class = "bg-rose-400/60"
          end %>
-      <div class="<%= flash_classes(type) %> relative overflow-hidden" data-controller="dismissable" data-dismissable-delay-value="6000">
+      <div class="<%= flash_classes(type) %> relative overflow-hidden" data-controller="dismissable" data-dismissable-delay-value="<%= ["alert", "error"].include?(type.to_s) ? 10_000 : 6000 %>" role="<%= ["alert", "error"].include?(type.to_s) ? "alert" : "status" %>">
         <div class="flex items-center gap-2">
           <span class="inline-flex h-5 w-5 items-center justify-center rounded-full <%= icon_bg %> <%= icon_text %>"><%= icon_char %></span>
           <div>
@@ -32,7 +32,7 @@
             <% end %>
           </div>
         </div>
-        <button type="button" class="text-slate-400 transition hover:text-slate-200" data-action="dismissable#dismiss">&times;</button>
+        <button type="button" class="cursor-pointer text-slate-400 transition hover:text-slate-200" data-action="dismissable#dismiss" aria-label="<%= t("common.actions.dismiss_notification") %>">&times;</button>
         <div class="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-transparent">
           <div class="h-full w-0 <%= bar_class %>" data-dismissable-target="progress"></div>
         </div>
