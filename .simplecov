@@ -6,8 +6,11 @@
 # parent, and test_helper names each worker via parallelize_setup.
 FileUtils.rm_f("coverage/.resultset.json")
 
-SimpleCov.coverage(:line, minimum: 85)
-SimpleCov.coverage(:branch, primary: true, minimum: 80)
+# Thresholds are enforced on CI (full-suite runs) only, so running a single
+# test file locally doesn't fail on coverage. Set CI=1 to enforce locally.
+line_minimum, branch_minimum = ENV["CI"].present? ? [85, 80] : [nil, nil]
+SimpleCov.coverage(:line, **{ minimum: line_minimum }.compact)
+SimpleCov.coverage(:branch, primary: true, **{ minimum: branch_minimum }.compact)
 
 SimpleCov.group("Presenters", "app/presenters")
 SimpleCov.group("Services", "app/services")
