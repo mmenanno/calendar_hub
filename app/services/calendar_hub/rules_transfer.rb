@@ -51,7 +51,10 @@ module CalendarHub
       end
 
       def model_for(kind)
-        KINDS.fetch(kind.to_sym)[:model].constantize
+        case KINDS.fetch(kind.to_sym)[:model]
+        when "EventMapping" then EventMapping
+        when "FilterRule" then FilterRule
+        end
       end
 
       def normalize_kinds(kinds)
