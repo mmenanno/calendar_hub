@@ -31,13 +31,6 @@ class EventMappingTest < ActiveSupport::TestCase
     assert_operator(enqueued_jobs_count(only: SyncCalendarJob), :>, 1)
   end
 
-  private
-
-  def enqueued_jobs_count(only:)
-    queue_adapter = ActiveJob::Base.queue_adapter
-    queue_adapter.enqueued_jobs.count { |job| job["job_class"] == only.name }
-  end
-
   test "update with substantive change enqueues sync" do
     mapping = event_mappings(:basic_mapping)
 
@@ -136,5 +129,32 @@ class EventMappingTest < ActiveSupport::TestCase
         replacement: "Replaced",
       )
     end
+  end
+
+  test "mapping changes schedule syncs through schedule_sync with an attempt" do
+    source = calendar_sources(:provider)
+
+    assert_difference(-> { source.sync_attempts.count }, 1) do
+      EventMapping.create!(calendar_source: source, match_type: "contains", pattern: "X", replacement: "Y")
+    end
+  end
+
+  test "moving a mapping to another source re-syncs both sources" do
+    source = calendar_sources(:provider)
+    other = calendar_sources(:ics_feed)
+    mapping = EventMapping.create!(calendar_source: source, match_type: "contains", pattern: "X", replacement: "Y")
+    source.sync_attempts.update_all(status: "success", finished_at: Time.current)
+
+    mapping.update!(calendar_source: other)
+
+    assert(source.sync_attempts.exists?(status: "queued"))
+    assert(other.sync_attempts.exists?(status: "queued"))
+  end
+
+  private
+
+  def enqueued_jobs_count(only:)
+    queue_adapter = ActiveJob::Base.queue_adapter
+    queue_adapter.enqueued_jobs.count { |job| job["job_class"] == only.name }
   end
 end
