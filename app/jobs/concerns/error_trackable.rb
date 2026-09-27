@@ -19,12 +19,4 @@ module ErrorTrackable
     Rails.logger.error("[#{self.class.name}] #{context} failed: #{e.message}")
     raise
   end
-
-  def job_context
-    "#{self.class.name}##{begin
-      action_name
-    rescue
-      "perform"
-    end}"
-  end
 end

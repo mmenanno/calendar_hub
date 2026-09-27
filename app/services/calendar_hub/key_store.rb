@@ -54,12 +54,6 @@ module CalendarHub
       write_value("secret_key_base", hex_secret, include_timestamp: true)
     end
 
-    def reset_cache!
-      @mutex.synchronize do
-        @data = nil
-      end
-    end
-
     private
 
     def resolve_store_path

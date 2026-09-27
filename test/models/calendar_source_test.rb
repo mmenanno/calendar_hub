@@ -596,14 +596,6 @@ class CalendarSourceTest < ActiveSupport::TestCase
     assert_kind_of(CalendarHub::Ingestion::GenericICSAdapter, adapter)
   end
 
-  test "translator returns correct translator" do
-    source = calendar_sources(:provider)
-
-    translator = source.translator
-
-    assert_kind_of(CalendarHub::Translators::EventTranslator, translator)
-  end
-
   test "pending_events_count returns correct count" do
     source = calendar_sources(:provider)
 

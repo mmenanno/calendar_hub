@@ -35,17 +35,4 @@ module TurboStreamable
       end
     end
   end
-
-  def turbo_update_response(record, partial:, locals: {}, message:, fallback_location: nil)
-    if record.persisted? && record.errors.empty?
-      streams = [
-        turbo_stream.replace(view_context.dom_id(record, :row), partial: partial, locals: locals),
-        turbo_stream.update("modal", ""),
-      ]
-      turbo_success_response(streams, message: message, fallback_location: fallback_location)
-    else
-      error_message = record.errors.full_messages.to_sentence.presence || message
-      turbo_error_response(message: error_message, fallback_location: fallback_location)
-    end
-  end
 end
