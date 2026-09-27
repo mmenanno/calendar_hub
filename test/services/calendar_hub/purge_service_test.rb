@@ -41,5 +41,34 @@ module CalendarHub
 
       service.call
     end
+
+    test "deletes the source's events from iCloud before removing rows" do
+      source = calendar_sources(:ics_feed)
+      pushed = CalendarEvent.create!(calendar_source: source, external_id: "pushed", title: "t", starts_at: Time.current, ends_at: 1.hour.from_now, last_synced_to_calendar: "Work")
+      CalendarEvent.create!(calendar_source: source, external_id: "local-only", title: "t", starts_at: Time.current, ends_at: 1.hour.from_now)
+      client = mock("apple_client")
+      client.stubs(:configured?).returns(true)
+      client.stubs(:finish)
+      client.expects(:delete_event).with(calendar_identifier: "Work", uid: "ch-#{source.id}-pushed").once
+
+      ::CalendarHub::PurgeService.new(source, apple_client: client).call
+
+      assert_nil(CalendarEvent.find_by(id: pushed.id))
+    end
+
+    test "keeps rows and raises when iCloud deletes fail" do
+      source = calendar_sources(:ics_feed)
+      pushed = CalendarEvent.create!(calendar_source: source, external_id: "pushed", title: "t", starts_at: Time.current, ends_at: 1.hour.from_now, last_synced_to_calendar: "Work")
+      client = mock("apple_client")
+      client.stubs(:configured?).returns(true)
+      client.stubs(:finish)
+      client.stubs(:delete_event).raises(AppleCalendar::Client::Error, "boom")
+
+      assert_raises(::CalendarHub::PurgeService::RemoteCleanupError) do
+        ::CalendarHub::PurgeService.new(source, apple_client: client).call
+      end
+
+      assert_predicate(CalendarEvent.find_by(id: pushed.id), :present?)
+    end
   end
 end
