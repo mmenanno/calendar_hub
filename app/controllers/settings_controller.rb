@@ -49,7 +49,12 @@ class SettingsController < ApplicationController
     )
     respond_to do |format|
       msg = t("flashes.settings.reset")
-      format.turbo_stream { render(turbo_stream: turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: msg, variant: :success })) }
+      format.turbo_stream do
+        render(turbo_stream: [
+          turbo_stream.replace("settings-form", partial: "settings/form", locals: { settings: @settings }),
+          toast_stream(msg, variant: :success),
+        ])
+      end
       format.html { redirect_to(edit_settings_path, notice: msg) }
     end
   end
@@ -84,7 +89,12 @@ class SettingsController < ApplicationController
 
   def test_calendar
     client = if params[:apple_username].present? || params[:apple_app_password].present?
-      AppleCalendar::Client.new(credentials: { username: params[:apple_username], app_specific_password: params[:apple_app_password] })
+      # Blank fields fall back to the saved values so users can test a new
+      # username (or re-test) without re-typing the stored app password.
+      AppleCalendar::Client.new(credentials: {
+        username: params[:apple_username].presence || @settings.apple_username,
+        app_specific_password: params[:apple_app_password].presence || @settings.apple_app_password,
+      })
     else
       AppleCalendar::Client.new
     end
