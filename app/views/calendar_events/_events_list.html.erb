@@ -2,7 +2,7 @@
 <turbo-frame id="events-list">
   <%# The heading and view toggles sit outside the frame. Refresh them so they
       show, and their links keep, the new source and search. %>
-  <%= turbo_stream.replace("events-list-heading", partial: "calendar_events/list_heading", locals: { show_past: @show_past, selected_source: selected_source }) %>
-  <%= turbo_stream.replace("events-view-toggles", partial: "calendar_events/view_toggles", locals: { show_past: @show_past, show_excluded: @show_excluded }) %>
-  <%= render "calendar_events/events_page", events: events, selected_source: selected_source, page: @page, prev_page: @prev_page, next_page: @next_page %>
+  <%= turbo_stream.replace("events-list-heading", partial: "calendar_events/list_heading", locals: { show_past: show_past, selected_source: selected_source }) %>
+  <%= turbo_stream.replace("events-view-toggles", partial: "calendar_events/view_toggles", locals: { show_past: show_past, show_excluded: show_excluded }) %>
+  <%= render "calendar_events/events_page", events: events, selected_source: selected_source, page: page, prev_page: prev_page, next_page: next_page %>
 </turbo-frame>

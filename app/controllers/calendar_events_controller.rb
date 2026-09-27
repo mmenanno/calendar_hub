@@ -24,7 +24,18 @@ class CalendarEventsController < ApplicationController
 
     return unless turbo_frame_request_id == "events-list"
 
-    render(partial: "events_list", locals: { events: @events, selected_source: @selected_source })
+    render(
+      partial: "events_list",
+      locals: {
+        events: @events,
+        selected_source: @selected_source,
+        show_past: @show_past,
+        show_excluded: @show_excluded,
+        page: @page,
+        prev_page: @prev_page,
+        next_page: @next_page,
+      },
+    )
   end
 
   def show
