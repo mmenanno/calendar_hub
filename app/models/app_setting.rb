@@ -9,9 +9,18 @@ class AppSetting < ApplicationRecord
   after_commit :reset_credential_store!, on: [:create, :update]
   after_commit :invalidate_instance_cache!, on: [:create, :update]
 
+  # Holds the settings row for the current request or job. Rails resets
+  # CurrentAttributes around every request and job (via the executor), so a
+  # change saved in the web process reaches Solid Queue workers on their next
+  # job instead of never. It's also per thread, so Puma threads don't share
+  # (and mutate) one record.
+  class Memo < ActiveSupport::CurrentAttributes
+    attribute :setting
+  end
+
   class << self
     def instance
-      @instance ||= begin
+      Memo.setting ||= begin
         first || create!(default_time_zone: "UTC", default_sync_frequency_minutes: 60)
       rescue ActiveRecord::RecordNotUnique
         first
@@ -19,7 +28,7 @@ class AppSetting < ApplicationRecord
     end
 
     def reset_instance!
-      @instance = nil
+      Memo.setting = nil
     end
   end
 

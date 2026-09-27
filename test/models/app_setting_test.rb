@@ -586,4 +586,30 @@ class AppSettingTest < ActiveSupport::TestCase
     assert_equal("valid_user", settings.apple_username)
     assert_nil(settings.apple_app_password)
   end
+
+  test "instance picks up changes saved by another process on the next request or job" do
+    AppSetting.instance.update!(default_time_zone: "UTC")
+
+    # A fresh thread isn't inside the test's executor run, so each wrap resets
+    # CurrentAttributes like a real request or job does.
+    zones = Thread.new do # rubocop:disable ThreadSafety/NewThread
+      Rails.application.executor.wrap do
+        before = AppSetting.instance.default_time_zone
+        # Simulate another process (e.g. the web server) saving: no callbacks run here.
+        AppSetting.connection.exec_update("UPDATE app_settings SET default_time_zone = 'Europe/Paris'")
+        [before, AppSetting.instance.default_time_zone]
+      end + Rails.application.executor.wrap { [AppSetting.instance.default_time_zone] }
+    end.value
+
+    # Memoized within one request/job, fresh in the next one.
+    assert_equal(["UTC", "UTC", "Europe/Paris"], zones)
+  end
+
+  test "instance is not shared between threads" do
+    main = AppSetting.instance
+    other = Thread.new { AppSetting.instance }.value # rubocop:disable ThreadSafety/NewThread
+
+    assert_equal(main.id, other.id)
+    refute_same(main, other)
+  end
 end
