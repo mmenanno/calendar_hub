@@ -22,6 +22,6 @@
   <section class="mx-auto w-full max-w-4xl px-6 py-8 space-y-6">
     <%= render "shared/breadcrumb", breadcrumbs: [[t("navigation.events"), root_path], [@event.title]] %>
     <%= render "calendar_events/show_frame", event: @event %>
-    <%= render "calendar_events/audit_trail", audits: @audits %>
+    <%= render "calendar_events/audit_trail", audits: @audits, audits_total: @audits_total %>
   </section>
 </div>

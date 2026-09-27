@@ -1,5 +1,9 @@
 <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
   <h2 class="mb-4 text-lg font-semibold"><%= t("ui.events.audit_trail") %></h2>
+  <% audits_total = local_assigns.fetch(:audits_total, audits.size) %>
+  <% if audits_total > audits.size %>
+    <p class="mb-4 text-xs text-slate-500"><%= t("ui.events.audit_trail_truncated", shown: audits.size, total: audits_total) %></p>
+  <% end %>
   <% if audits.any? %>
     <div class="relative ml-3 border-l border-slate-700 pl-6 space-y-6">
       <% audits.each do |audit| %>
