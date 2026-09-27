@@ -21,7 +21,7 @@ module CalendarHub
 
       db_names = ActiveRecord::Base.configurations.configs_for(env_name: Rails.env).map { |c| File.basename(c.database) }
 
-      assert_equal(db_names.sort, path.glob("*.sqlite3").map { |f| f.basename.to_s }.sort)
+      assert_equal(db_names.sort, database_files(path).map { |f| f.basename.to_s }.sort)
 
       snapshot = SQLite3::Database.new(path.join(db_names.first).to_s, readonly: true)
       begin
@@ -38,7 +38,7 @@ module CalendarHub
 
       assert_equal(@key_store_path.read, copied.read)
       assert_equal(0o600, copied.stat.mode & 0o777)
-      assert_equal(0o600, path.glob("*.sqlite3").first.stat.mode & 0o777)
+      assert_equal(0o600, database_files(path).first.stat.mode & 0o777)
     end
 
     test "skips the key store when it does not exist" do
@@ -92,6 +92,10 @@ module CalendarHub
     end
 
     private
+
+    def database_files(snapshot_path)
+      snapshot_path.children.reject { |child| child.basename.to_s == "key_store.json" }
+    end
 
     def run_backup(now: Time.utc(2026, 1, 1, 3, 0, 0), keep: 7)
       Backup.run(dir: @backup_dir, keep: keep, key_store_path: @key_store_path, now: now)
