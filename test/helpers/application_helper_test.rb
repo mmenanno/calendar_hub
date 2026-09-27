@@ -165,4 +165,20 @@ class ApplicationHelperTest < ActiveSupport::TestCase
   def test_format_duration_ms_nil
     assert_equal("\u2014", @helper.format_duration_ms(nil))
   end
+
+end
+
+class ApplicationHelperFormFieldErrorTest < ActionView::TestCase
+  include ApplicationHelper
+
+  test "renders the messages for an invalid field" do
+    setting = AppSetting.new(default_sync_frequency_minutes: 0)
+    setting.validate
+
+    assert_includes(form_field_error(setting, :default_sync_frequency_minutes), "must be greater than 0")
+  end
+
+  test "renders nothing for a valid field" do
+    assert_nil(form_field_error(AppSetting.new, :app_host))
+  end
 end
