@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "faraday"
-require "faraday/middleware"
 
 module CalendarHub
   module Shared
@@ -9,44 +8,95 @@ module CalendarHub
       USER_AGENT = "CalendarHub/1.0"
       OPEN_TIMEOUT = 10  # seconds to establish connection
       READ_TIMEOUT = 30  # seconds to receive full response
+      MAX_REDIRECTS = 5
+      REDIRECT_STATUSES = [301, 302, 303, 307, 308].freeze
 
       attr_reader :source
+
+      class << self
+        # webcal:// and webcals:// are just "subscribe" hints for HTTPS feeds.
+        def normalize_url(url)
+          url.to_s.strip.sub(%r{\Awebcals?://}i, "https://")
+        end
+
+        # Feed URLs often embed secrets in the path or query string, so only
+        # the scheme and host are ever shown in logs and error messages.
+        def redact_url(url)
+          uri = URI.parse(url.to_s)
+          uri.host ? "#{uri.scheme}://#{uri.host}/…" : "[feed URL]"
+        rescue URI::Error
+          "[feed URL]"
+        end
+      end
 
       def initialize(source)
         @source = source
       end
 
-      def get_with_caching(url)
-        response = http_client.get(url) do |req|
-          apply_conditional_headers(req)
+      # Fetches the feed, following up to MAX_REDIRECTS redirects.
+      #
+      # Returns { status:, body:, changed:, cache_headers: }. Cache validators
+      # are returned rather than saved so the caller can persist them only
+      # after the sync that used this body succeeded.
+      def get_with_caching(url, conditional: true)
+        current_url = self.class.normalize_url(url)
+        @visited_urls = [current_url]
+        origin_host = URI.parse(current_url).host
+
+        (MAX_REDIRECTS + 1).times do
+          response = http_client.get(current_url) do |request|
+            apply_conditional_headers(request) if conditional
+            apply_authentication(request) if URI.parse(current_url).host == origin_host
+          end
+
+          if REDIRECT_STATUSES.include?(response.status)
+            current_url = redirect_target(current_url, response)
+            next
+          end
+
+          return build_result(response)
         end
 
-        case response.status
-        when 200
-          update_cache_headers(response)
-          { status: :success, body: response.body, changed: true }
-        when 304
-          { status: :not_modified, body: nil, changed: false }
-        else
-          raise CalendarHub::Ingestion::Error, "HTTP #{response.status}: #{response.reason_phrase}"
-        end
-      rescue Faraday::TimeoutError => error
-        raise CalendarHub::Ingestion::Error, "HTTP request timed out: #{error.message}"
-      rescue Faraday::ConnectionFailed => error
-        raise CalendarHub::Ingestion::Error, "HTTP connection failed: #{error.message}"
-      rescue Faraday::Error => error
-        raise CalendarHub::Ingestion::Error, "HTTP request failed: #{error.message}"
+        raise CalendarHub::Ingestion::Error, "Feed redirected more than #{MAX_REDIRECTS} times"
+      rescue Faraday::TimeoutError => exception
+        raise CalendarHub::Ingestion::Error, "HTTP request timed out: #{scrub(exception.message)}"
+      rescue Faraday::ConnectionFailed => exception
+        raise CalendarHub::Ingestion::Error, "HTTP connection failed: #{scrub(exception.message)}"
+      rescue Faraday::Error => exception
+        raise CalendarHub::Ingestion::Error, "HTTP request failed: #{scrub(exception.message)}"
+      rescue URI::Error
+        raise CalendarHub::Ingestion::Error, "Feed URL is invalid"
       end
 
       private
+
+      def build_result(response)
+        case response.status
+        when 200..299
+          { status: :success, body: response.body, changed: true, cache_headers: cache_headers_from(response) }
+        when 304
+          { status: :not_modified, body: nil, changed: false, cache_headers: nil }
+        else
+          raise CalendarHub::Ingestion::Error, "HTTP #{response.status}: #{response.reason_phrase}"
+        end
+      end
+
+      def redirect_target(current_url, response)
+        location = response.headers["location"]
+        raise CalendarHub::Ingestion::Error, "HTTP #{response.status} redirect without a Location header" if location.blank?
+
+        target = self.class.normalize_url(URI.join(current_url, location).to_s)
+        @visited_urls << target
+        target
+      end
 
       def http_client
         @http_client ||= Faraday.new do |connection|
           connection.options.open_timeout = OPEN_TIMEOUT
           connection.options.timeout = READ_TIMEOUT
           connection.headers["User-Agent"] = USER_AGENT
-          apply_authentication(connection)
-          connection.response(:raise_error)
+          # include_request: false keeps the (secret) feed URL out of errors.
+          connection.response(:raise_error, include_request: false)
           connection.adapter(Faraday.default_adapter)
         end
       end
@@ -59,29 +109,28 @@ module CalendarHub
         request.headers["If-Modified-Since"] = last_modified if last_modified.present?
       end
 
-      def update_cache_headers(response)
-        if response.headers["etag"].present?
-          source.settings["etag"] = response.headers["etag"]
-          # Also update the dedicated field if it exists
-          source.ics_feed_etag = response.headers["etag"] if source.respond_to?(:ics_feed_etag=)
-        end
-
-        if response.headers["last-modified"].present?
-          source.settings["last_modified"] = response.headers["last-modified"]
-          # Also update the dedicated field if it exists
-          source.ics_feed_last_modified = response.headers["last-modified"] if source.respond_to?(:ics_feed_last_modified=)
-        end
-
-        source.save! if source.settings_changed? || source.changed?
+      def cache_headers_from(response)
+        {
+          etag: response.headers["etag"].presence,
+          last_modified: response.headers["last-modified"].presence,
+        }
       end
 
-      def apply_authentication(connection)
+      # Credentials are only sent to the feed's original host, never to a
+      # host we were redirected to.
+      def apply_authentication(request)
         credentials = (source.credentials || {}).with_indifferent_access
         username = credentials[:http_basic_username]
         password = credentials[:http_basic_password]
         return if username.blank? || password.blank?
 
-        connection.request(:authorization, :basic, username, password)
+        request.headers["Authorization"] = Faraday::Utils.basic_header_from(username, password)
+      end
+
+      def scrub(message)
+        (@visited_urls || []).reduce(message.to_s) do |text, url|
+          text.gsub(url, self.class.redact_url(url))
+        end
       end
     end
   end

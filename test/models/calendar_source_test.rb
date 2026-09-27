@@ -8,35 +8,35 @@ class CalendarSourceTest < ActiveSupport::TestCase
   test "within_sync_window? true when no window set" do
     s = CalendarSource.new(time_zone: "UTC")
 
-    assert_predicate s, :within_sync_window?
+    assert_predicate(s, :within_sync_window?)
   end
 
   test "within_sync_window? respects simple window" do
     s = CalendarSource.new(time_zone: "UTC", sync_window_start_hour: 9, sync_window_end_hour: 17)
 
-    assert s.within_sync_window?(now: Time.utc(2025, 1, 1, 10, 0, 0))
-    refute s.within_sync_window?(now: Time.utc(2025, 1, 1, 8, 0, 0))
+    assert(s.within_sync_window?(now: Time.utc(2025, 1, 1, 10, 0, 0)))
+    refute(s.within_sync_window?(now: Time.utc(2025, 1, 1, 8, 0, 0)))
   end
 
   test "within_sync_window? wraps midnight" do
     s = CalendarSource.new(time_zone: "UTC", sync_window_start_hour: 22, sync_window_end_hour: 2)
 
-    assert s.within_sync_window?(now: Time.utc(2025, 1, 1, 23, 0, 0))
-    assert s.within_sync_window?(now: Time.utc(2025, 1, 1, 1, 0, 0))
-    refute s.within_sync_window?(now: Time.utc(2025, 1, 1, 15, 0, 0))
+    assert(s.within_sync_window?(now: Time.utc(2025, 1, 1, 23, 0, 0)))
+    assert(s.within_sync_window?(now: Time.utc(2025, 1, 1, 1, 0, 0)))
+    refute(s.within_sync_window?(now: Time.utc(2025, 1, 1, 15, 0, 0)))
   end
 
   test "soft_delete! sets deleted_at and deactivates source" do
     source = calendar_sources(:provider)
 
-    assert_predicate source, :active?
-    assert_nil source.deleted_at
+    assert_predicate(source, :active?)
+    assert_nil(source.deleted_at)
 
     source.soft_delete!
 
-    refute_predicate source, :active?
-    refute_nil source.deleted_at
-    assert_kind_of Time, source.deleted_at
+    refute_predicate(source, :active?)
+    refute_nil(source.deleted_at)
+    assert_kind_of(Time, source.deleted_at)
   end
 
   test "default scope excludes soft deleted sources" do
@@ -44,32 +44,32 @@ class CalendarSourceTest < ActiveSupport::TestCase
     archived_source = calendar_sources(:archived_source)
 
     # Archived source should not appear in default scope
-    refute_includes CalendarSource.all, archived_source
+    refute_includes(CalendarSource.all, archived_source)
 
     # But should appear in unscoped
-    assert_includes CalendarSource.unscoped.all, archived_source
+    assert_includes(CalendarSource.unscoped.all, archived_source)
 
     # Active sources should still be included
-    assert_equal active_count, CalendarSource.count
+    assert_equal(active_count, CalendarSource.count)
   end
 
   test "unarchiving restores source to active state" do
     archived_source = calendar_sources(:archived_source)
 
-    refute_predicate archived_source, :active?
-    refute_nil archived_source.deleted_at
+    refute_predicate(archived_source, :active?)
+    refute_nil(archived_source.deleted_at)
 
     # Simulate unarchive action
     archived_source.update!(deleted_at: nil, active: true)
 
-    assert_predicate archived_source, :active?
-    assert_nil archived_source.deleted_at
+    assert_predicate(archived_source, :active?)
+    assert_nil(archived_source.deleted_at)
   end
 
   test "archived source is not syncable" do
     archived_source = calendar_sources(:archived_source)
 
-    refute_predicate archived_source, :syncable?
+    refute_predicate(archived_source, :syncable?)
   end
 
   test "unarchived source becomes syncable" do
@@ -77,7 +77,7 @@ class CalendarSourceTest < ActiveSupport::TestCase
     archived_source.update!(deleted_at: nil, active: true)
 
     # Should be syncable if it has an ingestion adapter
-    assert_predicate archived_source, :syncable?
+    assert_predicate(archived_source, :syncable?)
   end
 
   test "time_zone defaults to AppSetting when not set" do
@@ -309,6 +309,34 @@ class CalendarSourceTest < ActiveSupport::TestCase
     assert_equal(token, source.sync_token)
     assert_in_delta(timestamp, source.last_synced_at, 1.second)
     refute_nil(source.last_change_hash)
+  end
+
+  test "mark_synced! persists feed cache headers when given" do
+    source = calendar_sources(:provider)
+
+    source.mark_synced!(token: "t", cache_headers: { etag: '"v1"', last_modified: "Wed, 21 Oct 2015 07:28:00 GMT" })
+    source.reload
+
+    assert_equal('"v1"', source.settings["etag"])
+    assert_equal("Wed, 21 Oct 2015 07:28:00 GMT", source.settings["last_modified"])
+    assert_equal('"v1"', source.ics_feed_etag)
+    assert_equal("America/Toronto", source.settings["time_zone"])
+  end
+
+  test "mark_synced! clears cache headers the server stopped sending" do
+    source = calendar_sources(:provider)
+    source.mark_synced!(token: "t", cache_headers: { etag: '"v1"', last_modified: nil })
+
+    source.mark_synced!(token: "t", cache_headers: { etag: nil, last_modified: nil })
+
+    assert_nil(source.reload.settings["etag"])
+    assert_nil(source.ics_feed_etag)
+  end
+
+  test "normalizes webcal ingestion URLs to https" do
+    source = CalendarSource.create!(name: "Webcal", ingestion_url: "webcal://example.com/cal.ics", calendar_identifier: "cal")
+
+    assert_equal("https://example.com/cal.ics", source.ingestion_url)
   end
 
   test "credentials encryption and decryption" do
