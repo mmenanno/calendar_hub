@@ -129,7 +129,6 @@ Notes:
   - `SOLID_QUEUE_SEPARATE_WORKER=true` – run jobs in a separate worker process instead of the web process (by default jobs run inside Puma).
   - `WEB_CONCURRENCY`, `JOB_CONCURRENCY`, `RAILS_MAX_THREADS` – tune Puma and Solid Queue concurrency.
   - `RAILS_LOG_LEVEL` – set log verbosity (`info` by default).
-  - `WARM_CACHE_ON_STARTUP=false` – opt out of cache warming (defaults to `true` in production, `false` elsewhere).
 
 ## Troubleshooting
 
