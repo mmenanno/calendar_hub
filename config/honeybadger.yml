@@ -1,5 +1,6 @@
 ---
 # For more options, see https://docs.honeybadger.io/lib/ruby/gem-reference/configuration
+# The API key is read from the HONEYBADGER_API_KEY environment variable.
 
 # The environment your app is running in.
 env: "<%= Rails.env %>"
@@ -23,6 +24,14 @@ development_environments:
 # Enable verbose debug logging (useful for troubleshooting).
 debug: false
 
-# Enable Honeybadger Insights
+# Honeybadger Insights. Only enabled when an API key is configured, otherwise
+# the agent keeps trying (and failing) to ship events.
 insights:
-  enabled: true
+  enabled: <%= ENV["HONEYBADGER_API_KEY"].present? %>
+
+# A single sync issues one outbound HTTP request and many SQL queries per
+# event, which would flood Insights. Don't record an event per Net::HTTP
+# request; SQL events are sampled in config/initializers/honeybadger.rb.
+net_http:
+  insights:
+    events: false
