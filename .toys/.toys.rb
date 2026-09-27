@@ -4,7 +4,7 @@
 # https://github.com/dazuma/toys/issues/248
 # expand :minitest, files: ["test/**/*_test.rb"], libs: ["test", "lib"]
 
-alias_tool :style, :rubocop
-alias_tool :cov, :coverage
+tool "style", delegate_to: "rubocop"
+tool "cov", delegate_to: "coverage"
 
 expand :rake
