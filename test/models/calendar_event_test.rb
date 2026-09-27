@@ -10,35 +10,35 @@ class CalendarEventTest < ActiveSupport::TestCase
   end
 
   test "valid fixture" do
-    assert_predicate @event, :valid?
+    assert_predicate(@event, :valid?)
   end
 
   test "requires ends_at after starts_at" do
     @event.ends_at = @event.starts_at - 1.hour
 
-    refute_predicate @event, :valid?
-    assert_includes @event.errors[:ends_at], "must be after the start time"
+    refute_predicate(@event, :valid?)
+    assert_includes(@event.errors[:ends_at], "must be after the start time")
   end
 
   test "defaults time_zone from source" do
     @event.time_zone = nil
     @event.valid?
 
-    assert_equal @event.calendar_source.time_zone, @event.time_zone
+    assert_equal(@event.calendar_source.time_zone, @event.time_zone)
   end
 
   test "fingerprint updates when content changes" do
     original_fingerprint = @event.fingerprint
     @event.update!(title: "Updated Title")
 
-    refute_equal original_fingerprint, @event.reload.fingerprint
+    refute_equal(original_fingerprint, @event.reload.fingerprint)
   end
 
   test "mark_synced sets timestamp" do
     travel_to Time.zone.parse("2025-09-22 12:00") do
       @event.mark_synced!
 
-      assert_in_delta Time.zone.parse("2025-09-22 12:00"), @event.reload.synced_at, 1.second
+      assert_in_delta(Time.zone.parse("2025-09-22 12:00"), @event.reload.synced_at, 1.second)
     end
   end
 
@@ -58,12 +58,13 @@ class CalendarEventTest < ActiveSupport::TestCase
     events = CalendarEvent.where(id: @event.id).includes(:calendar_source).to_a
     event = events.first
 
-    assert_predicate event.association(:calendar_source), :loaded?
+    assert_predicate(event.association(:calendar_source), :loaded?)
 
     query_count = 0
     counter = ->(_name, _start, _finish, _id, payload) { query_count += 1 unless payload[:name] == "SCHEMA" }
     ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
       source = event.calendar_source
+
       refute_nil(source)
       assert_equal(@event.calendar_source_id, source.id)
     end
@@ -74,9 +75,10 @@ class CalendarEventTest < ActiveSupport::TestCase
   test "calendar_source uses unscoped query when not eager loaded" do
     event = CalendarEvent.find(@event.id)
 
-    refute_predicate event.association(:calendar_source), :loaded?
+    refute_predicate(event.association(:calendar_source), :loaded?)
 
     source = event.calendar_source
+
     refute_nil(source)
     assert_equal(@event.calendar_source_id, source.id)
   end
@@ -342,8 +344,11 @@ class CalendarEventTest < ActiveSupport::TestCase
     @event.send(:refresh_fingerprint)
     fingerprint_b = @event.fingerprint
 
-    assert_equal(fingerprint_a, fingerprint_b,
-      "Fingerprints should be identical for semantically equal data regardless of key order")
+    assert_equal(
+      fingerprint_a,
+      fingerprint_b,
+      "Fingerprints should be identical for semantically equal data regardless of key order",
+    )
   end
 
   test "refresh_fingerprint changes when data value changes" do
@@ -355,8 +360,11 @@ class CalendarEventTest < ActiveSupport::TestCase
     @event.send(:refresh_fingerprint)
     fingerprint_after = @event.fingerprint
 
-    refute_equal(fingerprint_before, fingerprint_after,
-      "Fingerprints should differ when actual data values change")
+    refute_equal(
+      fingerprint_before,
+      fingerprint_after,
+      "Fingerprints should differ when actual data values change",
+    )
   end
 
   test "canonical_json sorts keys recursively and produces stable output" do
@@ -444,7 +452,7 @@ class CalendarEventTest < ActiveSupport::TestCase
     assert_equal("new", audit.changes_to["normal_change"])
   end
 
-  test "validates external_id uniqueness within calendar_source" do
+  test "external_id uniqueness within calendar_source is enforced by the database" do
     # Create another event with same external_id in different source
     other_source = CalendarSource.create!(
       name: "Other Source",
@@ -476,8 +484,64 @@ class CalendarEventTest < ActiveSupport::TestCase
       all_day: false,
     )
 
-    refute_predicate(duplicate_event, :valid?)
-    assert_includes(duplicate_event.errors[:external_id], "has already been taken")
+    assert_raises(ActiveRecord::RecordNotUnique) { duplicate_event.save! }
+  end
+
+  test "sanitize_external_id strips whitespace and control characters" do
+    assert_equal("abc-123", CalendarEvent.sanitize_external_id(" abc-123\r\n"))
+  end
+
+  test "fingerprint ignores volatile and bookkeeping data keys" do
+    @event.update!(data: { "x-client" => "Jane" })
+    fingerprint = @event.fingerprint
+
+    @event.update!(data: { "x-client" => "Jane", "dtstamp" => "20250101T000000Z", "dtstart_params" => { "TZID" => "UTC" } })
+
+    assert_equal(fingerprint, @event.reload.fingerprint)
+
+    @event.update!(title: "Changed title")
+
+    refute_equal(fingerprint, @event.reload.fingerprint)
+  end
+
+  test "does not write an audit row when only bookkeeping columns change" do
+    @event.save!
+
+    assert_no_difference(-> { CalendarEventAudit.count }) do
+      @event.update!(synced_at: Time.current, source_updated_at: Time.current, last_synced_to_calendar: "Work")
+    end
+    assert_difference(-> { CalendarEventAudit.count }, 1) do
+      @event.update!(title: "Renamed")
+    end
+  end
+
+  test "manual override wins over rule exclusion and survives rule changes" do
+    @event.update!(excluded_by_rule: true)
+
+    assert_predicate(@event.reload, :sync_exempt?)
+
+    @event.toggle_sync_exempt!
+
+    assert_equal("include", @event.reload.manual_sync_override)
+    refute_predicate(@event, :sync_exempt?)
+
+    @event.update!(excluded_by_rule: false)
+    @event.update!(excluded_by_rule: true)
+
+    refute_predicate(@event.reload, :sync_exempt?)
+  end
+
+  test "toggling back to the rule decision clears the manual override" do
+    @event.update!(excluded_by_rule: false)
+    @event.toggle_sync_exempt!
+
+    assert_equal("exclude", @event.reload.manual_sync_override)
+    assert_predicate(@event, :sync_exempt?)
+
+    @event.toggle_sync_exempt!
+
+    assert_nil(@event.reload.manual_sync_override)
+    refute_predicate(@event, :sync_exempt?)
   end
 
   test "validates all_day inclusion" do
@@ -537,10 +601,10 @@ class CalendarEventTest < ActiveSupport::TestCase
 
   test "suppress_broadcasts re-enables broadcasts after block completes" do
     CalendarEvent.suppress_broadcasts do
-      assert_predicate CalendarEvent, :broadcasts_suppressed?
+      assert_predicate(CalendarEvent, :broadcasts_suppressed?)
     end
 
-    refute_predicate CalendarEvent, :broadcasts_suppressed?
+    refute_predicate(CalendarEvent, :broadcasts_suppressed?)
   end
 
   test "suppress_broadcasts re-enables broadcasts even on error" do
@@ -550,6 +614,6 @@ class CalendarEventTest < ActiveSupport::TestCase
       end
     end
 
-    refute_predicate CalendarEvent, :broadcasts_suppressed?
+    refute_predicate(CalendarEvent, :broadcasts_suppressed?)
   end
 end

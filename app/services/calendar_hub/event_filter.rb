@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 module CalendarHub
+  # Evaluates filter rules. Rule decisions are persisted in
+  # CalendarEvent#excluded_by_rule and never touch the manual override, so a
+  # user's include/exclude choice survives rule changes and later syncs.
   class EventFilter
     attr_reader :calendar_source, :rules
 
@@ -25,81 +28,69 @@ module CalendarHub
         new(source).should_filter?(event)
       end
 
+      # Sets excluded_by_rule (and the derived sync_exempt) in memory; the
+      # caller persists the events.
       def apply_filters(events)
         return events if events.blank?
 
         # Group events by calendar_source_id to minimize filter instances
         events_by_source = events.group_by { |e| e.respond_to?(:calendar_source_id) ? e.calendar_source_id : nil }
 
-        events_by_source.each do |_source_id, source_events|
+        events_by_source.each_value do |source_events|
           representative = source_events.first
           source = representative.respond_to?(:calendar_source) ? representative.calendar_source : nil
           filter = new(source)
 
           source_events.each do |event|
-            event.sync_exempt = true if filter.should_filter?(event)
+            event.apply_rule_exclusion(filter.should_filter?(event))
           end
         end
 
         events
       end
 
+      # Marks events newly matched by a rule. Returns the number of events
+      # whose rule exclusion changed.
       def apply_backwards_filtering(source = nil)
-        scope = CalendarEvent.where(sync_exempt: false)
-        scope = scope.where(calendar_source: source) if source
+        update_rule_exclusions(source, currently_excluded: false) { |filter, event| filter.should_filter?(event) }
+      end
 
-        filter = new(source)
-        filtered_count = 0
-
-        scope.in_batches(of: 1000) do |batch|
-          ActiveRecord::Base.transaction do
-            batch.each do |event|
-              if filter.should_filter?(event)
-                event.update!(sync_exempt: true)
-                filtered_count += 1
-              end
-            end
-          end
-        end
-
-        filtered_count
+      # Clears the rule exclusion of events no rule matches any more.
+      # Manually excluded events stay excluded.
+      def apply_reverse_filtering(source = nil)
+        update_rule_exclusions(source, currently_excluded: true) { |filter, event| !filter.should_filter?(event) }
       end
 
       def find_re_includable_events(source = nil)
-        scope = CalendarEvent.where(sync_exempt: true)
-        scope = scope.where(calendar_source: source) if source
-
-        filter = new(source)
-        re_includable = []
-
-        scope.find_each do |event|
-          unless filter.should_filter?(event)
-            re_includable << event
-          end
+        each_source_scope(source).flat_map do |filter, scope|
+          scope.where(excluded_by_rule: true).to_a.reject { |event| filter.should_filter?(event) }
         end
-
-        re_includable
       end
 
-      def apply_reverse_filtering(source = nil)
-        scope = CalendarEvent.where(sync_exempt: true)
-        scope = scope.where(calendar_source: source) if source
+      private
 
-        filter = new(source)
-        re_included_count = 0
+      def update_rule_exclusions(source, currently_excluded:)
+        changed = 0
+        each_source_scope(source).each do |filter, scope|
+          scope.where(excluded_by_rule: currently_excluded).in_batches(of: 1000) do |batch|
+            ActiveRecord::Base.transaction do
+              batch.each do |event|
+                next unless yield(filter, event)
 
-        scope.in_batches(of: 1000) do |batch|
-          ActiveRecord::Base.transaction do
-            batch.each do |event|
-              unless filter.should_filter?(event)
-                event.update!(sync_exempt: false)
-                re_included_count += 1
+                event.update!(excluded_by_rule: !currently_excluded)
+                changed += 1
               end
             end
           end
         end
+        changed
+      end
 
-        re_included_count
+      # Yields [filter, events scope] per source so source-specific rules are
+      # always evaluated together with global ones.
+      def each_source_scope(source)
+        sources = source ? [source] : CalendarSource.unscoped.where(id: CalendarEvent.distinct.select(:calendar_source_id)).to_a
+        sources.map { |each_source| [new(each_source), CalendarEvent.where(calendar_source_id: each_source.id)] }
       end
     end
   end

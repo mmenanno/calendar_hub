@@ -49,19 +49,22 @@ class FilterRule < ApplicationRecord
     when "contains"
       compare?(field_value, pattern, case_sensitive: case_sensitive, mode: :contains)
     when "regex"
-      begin
-        flags = case_sensitive ? nil : Regexp::IGNORECASE
-        re = Regexp.new(pattern, flags)
-        !!(field_value =~ re)
-      rescue RegexpError
-        false
-      end
+      CalendarHub::SafeRegexp.match?(compiled_regex, field_value)
     else
       false
     end
   end
 
   private
+
+  # Compiled once per pattern/case setting (with a match timeout).
+  def compiled_regex
+    key = [pattern, case_sensitive]
+    return @compiled_regex if @compiled_regex_key == key
+
+    @compiled_regex_key = key
+    @compiled_regex = CalendarHub::SafeRegexp.compile(pattern, case_sensitive: case_sensitive)
+  end
 
   def compare?(text, pattern, case_sensitive:, mode:)
     a = text.to_s

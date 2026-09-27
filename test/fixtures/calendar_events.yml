@@ -118,6 +118,7 @@ sync_exempt_event:
   time_zone: UTC
   all_day: false
   sync_exempt: true
+  manual_sync_override: exclude
   data: {}
 
 outdated_event:
