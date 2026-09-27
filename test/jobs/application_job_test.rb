@@ -19,10 +19,19 @@ class ApplicationJobTest < ActiveJob::TestCase
     end
   end
 
-  test "has discard_on configuration for serialization errors" do
-    file_content = Rails.root.join("app/jobs/application_job.rb").read
+  class RecordJob < ApplicationJob
+    def perform(record)
+      record
+    end
+  end
 
-    assert_match(/discard_on ActiveJob::DeserializationError/, file_content)
+  test "discards jobs whose record argument no longer exists" do
+    job_data = RecordJob.new(calendar_sources(:provider)).serialize
+    job_data["arguments"] = [{ "_aj_globalid" => "gid://#{GlobalID.app}/CalendarSource/0" }]
+
+    assert_no_enqueued_jobs do
+      assert_nothing_raised { ActiveJob::Base.execute(job_data) }
+    end
   end
 
   class TestJob < ApplicationJob
