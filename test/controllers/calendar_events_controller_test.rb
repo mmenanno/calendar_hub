@@ -101,6 +101,9 @@ class CalendarEventsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response(:success)
     assert_select "h1", text: /#{event.title}/
+    # Mobile hamburger needs the mobile-nav controller and menu on this page too
+    assert_select("[data-controller=mobile-nav] [data-mobile-nav-target=menu]")
+    assert_select("[data-controller=mobile-nav] button[data-action='mobile-nav#open']")
   end
 
   test "toggle_sync excludes event when currently included" do

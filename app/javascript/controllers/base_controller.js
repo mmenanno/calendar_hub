@@ -59,6 +59,34 @@ export default class BaseController extends Controller {
   }
 
   /**
+   * Show a client-side toast in #toast-anchor (mirrors app/views/shared/_toast.html.erb)
+   * @param {string} message - Plain-text message
+   * @param {'success'|'error'} variant - Toast style
+   */
+  showToast(message, variant = 'success') {
+    const anchor = document.getElementById('toast-anchor')
+    if (!anchor) return
+
+    const error = variant === 'error'
+    const toast = document.createElement('div')
+    toast.className = 'pointer-events-auto max-w-sm rounded-lg border px-3 py-2 text-sm shadow-lg backdrop-blur'
+    toast.style.background = 'rgba(15,23,42,.9)'
+    toast.style.borderColor = 'rgba(51,65,85,.7)'
+    toast.dataset.controller = 'dismissable'
+    toast.dataset.dismissableDelayValue = error ? '8000' : '2500'
+    toast.innerHTML = `
+      <div class="flex items-start gap-2">
+        <span class="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${error ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'}" aria-hidden="true">${error ? '!' : '✓'}</span>
+        <span class="min-w-0 flex-1 break-words text-slate-200">${error ? '<span class="sr-only">Error: </span>' : ''}${this.escapeHtml(message)}</span>
+        <button type="button" class="-mr-1 shrink-0 cursor-pointer rounded px-1 leading-none text-slate-400 transition hover:text-slate-200" data-action="dismissable#dismiss" aria-label="Dismiss notification">&times;</button>
+      </div>
+      <div class="pointer-events-none mt-1 h-0.5 w-full bg-transparent">
+        <div class="h-full w-0 ${error ? 'bg-rose-400/60' : 'bg-emerald-400/60'}" data-dismissable-target="progress"></div>
+      </div>`
+    anchor.appendChild(toast)
+  }
+
+  /**
    * Create a debounced function
    * @param {Function} func - Function to debounce
    * @param {number} delay - Delay in milliseconds

@@ -12,6 +12,8 @@ en:
       copy: "Copy"
       delete: "Delete"
       disable: "Disable"
+      dismiss: "Dismiss"
+      dismiss_notification: "Dismiss notification"
       duplicate: "Duplicate"
       edit: "Edit"
       enable: "Enable"
@@ -32,6 +34,7 @@ en:
       all: "All"
       any: "Any"
       archived: "Archived"
+      error: "Error"
       never: "Never"
       no: "No"
       off: "Off"
@@ -81,6 +84,10 @@ en:
       status_updated: "Source status updated."
       push_state_scheduled: "Push state scheduled."
       sync_inactive: "Source is paused or lacks a fetch adapter."
+      sync_refused:
+        already_running: "A sync is already queued or running for this source."
+        outside_window: "Outside sync window %{start}–%{end} (%{time_zone}) — use Force Sync to sync now."
+        paused: "%{name} is paused — resume it to sync."
       sync_scheduled:
         one: "Sync scheduled for %{count} source."
         other: "Sync scheduled for %{count} sources."
@@ -123,13 +130,6 @@ en:
       reset: "Settings reset to defaults."
       review_errors: "Please review the errors below."
       saved: "Settings saved."
-      credential_key_header: "Credential Key"
-      credential_key_fingerprint: "Fingerprint:"
-      credential_key_created_at: "Created:"
-      credential_key_location: "Location:"
-      rotate_credential_key: "Rotate Key"
-      rotate_credential_key_confirm: "Rotate the credential key? This will re-encrypt all stored credentials."
-      credential_key_hint: "Rotating the key re-encrypts all stored credentials with a new encryption key."
 
   navigation:
     events: "Events"
@@ -143,6 +143,17 @@ en:
     pong: "pong"
 
   ui:
+    forms:
+      error_summary:
+        one: "Please fix %{count} problem:"
+        other: "Please fix %{count} problems:"
+
+    sortable:
+      drag_hint: "Drag to reorder"
+      move_down: "Move “%{name}” down"
+      move_up: "Move “%{name}” up"
+      save_failed: "Could not save the new order. Please try again."
+
     help:
       header: "Help"
       subheader: "How Calendar Hub works and Apple Calendar tips."
@@ -216,11 +227,6 @@ en:
       rules: "Filter Rules"
       settings:
         placeholder_host: "hub.tail123.ts.net or localhost"
-      sources:
-        create: "Create Calendar Source"
-        issues_with_submission: "There were issues with your submission:"
-        remove: "Remove %{name}?"
-        update: "Update Calendar Source"
       subheader: "Automatically exclude events from Apple Calendar sync"
       sync_status:
         deletes: "Deletes"
@@ -232,6 +238,9 @@ en:
 
     jobs:
       auto_sync_jobs_24h: "Auto-sync Jobs (24h)"
+      trigger_auto: "Auto"
+      trigger_manual: "Manual"
+      trigger_unknown_hint: "Recorded before sync triggers were tracked"
       auto_sync_sources: "Auto-sync Sources"
       auto_syncs_24h: "Auto-syncs (24h)"
       canceled: "Canceled"
@@ -258,6 +267,7 @@ en:
       worker_processes: "Worker Processes"
 
     mappings:
+      no_mappings: "No mappings yet. Add one above to rename event titles."
       active: "Active"
       add_mapping: "Add Mapping"
       add_rule: "Add Rule"
@@ -344,9 +354,25 @@ en:
       test_connection: "Test Connection"
       used_when_missing_tz: "Used when a source doesn't specify a time zone."
       verify_realtime: "Verify realtime updates and Cable connectivity."
+      credential_key_header: "Credential Key"
+      credential_key_fingerprint: "Fingerprint:"
+      credential_key_created_at: "Created:"
+      credential_key_location: "Location:"
+      rotate_credential_key: "Rotate Key"
+      rotate_credential_key_confirm: "Rotate the credential key? This will re-encrypt all stored credentials."
+      credential_key_hint: "Rotating the key re-encrypts all stored credentials with a new encryption key."
 
     sources:
       add_source: "Add Source"
+      detail_subheader: "Source details, sync status and history."
+      edit_subheader: "Update feed, destination and schedule."
+      new_subheader: "Connect an ICS feed to an Apple Calendar."
+      new_source: "New Calendar Source"
+      auto_sync_off: "Auto-sync off"
+      create: "Create Calendar Source"
+      issues_with_submission: "There were issues with your submission:"
+      remove: "Remove %{name}?"
+      update: "Update Calendar Source"
       apple_identifier: "Apple Calendar Identifier"
       archived_section: "Archived Sources"
       auto_sync: "Auto-sync:"
@@ -416,11 +442,13 @@ en:
         upserts: "Upserts"
         deletes: "Deletes"
         errors: "Errors"
+        message: "Message"
       health:
         healthy: "Healthy"
         failures:
           one: "%{count} failure"
           other: "%{count} failures"
+        dismiss_alert: "Dismiss sync failure alert for %{name}"
         alert_message:
           one: "has failed to sync %{count} time in a row."
           other: "has failed to sync %{count} times in a row."

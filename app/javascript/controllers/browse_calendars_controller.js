@@ -70,6 +70,7 @@ export default class extends BaseController {
       const select = document.createElement("select")
       select.className = this.calendarFieldTarget.className + " appearance-none pr-8"
       select.setAttribute("data-action", "change->browse-calendars#select")
+      select.setAttribute("aria-label", "Discovered calendars")
 
       const placeholder = document.createElement("option")
       placeholder.value = ""

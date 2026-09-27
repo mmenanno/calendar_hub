@@ -1,5 +1,5 @@
 <% content_for :title, @event.title %>
-<div class="min-h-screen bg-slate-950 text-slate-100">
+<div class="min-h-screen bg-slate-950 text-slate-100" data-controller="mobile-nav">
   <header class="bg-slate-900/70 backdrop-blur sticky top-0 z-10 border-b border-slate-800">
     <div class="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
       <div class="flex items-center gap-3">
@@ -15,12 +15,15 @@
           <p class="text-sm text-slate-400"><%= l @event.starts_at, format: :long %> – <%= l @event.ends_at, format: :long %></p>
         </div>
       </div>
-      <%= render "shared/top_nav", active: nil %>
+      <%= render "shared/top_nav", active: :events %>
     </div>
   </header>
 
+  <%= render "shared/mobile_menu", active: :events %>
+
   <section class="mx-auto w-full max-w-4xl px-6 py-8 space-y-6">
     <%= render "shared/breadcrumb", breadcrumbs: [[t("navigation.events"), root_path], [@event.title]] %>
+    <%= render "shared/flashes" %>
     <%= render "calendar_events/show_frame", event: @event %>
     <%= render "calendar_events/audit_trail", audits: @audits, audits_total: @audits_total %>
   </section>
