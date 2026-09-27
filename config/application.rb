@@ -12,7 +12,6 @@ require "action_controller/railtie"
 require "action_view/railtie"
 require "action_cable/engine"
 require "rails/test_unit/railtie"
-require_relative "../app/services/calendar_hub/key_store"
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
@@ -22,6 +21,8 @@ module CalendarHub
   class Application < Rails::Application
     class << self
       def generate_or_load_secret_key_base
+        require_relative "../app/services/calendar_hub/key_store"
+
         store = CalendarHub::KeyStore.instance
         existing = store.secret_key_base
         return existing if existing.present?
@@ -48,9 +49,16 @@ module CalendarHub
     config.time_zone = "UTC"
     config.active_job.queue_adapter = :solid_queue
 
-    # Auto-generate secret_key_base for distributed deployments
-    config.secret_key_base = Rails.application.credentials.secret_key_base ||
-      ENV["SECRET_KEY_BASE"] ||
-      generate_or_load_secret_key_base
+    # Auto-generate and persist secret_key_base (storage/key_store.json) for
+    # self-hosted deployments. Skipped in the test env and during asset
+    # precompilation (SECRET_KEY_BASE_DUMMY), where Rails falls back to its
+    # generated local secret. This keeps a secret from being baked into the
+    # Docker image at build time, and lets SimpleCov measure KeyStore (the
+    # test runner loads this file before test_helper starts coverage).
+    unless Rails.env.test? || ENV["SECRET_KEY_BASE_DUMMY"].present?
+      config.secret_key_base = Rails.application.credentials.secret_key_base ||
+        ENV["SECRET_KEY_BASE"] ||
+        generate_or_load_secret_key_base
+    end
   end
 end
