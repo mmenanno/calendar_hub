@@ -48,7 +48,8 @@ class CalendarEventsController < ApplicationController
 
   def toggle_sync
     @event = CalendarEvent.find(params[:id])
-    @event.update!(sync_exempt: !@event.sync_exempt?)
+    # Stored as a manual override so filter-rule re-evaluation cannot undo it.
+    @event.toggle_sync_exempt!
     SyncEventToAppleJob.perform_later(@event.id)
     respond_to do |format|
       msg = @event.sync_exempt? ? t("flashes.events.excluded") : t("flashes.events.included")

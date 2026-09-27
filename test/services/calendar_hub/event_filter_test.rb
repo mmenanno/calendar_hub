@@ -101,7 +101,7 @@ module CalendarHub
     end
 
     test "find_re_includable_events finds events that no longer match rules" do
-      @event.update!(sync_exempt: true)
+      @event.update!(excluded_by_rule: true)
 
       # No rules, so event should be re-includable
       re_includable = ::CalendarHub::EventFilter.find_re_includable_events(@calendar_source)
@@ -110,7 +110,7 @@ module CalendarHub
     end
 
     test "apply_reverse_filtering re-includes events that no longer match" do
-      @event.update!(sync_exempt: true)
+      @event.update!(excluded_by_rule: true)
 
       ::CalendarHub::EventFilter.apply_reverse_filtering(@calendar_source)
 
@@ -207,7 +207,7 @@ module CalendarHub
     end
 
     test "find_re_includable_events works without source parameter" do
-      @event.update!(sync_exempt: true)
+      @event.update!(excluded_by_rule: true)
 
       # Test without source parameter (should find all re-includable events)
       re_includable = ::CalendarHub::EventFilter.find_re_includable_events
@@ -216,7 +216,7 @@ module CalendarHub
     end
 
     test "apply_reverse_filtering works without source parameter" do
-      @event.update!(sync_exempt: true)
+      @event.update!(excluded_by_rule: true)
 
       ::CalendarHub::EventFilter.apply_reverse_filtering
 
@@ -224,7 +224,7 @@ module CalendarHub
     end
 
     test "find_re_includable_events excludes events that still match rules" do
-      @event.update!(sync_exempt: true)
+      @event.update!(excluded_by_rule: true)
 
       FilterRule.create!(
         pattern: "Meeting",
@@ -294,6 +294,37 @@ module CalendarHub
 
       assert_equal(5, result.count)
       result.each { |e| assert_predicate(e, :sync_exempt?) }
+    end
+
+    test "apply_reverse_filtering keeps manually excluded events excluded" do
+      @event.update!(excluded_by_rule: false, manual_sync_override: "exclude")
+
+      ::CalendarHub::EventFilter.apply_reverse_filtering(@calendar_source)
+
+      assert_predicate(@event.reload, :sync_exempt?)
+    end
+
+    test "apply_backwards_filtering persists the exclusion and respects a manual include" do
+      @event.update!(manual_sync_override: "include")
+      FilterRule.create!(pattern: "Meeting", field_name: "title", match_type: "contains", active: true, calendar_source: @calendar_source)
+
+      ::CalendarHub::EventFilter.apply_backwards_filtering(@calendar_source)
+      @event.reload
+
+      assert_predicate(@event, :excluded_by_rule?)
+      refute_predicate(@event, :sync_exempt?)
+    end
+
+    test "regex rules that time out are treated as non-matching" do
+      rule = FilterRule.create!(pattern: "(a+)+$", field_name: "title", match_type: "regex", active: true, calendar_source: @calendar_source)
+      @event.title = "#{"a" * 40}!"
+      slow_regex = mock("regex")
+      slow_regex.stubs(:match?).raises(Regexp::TimeoutError)
+      slow_regex.stubs(:source).returns(rule.pattern)
+      rule.stubs(:compiled_regex).returns(slow_regex)
+      Rails.logger.expects(:warn).with(regexp_matches(/timed out/))
+
+      refute(rule.matches?(@event))
     end
   end
 end
