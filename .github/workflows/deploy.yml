@@ -1,15 +1,13 @@
 name: Build and Push Image
 
-# Every push to main publishes `latest` + `sha-*` so dependency and security
-# fixes ship without a manual release. A new VERSION additionally publishes a
-# version tag and a GitHub Release (after the image is pushed).
+# Publishes an image only when VERSION changes on main. The GitHub Release is
+# created after the image is pushed so a failed build never leaves a release
+# without an image.
 on:
   push:
     branches: [ main ]
-    paths-ignore:
-      - "README.md"
-      - "docs/**"
-      - ".github/dependabot.yml"
+    paths:
+      - "VERSION"
   workflow_dispatch:
 
 permissions:
@@ -71,7 +69,7 @@ jobs:
             ${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest
-            type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.new_release == 'true' }}
+            type=raw,value=${{ steps.version.outputs.version }}
             type=sha
 
       - name: Build and push image
