@@ -4,7 +4,7 @@ class CalendarSourcesController < ApplicationController
   before_action :set_calendar_source, only: [:show, :edit, :update, :destroy, :sync, :force_sync, :push_state, :check_destination, :toggle_active, :toggle_auto_sync, :purge, :unarchive, :acknowledge_failure]
 
   def index
-    @calendar_sources = CalendarSource.includes(:latest_sync_attempt).order(:name)
+    @calendar_sources = CalendarSource.preload_latest_sync_attempts(CalendarSource.order(:name))
     @pending_counts = CalendarEvent.needs_sync
       .where(calendar_source_id: @calendar_sources.map(&:id))
       .group(:calendar_source_id)

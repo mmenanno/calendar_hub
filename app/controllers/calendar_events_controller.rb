@@ -2,7 +2,7 @@
 
 class CalendarEventsController < ApplicationController
   def index
-    @calendar_sources = CalendarSource.includes(:latest_sync_attempt).order(:name).to_a
+    @calendar_sources = CalendarSource.preload_latest_sync_attempts(CalendarSource.order(:name))
     @selected_source = params[:source_id].present? ? @calendar_sources.find { |s| s.id == params[:source_id].to_i } : nil
 
     @show_past = params[:show_past] == "true"

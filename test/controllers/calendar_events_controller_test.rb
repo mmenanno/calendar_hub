@@ -263,19 +263,19 @@ class CalendarEventsControllerTest < ActionDispatch::IntegrationTest
     source = calendar_sources(:ics_feed)
 
     query_count = 0
-    counter = ->(_name, _start, _finish, _id, payload) {
-      # Count only CalendarSource SELECT queries (not SCHEMA or other tables)
-      query_count += 1 if payload[:sql]&.include?("calendar_sources") && payload[:name] != "SCHEMA"
-    }
+    counter = lambda do |_name, _start, _finish, _id, payload|
+      # Count only queries that load CalendarSource rows (not SCHEMA or the
+      # latest-sync-attempt lookup, which selects sync_attempts ids)
+      query_count += 1 if payload[:sql]&.start_with?('SELECT "calendar_sources".*') && payload[:name] != "SCHEMA"
+    end
     ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
       get calendar_events_path, params: { source_id: source.id }
     end
 
     assert_response(:success)
-    # Should load calendar_sources in at most 2 queries (sources + sync_attempts eager load),
-    # not an additional find_by query
-    # Sources query + sync_attempts eager load + possible sidebar rendering = up to 3 queries
-    assert_operator query_count, :<=, 3, "Expected at most 3 CalendarSource queries (sources + eager load + rendering), got #{query_count}"
+    # Sources list + events' calendar_source preload + failure alerts = up to 3 queries,
+    # not an additional find_by for the selected source
+    assert_operator(query_count, :<=, 3, "Expected at most 3 CalendarSource queries, got #{query_count}")
   end
 
   # PAST EVENTS TOGGLE TESTS (FEAT-004)
