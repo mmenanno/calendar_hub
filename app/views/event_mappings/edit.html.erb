@@ -3,66 +3,22 @@
     <div class="modal-card">
       <div class="mb-4 flex items-center justify-between">
         <h2 class="text-lg font-semibold"><%= t("ui.mappings.edit_mapping") %></h2>
-        <button onclick="document.getElementById('modal').innerHTML=''" class="cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"><%= t("ui.mappings.close") %></button>
+        <button type="button" data-action="modal#close" class="cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"><%= t("ui.mappings.close") %></button>
       </div>
-      <%= form_with model: @mapping, url: event_mapping_path(@mapping), method: :patch, class: "grid gap-4 md:grid-cols-2" do |f| %>
-        <div>
-          <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.source") %></label>
-          <div class="select-chevron">
-            <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: t("common.states.all") }, class: select_class) %>
-          </div>
-        </div>
-        <div>
-          <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.match") %></label>
-          <div class="select-chevron wide-select">
-            <%= f.select(:match_type, EventMapping::MATCH_TYPES.values.map { |t| [t.humanize, t] }, {}, class: select_class) %>
-          </div>
-        </div>
-        <div class="md:col-span-2">
-          <%= f.label(:pattern, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
-          <%= f.text_field(:pattern, class: input_class) %>
-        </div>
-        <div class="md:col-span-2">
-          <%= f.label(:replacement, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
-          <%= f.text_field(:replacement, class: input_class) %>
-        </div>
-        <div class="md:col-span-2" data-controller="browse-calendars" data-browse-calendars-url-value="<%= discover_apple_calendars_path %>">
-          <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.destination") %></label>
-          <div class="flex items-center gap-2">
-            <%= f.text_field(:target_calendar_identifier, placeholder: t("ui.mappings.destination_hint"), class: "#{input_class} flex-1", data: { browse_calendars_target: "calendarField" }) %>
-            <button type="button" class="<%= secondary_button_class %> whitespace-nowrap text-xs" data-action="click->browse-calendars#browse"><%= t("ui.sources.browse_calendars") %></button>
-          </div>
-          <p data-browse-calendars-target="loading" class="mt-1 text-xs text-indigo-300 hidden"><%= t("ui.sources.browse_loading") %></p>
-          <p data-browse-calendars-target="error" class="mt-1 text-xs text-rose-300 hidden"></p>
-          <div data-browse-calendars-target="results" class="mt-2 hidden"></div>
-        </div>
-        <div class="md:col-span-2">
-          <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.destination_display_name") %></label>
-          <%= f.text_field(:target_calendar_display_name, placeholder: "e.g. Work Calendar", class: input_class) %>
-        </div>
-        <div class="md:col-span-2 flex items-center gap-4">
-          <label class="inline-flex items-center gap-2 text-xs text-slate-400">
-            <%= f.check_box(:case_sensitive) %>
-            <%= t("ui.mappings.case") %> sensitive
-          </label>
-          <label class="inline-flex items-center gap-2 text-xs text-slate-400">
-            <%= f.check_box(:active) %>
-            <%= t("ui.mappings.active") %>
-          </label>
-          <div class="ml-auto flex gap-2">
-            <%= f.submit(t("common.actions.save"), class: "cursor-pointer rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-400") %>
-            <button type="button" onclick="document.getElementById('modal').innerHTML=''" class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:border-slate-500"><%= t("common.actions.cancel") %></button>
-          </div>
-        </div>
-      <% end %>
+      <%= render "event_mappings/form", mapping: @mapping %>
     </div>
   </turbo-frame>
 <% else %>
-  <div class="min-h-screen bg-slate-950 text-slate-100">
-    <div class="mx-auto w-full max-w-3xl px-6 py-10">
-      <%= render "shared/breadcrumb", breadcrumbs: [[t("ui.mappings.header"), event_mappings_path], [t("ui.mappings.edit_mapping")]] %>
-      <h1 class="mb-6 text-2xl font-semibold"><%= t("ui.mappings.edit_mapping") %></h1>
-      <%= render partial: "event_mappings/form_row", locals: { mapping: @mapping } %>
+  <% content_for :title, t("ui.mappings.edit_mapping") %>
+  <%= render "shared/page_header",
+        nav_active: :mappings,
+        max_width: "max-w-3xl",
+        icon: content_tag(:svg, content_tag(:path, "", "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "1.5", d: "M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"), xmlns: "http://www.w3.org/2000/svg", class: "h-6 w-6", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor"),
+        title: t("ui.mappings.edit_mapping"),
+        subtitle: t("ui.mappings.subheader") do %>
+    <%= render "shared/breadcrumb", breadcrumbs: [[t("ui.mappings.header"), event_mappings_path], [t("ui.mappings.edit_mapping")]] %>
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+      <%= render "event_mappings/form", mapping: @mapping %>
     </div>
-  </div>
+  <% end %>
 <% end %>

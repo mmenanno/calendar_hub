@@ -47,7 +47,7 @@ class EventMappingsController < ApplicationController
               render_to_string(partial: "event_mappings/row", locals: { mapping: @mapping }),
             ),
             turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t("flashes.mappings.added") }),
-            turbo_stream.replace("new_mapping_form", render_to_string(partial: "event_mappings/new_form")),
+            turbo_stream.update("new_mapping_form_body", partial: "event_mappings/form", locals: { mapping: EventMapping.new }),
           ])
         end
         format.html { redirect_back_or_to(event_mappings_path, notice: t("flashes.mappings.added")) }
@@ -55,7 +55,10 @@ class EventMappingsController < ApplicationController
     else
       respond_to do |format|
         format.turbo_stream do
-          render(turbo_stream: turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: @mapping.errors.full_messages.to_sentence, variant: :error }), status: :unprocessable_content)
+          render(
+            turbo_stream: turbo_stream.update("new_mapping_form_body", partial: "event_mappings/form", locals: { mapping: @mapping }),
+            status: :unprocessable_content,
+          )
         end
         format.html { redirect_back_or_to(event_mappings_path, alert: @mapping.errors.full_messages.to_sentence) }
       end
@@ -76,7 +79,8 @@ class EventMappingsController < ApplicationController
         format.html { redirect_to(event_mappings_path) }
       end
     else
-      render(partial: "event_mappings/form_row", locals: { mapping: @mapping }, status: :unprocessable_content)
+      # Re-render the edit modal (or the full edit page) with field errors
+      render(:edit, formats: :html, status: :unprocessable_content)
     end
   end
 

@@ -1,36 +1,47 @@
-<%= form_with model: filter_rule, url: filter_rule.persisted? ? filter_rule_path(filter_rule) : filter_rules_path, method: filter_rule.persisted? ? :patch : :post, class: "grid gap-3", data: { controller: "filter-form" } do |f| %>
+<%= form_with model: filter_rule, url: filter_rule.persisted? ? filter_rule_path(filter_rule) : filter_rules_path, method: filter_rule.persisted? ? :patch : :post, namespace: (dom_id(filter_rule) if filter_rule.persisted?), class: "grid gap-3", data: { controller: "filter-form" } do |f| %>
+  <%= render "shared/form_errors", record: filter_rule %>
   <div>
-    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.source") %></label>
+    <%= f.label(:calendar_source_id, t("ui.mappings.source"), class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
     <div class="select-chevron">
-      <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: "All" }, class: select_class) %>
+      <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: t("common.states.all") }, class: select_class) %>
     </div>
+    <%= form_field_error(filter_rule, :calendar_source) %>
   </div>
   <div>
-    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.field") %></label>
+    <%= f.label(:field_name, t("ui.mappings.field"), class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
     <div class="select-chevron">
       <%= f.select(:field_name, FilterRule::FIELD_NAMES.values.map { |f| [f.humanize, f] }, {}, class: select_class) %>
     </div>
+    <%= form_field_error(filter_rule, :field_name) %>
   </div>
   <div>
-    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.match") %></label>
+    <%= f.label(:match_type, t("ui.mappings.match"), class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
     <div class="select-chevron wide-select">
       <%= f.select(:match_type, FilterRule::MATCH_TYPES.values.map { |t| [t.humanize, t] }, {}, class: select_class, data: { filter_form_target: "match", action: "change->filter-form#validate" }) %>
     </div>
+    <%= form_field_error(filter_rule, :match_type) %>
   </div>
   <div>
     <%= f.label(:pattern, class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
     <%= f.text_field(:pattern, required: true, placeholder: t("ui.mappings.sample_title"), class: input_class, data: { filter_form_target: "pattern", action: "input->filter-form#validate" }) %>
     <p data-filter-form-target="error" class="mt-1 hidden text-xs text-rose-300"><%= t("ui.mappings.invalid_regex") %></p>
+    <%= form_field_error(filter_rule, :pattern) %>
   </div>
   <label class="inline-flex items-center gap-2 text-xs text-slate-400">
     <%= f.check_box(:case_sensitive) %>
     <%= t("ui.mappings.case_sensitive") %>
   </label>
   <label class="inline-flex items-center gap-2 text-xs text-slate-400">
-    <%= f.check_box(:active, checked: filter_rule.new_record? || nil) %>
+    <%# New rules default to active (DB default); saved rules reflect their state %>
+    <%= f.check_box(:active) %>
     <%= t("ui.mappings.active") %>
   </label>
   <div class="flex justify-end gap-2">
+    <% if filter_rule.persisted? && turbo_frame_request? %>
+      <button type="button" data-action="modal#close" class="<%= secondary_button_class %>"><%= t("common.actions.cancel") %></button>
+    <% elsif filter_rule.persisted? %>
+      <%= link_to t("common.actions.cancel"), filter_rules_path, class: secondary_button_class %>
+    <% end %>
     <%= f.submit(filter_rule.persisted? ? t("common.actions.save") : t("ui.filter_rules.add_rule_button"), class: "cursor-pointer rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400") %>
   </div>
 <% end %>

@@ -1,5 +1,7 @@
-<tr id="<%= dom_id(filter_rule, :row) %>" class="text-slate-300" draggable="true" data-id="<%= filter_rule.id %>" data-sortable-target="item">
-  <td class="px-3 py-2 drag-handle text-slate-400">≡</td>
+<tr id="<%= dom_id(filter_rule, :row) %>" class="text-slate-300" draggable="true" data-id="<%= filter_rule.id %>" data-sortable-target="item" data-action="dragstart->sortable#dragStart dragover->sortable#dragOver drop->sortable#drop dragend->sortable#dragEnd">
+  <td class="px-3 py-2 text-slate-400">
+    <%= render "shared/sort_controls", label: filter_rule.pattern %>
+  </td>
   <td class="px-3 py-2"><%= filter_rule.calendar_source&.name || t("common.states.all") %></td>
   <td class="px-3 py-2">
     <span class="inline-flex items-center rounded-full bg-slate-700 px-2 py-1 text-xs font-medium text-slate-300"><%= filter_rule.field_name.humanize %></span>

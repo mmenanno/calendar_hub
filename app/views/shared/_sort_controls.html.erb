@@ -1,0 +1,10 @@
+<%# Drag handle plus keyboard-accessible move buttons for rows inside a `sortable` controller.
+    Usage: render "shared/sort_controls", label: record.pattern %>
+<% button_class = "cursor-pointer rounded px-1 text-xs leading-none text-slate-500 transition hover:bg-slate-800 hover:text-slate-200 focus-visible:outline focus-visible:outline-1 focus-visible:outline-indigo-400" %>
+<div class="inline-flex items-center gap-1 whitespace-nowrap">
+  <span class="drag-handle px-1" title="<%= t("ui.sortable.drag_hint") %>" aria-hidden="true">≡</span>
+  <span class="inline-flex flex-col">
+    <button type="button" class="<%= button_class %>" data-action="sortable#moveUp" aria-label="<%= t("ui.sortable.move_up", name: label) %>" title="<%= t("ui.sortable.move_up", name: label) %>">▲</button>
+    <button type="button" class="<%= button_class %>" data-action="sortable#moveDown" aria-label="<%= t("ui.sortable.move_down", name: label) %>" title="<%= t("ui.sortable.move_down", name: label) %>">▼</button>
+  </span>
+</div>

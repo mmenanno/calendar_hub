@@ -745,4 +745,37 @@ class EventMappingsControllerTest < ActionDispatch::IntegrationTest
       post reorder_event_mappings_path, params: { order: [mapping2.id, mapping1.id] }
     end
   end
+
+  test "failed update from the edit modal re-renders the modal frame with errors" do
+    mapping = event_mappings(:basic_mapping)
+
+    patch event_mapping_path(mapping),
+      params: { event_mapping: { pattern: "" } },
+      headers: { "Turbo-Frame" => "modal", "Accept" => "text/vnd.turbo-stream.html, text/html" }
+
+    assert_response(:unprocessable_entity)
+    assert_includes(response.body, '<turbo-frame id="modal">')
+    assert_includes(response.body, "Pattern can&#39;t be blank")
+  end
+
+  test "create with invalid params re-renders the form body with errors" do
+    post event_mappings_path,
+      params: { event_mapping: { match_type: "contains", pattern: "" } },
+      headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response(:unprocessable_entity)
+    assert_includes(response.body, '<turbo-stream action="update" target="new_mapping_form_body">')
+    assert_includes(response.body, "Pattern can&#39;t be blank")
+  end
+
+  test "index renders labelled fields and accessible reorder controls" do
+    get event_mappings_path
+
+    assert_response(:success)
+    assert_select("label[for=event_mapping_calendar_source_id]")
+    assert_select("label[for=event_mapping_match_type]")
+    assert_select("tbody#mappings-rows[data-sortable-target=container]")
+    assert_select("button[data-action='sortable#moveUp'][aria-label]")
+    assert_select("button[data-action='sortable#moveDown'][aria-label]")
+  end
 end
