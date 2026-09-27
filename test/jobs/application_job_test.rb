@@ -7,10 +7,16 @@ class ApplicationJobTest < ActiveJob::TestCase
     assert_operator(ApplicationJob, :<, ActiveJob::Base)
   end
 
-  test "has retry_on configuration for deadlocks" do
-    file_content = Rails.root.join("app/jobs/application_job.rb").read
+  class DeadlockingJob < ApplicationJob
+    def perform
+      raise ActiveRecord::Deadlocked, "deadlock"
+    end
+  end
 
-    assert_match(/retry_on ActiveRecord::Deadlocked/, file_content)
+  test "retries deadlocks by re-enqueuing the job" do
+    assert_enqueued_with(job: DeadlockingJob) do
+      DeadlockingJob.perform_now
+    end
   end
 
   test "has discard_on configuration for serialization errors" do

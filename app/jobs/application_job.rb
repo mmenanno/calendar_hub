@@ -4,8 +4,8 @@ class ApplicationJob < ActiveJob::Base
   include ErrorTrackable
 
   # Common retry configuration for transient errors
-  retry_on ActiveRecord::Deadlocked, wait: :exponentially_longer, attempts: 3
-  retry_on ActiveRecord::ConnectionTimeoutError, wait: :exponentially_longer, attempts: 3
+  retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: 3
+  retry_on ActiveRecord::ConnectionTimeoutError, wait: :polynomially_longer, attempts: 3
 
   # Discard jobs for deleted records or serialization issues
   discard_on ActiveJob::DeserializationError

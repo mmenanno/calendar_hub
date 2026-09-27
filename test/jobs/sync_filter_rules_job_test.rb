@@ -60,15 +60,13 @@ class SyncFilterRulesJobTest < ActiveJob::TestCase
     end
   end
 
-  test "retry_on is configured for SQLite3::BusyException" do
-    # Verify that the job class has retry_on configured for lock contention errors
-    # so the queue framework handles retries instead of sleeping in-process
-    rescue_handlers = SyncFilterRulesJob.rescue_handlers
-    busy_handler = rescue_handlers.find { |h| h[0] == "SQLite3::BusyException" }
-    timeout_handler = rescue_handlers.find { |h| h[0] == "ActiveRecord::StatementTimeout" }
+  test "re-enqueues itself when the database is locked" do
+    source = calendar_sources(:provider)
+    CalendarHub::Sync::FilterSyncService.any_instance.stubs(:sync_filter_rules).raises(ActiveRecord::StatementTimeout, "database is locked")
 
-    refute_nil(busy_handler, "SyncFilterRulesJob must have retry_on for SQLite3::BusyException")
-    refute_nil(timeout_handler, "SyncFilterRulesJob must have retry_on for ActiveRecord::StatementTimeout")
+    assert_enqueued_with(job: SyncFilterRulesJob) do
+      SyncFilterRulesJob.perform_now(calendar_source_id: source.id)
+    end
   end
 
   test "FilterSyncService does not contain sleep calls for lock contention" do
