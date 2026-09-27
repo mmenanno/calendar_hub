@@ -59,11 +59,6 @@ module CalendarHub
         Memo.mappers ||= {}
         Memo.mappers[source&.id || :global] ||= self.for(source)
       end
-
-      # Kept for CalendarHub::CacheWarmer, which pre-loads mappings.
-      def cached_active_mappings(source)
-        memoized(source).mappings
-      end
     end
 
     def initialize(mappings)

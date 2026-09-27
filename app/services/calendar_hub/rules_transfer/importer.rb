@@ -251,10 +251,10 @@ module CalendarHub
         mapping_sources = expand_sources(affected[:event_mappings])
         filter_sources = expand_sources(affected[:filter_rules])
 
-        clear_name_mapper_cache unless affected[:event_mappings].empty?
+        ::CalendarHub::NameMapper.reset_cache! unless affected[:event_mappings].empty?
 
         # Same mechanisms EventMapping / FilterRule callbacks use, once per source
-        mapping_sources.select(&:syncable?).each { |source| SyncCalendarJob.perform_later(source.id) }
+        mapping_sources.select(&:syncable?).each { |source| source.schedule_sync(force: true, full: false) }
         filter_sources.each { |source| SyncFilterRulesJob.perform_later(calendar_source_id: source.id) }
       end
 
@@ -264,12 +264,6 @@ module CalendarHub
         return CalendarSource.active.to_a if source_ids.include?(nil)
 
         CalendarSource.where(id: source_ids.to_a).to_a
-      end
-
-      def clear_name_mapper_cache
-        ["global", *CalendarSource.unscoped.ids].each do |key|
-          Rails.cache.delete("name_mapper/active_mappings/#{key}")
-        end
       end
     end
   end
