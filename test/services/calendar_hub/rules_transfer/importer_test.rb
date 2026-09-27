@@ -355,11 +355,11 @@ module CalendarHub
       test "enqueues one calendar sync per active source for global mappings" do
         rows = Array.new(3) { |i| mapping_row(pattern: "p#{i}") }
 
+        expected = sources_without_active_sync.map(&:id)
         clear_enqueued_jobs
         Importer.new(document(event_mappings: rows)).apply!
 
         sync_jobs = enqueued_jobs.select { |job| job["job_class"] == "SyncCalendarJob" }
-        expected = CalendarSource.active.select(&:syncable?).map(&:id)
 
         assert_equal(expected.sort, sync_jobs.map { |job| job["arguments"].first }.sort)
       end
@@ -385,11 +385,24 @@ module CalendarHub
         assert_equal(CalendarSource.active.ids.sort, source_ids.sort)
       end
 
-      test "clears the name mapper cache after importing mappings" do
-        Rails.cache.expects(:delete).with("name_mapper/active_mappings/global").at_least_once
-        Rails.cache.stubs(:delete).with(Not(equals("name_mapper/active_mappings/global")))
+      test "resets the name mapper memo after importing mappings" do
+        ::CalendarHub::NameMapper.expects(:reset_cache!).at_least_once
 
         Importer.new(document(event_mappings: [mapping_row])).apply!
+      end
+
+      test "records a sync attempt for each resynced source" do
+        assert_difference(-> { SyncAttempt.count }, sources_without_active_sync.size) do
+          Importer.new(document(event_mappings: [mapping_row(pattern: "attempted")])).apply!
+        end
+      end
+
+      private
+
+      # schedule_sync skips sources that already have a queued or running attempt
+      def sources_without_active_sync
+        busy = SyncAttempt.where(status: ["queued", "running"]).select(:calendar_source_id)
+        CalendarSource.active.where.not(id: busy).select(&:syncable?)
       end
     end
   end

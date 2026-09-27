@@ -46,15 +46,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_030100) do
     t.json "data", default: {}, null: false
     t.text "description"
     t.datetime "ends_at", null: false
+    t.boolean "excluded_by_rule", default: false, null: false
     t.string "external_id", null: false
     t.string "fingerprint"
     t.string "last_synced_to_calendar"
     t.string "location"
+    t.string "manual_sync_override"
     t.datetime "source_updated_at"
     t.datetime "starts_at", null: false
     t.string "status", default: "confirmed", null: false
     t.boolean "sync_exempt", default: false, null: false
     t.datetime "synced_at"
+    t.string "synced_fingerprint"
     t.string "time_zone", default: "UTC", null: false
     t.string "title", null: false
     t.datetime "updated_at", null: false
@@ -263,6 +266,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_030100) do
     t.integer "deletes", default: 0, null: false
     t.integer "errors_count", default: 0, null: false
     t.datetime "finished_at"
+    t.string "job_id"
     t.text "message"
     t.datetime "started_at"
     t.string "status", default: "queued", null: false

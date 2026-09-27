@@ -232,8 +232,7 @@ module CalendarHub
 
       assert_equal("Worldwide", result1)
 
-      # Test caching is working - the cached_active_mappings method should have populated the cache
-      # Let's verify the cache was populated by checking if the method was called
+      # A second lookup is served from the per-request memo
       result2 = ::CalendarHub::NameMapper.apply("Global Meeting", source: nil)
 
       assert_equal("Worldwide", result2)
