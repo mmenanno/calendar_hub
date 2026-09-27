@@ -25,8 +25,8 @@ class CleanupStaleSyncAttemptsJob < ApplicationJob
 
         Rails.logger.warn(
           "[CleanupStaleSyncAttemptsJob] Marked stale attempt #{attempt.id} " \
-            "for source #{attempt.calendar_source_id} as failed (created at #{attempt.created_at})" \
-            "#{" - Reason: #{failure_reason}" if failure_reason}",
+          "for source #{attempt.calendar_source_id} as failed (last progress at #{attempt.updated_at})" \
+          "#{" - Reason: #{failure_reason}" if failure_reason}",
         )
       end
 
@@ -43,18 +43,18 @@ class CleanupStaleSyncAttemptsJob < ApplicationJob
   def find_failed_job(attempt)
     return unless defined?(SolidQueue::Job)
 
-    SolidQueue::Job.find_by(
-      class_name: "SyncCalendarJob",
-      active_job_id: attempt.id.to_s,
-    ) || SolidQueue::Job.where(
-      class_name: "SyncCalendarJob",
-    ).where(
-      "json_extract(arguments, '$.arguments[0].attempt_id') = ? OR " \
-      "json_extract(arguments, '$.arguments[1].attempt_id') = ? OR " \
-      "json_extract(arguments, '$.arguments[1]._aj_ruby2_keywords[0]') = 'attempt_id' AND " \
-      "json_extract(arguments, '$.arguments[1].attempt_id') = ?",
-      attempt.id, attempt.id, attempt.id,
-    ).first
+    (attempt.job_id.present? && SolidQueue::Job.find_by(class_name: "SyncCalendarJob", active_job_id: attempt.job_id)) ||
+      SolidQueue::Job.where(
+        class_name: "SyncCalendarJob",
+      ).where(
+        "json_extract(arguments, '$.arguments[0].attempt_id') = ? OR " \
+        "json_extract(arguments, '$.arguments[1].attempt_id') = ? OR " \
+        "json_extract(arguments, '$.arguments[1]._aj_ruby2_keywords[0]') = 'attempt_id' AND " \
+        "json_extract(arguments, '$.arguments[1].attempt_id') = ?",
+        attempt.id,
+        attempt.id,
+        attempt.id,
+      ).first
   end
 
   def extract_failure_reason(job)
@@ -82,8 +82,8 @@ class CleanupStaleSyncAttemptsJob < ApplicationJob
     else
       "Job failed in queue"
     end
-  rescue => e
-    Rails.logger.debug { "[CleanupStaleSyncAttemptsJob] Failed to extract failure reason: #{e.message}" }
+  rescue StandardError => exception
+    Rails.logger.debug { "[CleanupStaleSyncAttemptsJob] Failed to extract failure reason: #{exception.message}" }
     nil
   end
 end

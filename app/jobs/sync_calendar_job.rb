@@ -3,76 +3,77 @@
 class SyncCalendarJob < ApplicationJob
   include SyncAttemptManageable
 
-  retry_on CalendarHub::Ingestion::Error, wait: :polynomially_longer, attempts: 5
+  queue_as :sync
 
-  # Retry on SQLite lock errors with exponential backoff
-  # These can occur when multiple jobs try to write simultaneously
-  retry_on ActiveRecord::StatementTimeout, wait: :polynomially_longer, attempts: 5
-  retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: 3
+  MAX_ATTEMPTS = 5
+  # Transient failures: the job is retried and the attempt stays active, so
+  # the scheduler does not start a parallel sync while a retry is pending.
+  # SQLite "database is locked" surfaces as ActiveRecord::StatementTimeout.
+  RETRYABLE_ERRORS = [
+    CalendarHub::Ingestion::Error,
+    ActiveRecord::StatementTimeout,
+    ActiveRecord::Deadlocked,
+    ActiveRecord::ConnectionTimeoutError,
+  ].freeze
 
-  # Rescue and conditionally retry SQLite busy exceptions
-  rescue_from ActiveRecord::StatementInvalid do |exception|
-    raise unless exception.message.include?("database is locked") || exception.message.include?("BusyException")
+  # At most one sync per source runs at a time; a second job for the same
+  # source waits until the first finishes.
+  limits_concurrency to: 1, key: ->(calendar_source_id, *) { calendar_source_id }, duration: 2.hours
 
-    # Log the retry attempt
-    logger.warn("[SyncCalendarJob] SQLite lock detected, will retry (attempt #{executions}/5)")
-
-    # Retry with exponential backoff for SQLite lock errors (1s, 4s, 9s, 16s, 25s)
-    if executions < 5
-      retry_job(wait: executions**2, queue: queue_name, priority: priority)
-    else
-      # Max retries exhausted, let it fail
-      logger.error("[SyncCalendarJob] Max retries exhausted for SQLite lock")
-      raise
-    end
-
-    # Re-raise other StatementInvalid errors
+  retry_on(*RETRYABLE_ERRORS, wait: :polynomially_longer, attempts: MAX_ATTEMPTS) do |job, error|
+    job.send(:fail_sync!, error)
+    raise error
   end
 
   def perform(calendar_source_id, **options)
-    source = CalendarSource.find(calendar_source_id)
-    sync_options = build_sync_options(options)
-    attempt = nil
+    @source = CalendarSource.find(calendar_source_id)
 
     with_error_tracking(context: "sync calendar_source_id=#{calendar_source_id}") do
-      # No pessimistic locking needed - schedule_sync already checks for running attempts
-      # This prevents blocking other database writes during long-running syncs
-      attempt = find_or_create_sync_attempt(source, sync_options[:attempt_id])
-      execute_sync(source, attempt, sync_options)
-      attempt.finish(status: :success)
+      @attempt = find_or_create_sync_attempt(@source, options[:attempt_id])
+      if @attempt.nil?
+        Rails.logger.info("[SyncCalendarJob] Another sync is active for source=#{calendar_source_id}; skipping")
+        return
+      end
 
-      # Track consecutive failure count for health indicators
-      if attempt.errors_count.to_i > 0
-        source.record_sync_failure!
+      CalendarHub::Sync::SyncService.new(source: @source, observer: @attempt, force: options[:force] == true).call
+      @attempt.finish(status: :success) unless @attempt.finished_at
+
+      # A sync that completed with per-event errors still counts as a failure
+      # for health indicators (but does not trigger backoff).
+      if @attempt.errors_count.to_i.positive?
+        @source.record_sync_failure!
       else
-        source.record_sync_success!
+        @source.record_sync_success!
       end
     end
-  rescue ActiveRecord::StatementTimeout, ActiveRecord::Deadlocked, ActiveRecord::StatementInvalid => exception
-    # These will be retried automatically, but update attempt if we have one
-    if attempt && !attempt.finished_at
-      retry_msg = if exception.is_a?(ActiveRecord::StatementInvalid) &&
-          (exception.message.include?("database is locked") || exception.message.include?("BusyException"))
-        "SQLite lock, will retry"
-      else
-        "Lock timeout, will retry"
-      end
-      attempt.update(message: "#{retry_msg}: #{exception.message.truncate(200)}")
-    end
+  rescue *RETRYABLE_ERRORS => exception
+    # retry_on re-enqueues the job (or calls fail_sync! once attempts are
+    # exhausted); keep the attempt active meanwhile.
+    @attempt.note!("Attempt #{executions}/#{MAX_ATTEMPTS} failed, will retry: #{exception.message.truncate(300)}") if @attempt && !@attempt.finished_at && executions < MAX_ATTEMPTS
     raise
   rescue StandardError => exception
-    attempt&.finish(status: :failed, message: exception.message) unless attempt&.finished_at
-    source&.record_sync_failure!
+    fail_sync!(exception)
     raise
   end
 
   private
 
-  def build_sync_options(options)
-    { attempt_id: options[:attempt_id] }
-  end
+  # Records the final failure of this sync exactly once (not per retry).
+  def fail_sync!(error)
+    return if @failure_recorded
 
-  def execute_sync(source, attempt, _options)
-    CalendarHub::Sync::SyncService.new(source: source, observer: attempt).call
+    @failure_recorded = true
+    @attempt.finish(status: :failed, message: error.message.truncate(500)) if @attempt && !@attempt.finished_at
+    @source&.record_sync_failure!
+    ActiveSupport::Notifications.instrument(
+      "calendar_hub.sync",
+      source_id: @source&.id,
+      failed: true,
+      fetched: 0,
+      upserts: 0,
+      deletes: 0,
+      errors: 1,
+      duration_ms: 0,
+    )
   end
 end

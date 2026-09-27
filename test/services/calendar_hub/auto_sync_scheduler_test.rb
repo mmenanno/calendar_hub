@@ -132,7 +132,7 @@ module CalendarHub
       @source2.update!(last_synced_at: 1.hour.ago)
 
       query_count = 0
-      counter = ->(_name, _start, _finish, _id, payload) {
+      counter = lambda { |_name, _start, _finish, _id, payload|
         query_count += 1 unless payload[:name] == "SCHEMA" || payload[:sql]&.match?(/PRAGMA/i)
       }
 
@@ -142,8 +142,12 @@ module CalendarHub
       end
 
       # Should be a fixed number of queries (1 query with subquery), not N+1
-      assert_operator(query_count, :<=, 2,
-        "Expected at most 2 queries, got #{query_count} (should use subquery, not per-source EXISTS)")
+      assert_operator(
+        query_count,
+        :<=,
+        2,
+        "Expected at most 2 queries, got #{query_count} (should use subquery, not per-source EXISTS)",
+      )
     end
 
     test "excludes sources with queued sync attempts via subquery" do
@@ -158,11 +162,11 @@ module CalendarHub
       assert_equal(@source2, due_sources.first)
     end
 
-    test "includes sources whose sync attempts are older than 2 hours" do
+    test "includes sources whose sync attempts made no progress for 2 hours" do
       @source1.update!(last_synced_at: 1.hour.ago)
       @source2.update!(last_synced_at: 1.hour.ago)
       # Create a stale queued attempt older than 2 hours
-      @source1.sync_attempts.create!(status: :queued, created_at: 3.hours.ago)
+      @source1.sync_attempts.create!(status: :queued, created_at: 3.hours.ago, updated_at: 3.hours.ago)
 
       scheduler = ::CalendarHub::AutoSyncScheduler.new
       due_sources = scheduler.find_sources_due_for_sync

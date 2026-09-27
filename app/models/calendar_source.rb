@@ -61,21 +61,32 @@ class CalendarSource < ApplicationRecord
     super.presence || AppSetting.instance.default_sync_frequency_minutes
   end
 
-  def schedule_sync(force: false, trigger: "manual")
+  # Upper bound for the retry delay of a failing source.
+  MAX_SYNC_BACKOFF = 24.hours
+  BACKOFF_EXPONENT_CAP = 5
+
+  # force: ignore the sync window.
+  # full:  fetch the feed unconditionally and re-push every event (the
+  #        "Force Sync" button). Defaults to force; callers that only need
+  #        pending changes pushed (mapping/filter edits) pass full: false.
+  # trigger: "manual" (user action) or "auto" (scheduler), shown on the jobs page.
+  def schedule_sync(force: false, full: force, trigger: "manual")
     return unless syncable?
     return unless force || within_sync_window?
 
-    # Mark stale active attempts as failed so they don't block new syncs
-    sync_attempts
-      .where(status: ["queued", "running"])
-      .where("created_at < ?", 2.hours.ago)
+    # Mark stale active attempts (no progress heartbeat for 2h) as failed so
+    # they don't block new syncs.
+    sync_attempts.stale
       .update_all(status: "failed", finished_at: Time.current, message: "Marked failed: stale attempt")
 
     # Rely on the DB unique partial index (idx_unique_active_sync_attempt_per_source)
     # to prevent duplicate active attempts. If another thread already created one,
     # the insert will raise RecordNotUnique and we safely return nil.
     attempt = SyncAttempt.create!(calendar_source: self, status: :queued, trigger: trigger)
-    SyncCalendarJob.perform_later(id, attempt_id: attempt.id)
+    job_options = { attempt_id: attempt.id }
+    job_options[:force] = true if full
+    job = SyncCalendarJob.perform_later(id, **job_options)
+    attempt.update_column(:job_id, job.job_id) if job.respond_to?(:job_id)
     attempt
   rescue ActiveRecord::RecordNotUnique
     # Another worker already has an active sync for this source -- that's fine.
@@ -100,23 +111,43 @@ class CalendarSource < ApplicationRecord
 
   def sync_due?(now: Time.current)
     return false unless auto_syncable?
-    return true if last_synced_at.nil?
 
-    last_synced_at <= now - sync_frequency_minutes.minutes
+    due_at = next_sync_due_at
+    due_at.nil? || due_at <= now
+  end
+
+  # When the next automatic sync is due. A source whose last sync failed
+  # backs off exponentially (frequency * 2^failures, capped at 24h) from the
+  # last attempt instead of being refetched every scheduler tick.
+  def next_sync_due_at
+    if sync_backing_off?
+      reference = last_sync_attempt_at || last_synced_at
+      reference && (reference + sync_backoff_interval)
+    else
+      last_synced_at&.+(sync_frequency_minutes.minutes)
+    end
+  end
+
+  def sync_backoff_interval
+    exponent = [consecutive_sync_failures.to_i, BACKOFF_EXPONENT_CAP].min
+    [sync_frequency_minutes.minutes * (2**exponent), MAX_SYNC_BACKOFF].min
   end
 
   def next_auto_sync_time(now: Time.current)
     return unless auto_syncable?
 
-    base_time = last_synced_at&.+(sync_frequency_minutes.minutes) || now
+    base_time = next_sync_due_at || now
 
     return now if within_sync_window?(now: now) && base_time <= now
 
     next_sync_time(now: [base_time, now].max)
   end
 
+  # Configuration that affects how feed data is interpreted or pushed. When it
+  # differs from last_change_hash the next sync refetches the feed fully.
   def generate_change_hash
-    mappings_data = event_mappings.active.order(:position).pluck(:pattern, :replacement, :match_type, :case_sensitive)
+    mappings_data = EventMapping.active.where(calendar_source_id: [nil, id]).reorder(:calendar_source_id, :position, :id)
+      .pluck(:calendar_source_id, :pattern, :replacement, :match_type, :case_sensitive, :target_calendar_identifier)
     settings_data = [sync_frequency_minutes, sync_window_start_hour, sync_window_end_hour, time_zone]
     Digest::SHA256.hexdigest([mappings_data, settings_data].inspect)
   end
@@ -141,8 +172,11 @@ class CalendarSource < ApplicationRecord
     update!(attributes)
   end
 
+  # Archiving also removes the source's events from Apple Calendar (in the
+  # background); the local rows are kept so the source can be restored.
   def soft_delete!
     update!(active: false, deleted_at: Time.current)
+    RemoveSourceEventsFromAppleJob.perform_later(id)
   end
 
   def within_sync_window?(now: Time.current)
@@ -191,6 +225,12 @@ class CalendarSource < ApplicationRecord
     update!(consecutive_sync_failures: 0)
   end
 
+  # Backoff applies when the latest attempt failed outright; a sync that
+  # completed with a few per-event errors keeps the normal cadence.
+  def sync_backing_off?
+    consecutive_sync_failures.to_i.positive? && latest_finished_sync_attempt&.failed?
+  end
+
   def record_sync_failure!
     self.consecutive_sync_failures ||= 0
     increment!(:consecutive_sync_failures)
@@ -222,6 +262,14 @@ class CalendarSource < ApplicationRecord
   end
 
   private
+
+  def latest_finished_sync_attempt
+    sync_attempts.where.not(finished_at: nil).reorder(finished_at: :desc).first
+  end
+
+  def last_sync_attempt_at
+    latest_finished_sync_attempt&.finished_at
+  end
 
   def requires_ingestion_url?
     true

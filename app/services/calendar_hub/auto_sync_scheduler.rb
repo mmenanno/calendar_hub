@@ -14,9 +14,11 @@ module CalendarHub
     def find_sources_due_for_sync
       # Use a subquery to exclude sources with active sync attempts in a single
       # SQL statement, avoiding the N+1 per-source EXISTS query (BUG-015).
+      # Attempts without a progress heartbeat for STALE_AFTER are considered
+      # dead and do not block scheduling.
       active_attempt_source_ids = SyncAttempt
-        .where(status: %w[queued running])
-        .where("created_at >= ?", 2.hours.ago)
+        .where(status: ["queued", "running"])
+        .where(updated_at: (Time.current - SyncAttempt::STALE_AFTER)..)
         .select(:calendar_source_id)
 
       CalendarSource.active.auto_sync_enabled

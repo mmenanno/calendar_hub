@@ -5,7 +5,7 @@ require "test_helper"
 class SyncCalendarJobTest < ActiveJob::TestCase
   test "invokes sync service" do
     source = calendar_sources(:provider)
-    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: kind_of(SyncAttempt)).returns(mock(call: true))
+    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: kind_of(SyncAttempt), force: false).returns(mock(call: true))
 
     SyncCalendarJob.perform_now(source.id)
   end
@@ -14,7 +14,7 @@ class SyncCalendarJobTest < ActiveJob::TestCase
     source = calendar_sources(:provider)
     attempt = SyncAttempt.create!(calendar_source: source, status: :queued)
 
-    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: attempt).returns(mock(call: true))
+    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: attempt, force: false).returns(mock(call: true))
 
     SyncCalendarJob.perform_now(source.id, attempt_id: attempt.id)
 
@@ -40,7 +40,7 @@ class SyncCalendarJobTest < ActiveJob::TestCase
 
     service_mock = mock
     service_mock.expects(:call).raises(StandardError.new(error_message))
-    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: kind_of(SyncAttempt)).returns(service_mock)
+    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: kind_of(SyncAttempt), force: false).returns(service_mock)
 
     # Create the job and run it manually to avoid transaction issues
     job = SyncCalendarJob.new(source.id)
@@ -62,7 +62,7 @@ class SyncCalendarJobTest < ActiveJob::TestCase
 
   test "creates new attempt when attempt_id is not provided" do
     source = calendar_sources(:provider)
-    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: kind_of(SyncAttempt)).returns(mock(call: true))
+    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: kind_of(SyncAttempt), force: false).returns(mock(call: true))
 
     # Don't pass attempt_id (defaults to nil) - should create new attempt
     SyncCalendarJob.perform_now(source.id)
@@ -71,20 +71,83 @@ class SyncCalendarJobTest < ActiveJob::TestCase
     assert(source.sync_attempts.exists?(status: "success"))
   end
 
-  test "reuses existing active attempt when concurrent creation hits the unique constraint" do
+  test "skips instead of running a second sync when another job owns the active attempt" do
     source = calendar_sources(:provider)
-    existing_attempt = source.sync_attempts.create!(status: :queued)
+    existing_attempt = source.sync_attempts.create!(status: :running, job_id: "another-job")
 
-    # Simulate another worker winning the race to create the active attempt
-    # for this source (enforced by idx_unique_active_sync_attempt_per_source).
-    SyncAttempt.expects(:create!).with(calendar_source: source, status: :queued)
-      .raises(ActiveRecord::RecordNotUnique.new("UNIQUE constraint failed"))
-
-    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: existing_attempt).returns(mock(call: true))
+    CalendarHub::Sync::SyncService.expects(:new).never
 
     SyncCalendarJob.perform_now(source.id)
 
-    assert_equal("success", existing_attempt.reload.status)
+    assert_equal("running", existing_attempt.reload.status)
+  end
+
+  test "skips when the given attempt belongs to another job" do
+    source = calendar_sources(:provider)
+    attempt = source.sync_attempts.create!(status: :queued, job_id: "another-job")
+
+    CalendarHub::Sync::SyncService.expects(:new).never
+
+    SyncCalendarJob.perform_now(source.id, attempt_id: attempt.id)
+  end
+
+  test "a retried execution keeps its own attempt" do
+    source = calendar_sources(:provider)
+    job = SyncCalendarJob.new(source.id)
+    attempt = source.sync_attempts.create!(status: :running, job_id: job.job_id)
+    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: attempt, force: false).returns(mock(call: true))
+
+    job.perform_now
+
+    assert_equal("success", attempt.reload.status)
+  end
+
+  test "passes force to the sync service" do
+    source = calendar_sources(:provider)
+    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: kind_of(SyncAttempt), force: true).returns(mock(call: true))
+
+    SyncCalendarJob.perform_now(source.id, force: true)
+  end
+
+  test "keeps the attempt active and does not count a failure while a retry is pending" do
+    source = calendar_sources(:provider)
+    source.update!(consecutive_sync_failures: 0)
+    CalendarHub::Sync::SyncService.any_instance.stubs(:call).raises(CalendarHub::Ingestion::Error, "HTTP 503")
+
+    assert_enqueued_with(job: SyncCalendarJob) do
+      SyncCalendarJob.perform_now(source.id)
+    end
+
+    attempt = source.sync_attempts.order(:created_at).last
+
+    assert_nil(attempt.finished_at)
+    assert_match(/will retry/, attempt.message)
+    assert_equal(0, source.reload.consecutive_sync_failures)
+  end
+
+  test "records one failure once retries are exhausted" do
+    source = calendar_sources(:provider)
+    source.update!(consecutive_sync_failures: 0)
+    CalendarHub::Sync::SyncService.any_instance.stubs(:call).raises(CalendarHub::Ingestion::Error, "HTTP 503")
+    job = SyncCalendarJob.new(source.id)
+    job.executions = SyncCalendarJob::MAX_ATTEMPTS - 1
+    job.exception_executions = { SyncCalendarJob::RETRYABLE_ERRORS.to_s => SyncCalendarJob::MAX_ATTEMPTS - 1 }
+
+    assert_raises(CalendarHub::Ingestion::Error) { job.perform_now }
+
+    attempt = source.sync_attempts.order(:created_at).last
+
+    assert_predicate(attempt, :failed?)
+    assert_equal("HTTP 503", attempt.message)
+    assert_equal(1, source.reload.consecutive_sync_failures)
+  end
+
+  test "runs on the sync queue with one sync per source" do
+    job = SyncCalendarJob.new(42, attempt_id: 7)
+
+    assert_equal("sync", job.queue_name)
+    assert_equal(1, SyncCalendarJob.concurrency_limit)
+    assert_includes(job.concurrency_key, "42")
   end
 
   # FEAT-006: Sync failure tracking
