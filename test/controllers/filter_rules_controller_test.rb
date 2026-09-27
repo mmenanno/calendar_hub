@@ -214,8 +214,10 @@ class FilterRulesControllerTest < ActionDispatch::IntegrationTest
       },
       as: :turbo_stream
 
-    assert_response(:success)
-    assert_includes(response.body, "turbo-stream")
+    assert_response(:unprocessable_entity)
+    # Updates the form body inside the collapsible wrapper, showing field errors
+    assert_includes(response.body, '<turbo-stream action="update" target="new_filter_rule_form_body">')
+    assert_includes(response.body, "Pattern can&#39;t be blank")
   end
 
   test "should handle create filter rule validation errors with html" do
@@ -258,8 +260,61 @@ class FilterRulesControllerTest < ActionDispatch::IntegrationTest
       },
       as: :turbo_stream
 
-    assert_response(:success)
-    assert_includes(response.body, "turbo-stream")
+    assert_response(:unprocessable_entity)
+    assert_includes(response.body, "Pattern can&#39;t be blank")
+  end
+
+  test "failed update from the edit modal re-renders the modal frame with errors" do
+    patch filter_rule_url(@filter_rule),
+      params: { filter_rule: { pattern: "" } },
+      headers: { "Turbo-Frame" => "modal", "Accept" => "text/vnd.turbo-stream.html, text/html" }
+
+    assert_response(:unprocessable_entity)
+    assert_includes(response.body, '<turbo-frame id="modal">')
+    assert_includes(response.body, "Pattern can&#39;t be blank")
+    assert_includes(response.body, %(action="#{filter_rule_path(@filter_rule)}"))
+  end
+
+  test "edit form reflects the saved active state" do
+    @filter_rule.update!(active: true)
+    get edit_filter_rule_url(@filter_rule), headers: { "Turbo-Frame" => "modal" }
+
+    assert_select("input[type=checkbox][name='filter_rule[active]'][checked]")
+
+    @filter_rule.update!(active: false)
+    get edit_filter_rule_url(@filter_rule), headers: { "Turbo-Frame" => "modal" }
+
+    assert_select("input[type=checkbox][name='filter_rule[active]']:not([checked])")
+  end
+
+  test "saving the edit form without changes keeps the rule active" do
+    @filter_rule.update!(active: true)
+    get edit_filter_rule_url(@filter_rule), headers: { "Turbo-Frame" => "modal" }
+    checked = css_select("input[type=checkbox][name='filter_rule[active]']").first["checked"].present?
+
+    patch filter_rule_url(@filter_rule),
+      params: { filter_rule: { pattern: @filter_rule.pattern, active: checked ? "1" : "0" } },
+      as: :turbo_stream
+
+    assert_predicate(@filter_rule.reload, :active?)
+  end
+
+  test "index always renders the list container and empty state" do
+    FilterRule.delete_all
+    get filter_rules_url
+
+    assert_select("tbody#filter_rules_list[data-sortable-target=container]")
+    assert_select("[data-sortable-list] [data-sortable-empty]")
+  end
+
+  test "create prepends into the list and resets the form body" do
+    post filter_rules_url,
+      params: { filter_rule: { pattern: "Brand new", field_name: "title", match_type: "contains" } },
+      as: :turbo_stream
+
+    assert_includes(response.body, '<turbo-stream action="prepend" target="filter_rules_list">')
+    assert_includes(response.body, '<turbo-stream action="update" target="new_filter_rule_form_body">')
+    assert_includes(response.body, 'data-action="sortable#moveUp"')
   end
 
   test "should handle update filter rule validation errors with html" do

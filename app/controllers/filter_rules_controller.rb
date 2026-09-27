@@ -54,7 +54,7 @@ class FilterRulesController < ApplicationController
         format.turbo_stream do
           render(turbo_stream: [
             turbo_stream.prepend("filter_rules_list", partial: "filter_rules/row", locals: { filter_rule: @filter_rule }),
-            turbo_stream.replace("new_filter_rule_form", partial: "filter_rules/form", locals: { filter_rule: FilterRule.new }),
+            turbo_stream.update("new_filter_rule_form_body", partial: "filter_rules/form", locals: { filter_rule: FilterRule.new }),
             turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: t("flashes.filter_rules.created_with_sync") }),
           ])
         end
@@ -63,11 +63,14 @@ class FilterRulesController < ApplicationController
     else
       respond_to do |format|
         format.turbo_stream do
-          render(turbo_stream: turbo_stream.replace(
-            "new_filter_rule_form",
-            partial: "filter_rules/form",
-            locals: { filter_rule: @filter_rule },
-          ))
+          render(
+            turbo_stream: turbo_stream.update(
+              "new_filter_rule_form_body",
+              partial: "filter_rules/form",
+              locals: { filter_rule: @filter_rule },
+            ),
+            status: :unprocessable_content,
+          )
         end
         format.html { render(:index, status: :unprocessable_content) }
       end
@@ -97,16 +100,8 @@ class FilterRulesController < ApplicationController
         format.html { redirect_to(filter_rules_path, notice: t("flashes.filter_rules.updated")) }
       end
     else
-      respond_to do |format|
-        format.turbo_stream do
-          render(turbo_stream: turbo_stream.replace(
-            view_context.dom_id(@filter_rule),
-            partial: "filter_rules/form_row",
-            locals: { filter_rule: @filter_rule },
-          ))
-        end
-        format.html { render(:edit, status: :unprocessable_content) }
-      end
+      # Re-render the edit modal (or the full edit page) with field errors
+      render(:edit, formats: :html, status: :unprocessable_content)
     end
   end
 

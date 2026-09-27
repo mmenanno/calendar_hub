@@ -1,5 +1,7 @@
-  <tr id="<%= dom_id(mapping, :row) %>" class="text-slate-300" draggable="true" data-id="<%= mapping.id %>" data-sortable-target="item">
-    <td class="px-3 py-2 drag-handle text-slate-400">≡</td>
+  <tr id="<%= dom_id(mapping, :row) %>" class="text-slate-300" draggable="true" data-id="<%= mapping.id %>" data-sortable-target="item" data-action="dragstart->sortable#dragStart dragover->sortable#dragOver drop->sortable#drop dragend->sortable#dragEnd">
+    <td class="px-3 py-2 text-slate-400">
+      <%= render "shared/sort_controls", label: mapping.pattern %>
+    </td>
     <td class="px-3 py-2"><%= mapping.calendar_source&.name || t("common.states.all") %></td>
     <td class="px-3 py-2"><%= mapping.match_type.humanize %></td>
     <td class="px-3 py-2 font-mono"><%= mapping.pattern %></td>

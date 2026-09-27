@@ -12,16 +12,18 @@
             key: "add-filter-rule",
             title: t("ui.filter_rules.add_rule"),
             default_open: (@filter_rules || FilterRule.all).blank? do %>
-        <%= render "filter_rules/form", filter_rule: FilterRule.new %>
+        <div id="new_filter_rule_form_body">
+          <%= render "filter_rules/form", filter_rule: FilterRule.new %>
+        </div>
       <% end %>
 
       <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
         <h2 class="mb-2 text-lg font-semibold"><%= t("ui.filter_rules.test_rules") %></h2>
         <%= form_with url: test_filter_rules_path, method: :post, class: "grid gap-3 md:grid-cols-4", data: { controller: "filter-test", filter_test_url_value: test_filter_rules_path, action: "input->filter-test#queue change->filter-test#queue" } do |f| %>
           <div>
-            <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400"><%= t("ui.mappings.source") %></label>
+            <%= f.label(:calendar_source_id, t("ui.mappings.source"), class: "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400") %>
             <div class="select-chevron">
-              <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: "All" }, class: select_class, data: { filter_test_target: "source" }) %>
+              <%= f.collection_select(:calendar_source_id, CalendarSource.order(:name), :id, :name, { include_blank: t("common.states.all") }, class: select_class, data: { filter_test_target: "source" }) %>
             </div>
           </div>
           <div>
@@ -48,8 +50,10 @@
           </p>
         </div>
 
-        <% if (@filter_rules || []).any? %>
-          <div class="overflow-x-auto">
+        <%# The list container is always rendered so turbo streams can add the first rule;
+            CSS (data-sortable-list) swaps the empty state and table based on row presence. %>
+        <div data-sortable-list data-controller="sortable" data-sortable-url-value="<%= reorder_filter_rules_path %>" data-sortable-error-message-value="<%= t("ui.sortable.save_failed") %>">
+          <div class="overflow-x-auto" data-sortable-table>
             <table class="w-full text-sm">
               <thead class="border-b border-slate-700 text-left">
                 <tr class="text-slate-400">
@@ -63,22 +67,21 @@
                   <th class="px-3 py-2 pr-6 text-right"></th>
                 </tr>
               </thead>
-              <tbody id="filter_rules_list" class="divide-y divide-slate-800 text-slate-300" data-controller="sortable" data-sortable-url-value="<%= reorder_filter_rules_path %>" data-sortable-handle-value=".drag-handle">
+              <tbody id="filter_rules_list" class="divide-y divide-slate-800 text-slate-300" data-sortable-target="container">
                 <% (@filter_rules || []).each do |filter_rule| %>
                   <%= render "filter_rules/row", filter_rule: filter_rule %>
                 <% end %>
               </tbody>
             </table>
           </div>
-        <% else %>
-          <div class="py-8 text-center text-slate-400">
+          <div class="py-8 text-center text-slate-400" data-sortable-empty>
             <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto mb-2 h-8 w-8 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
             </svg>
             <p class="mb-1"><%= t("ui.filter_rules.no_rules") %></p>
             <p class="text-sm"><%= t("ui.filter_rules.add_first_rule") %></p>
           </div>
-        <% end %>
+        </div>
       </div>
     </div>
 <% end %>
