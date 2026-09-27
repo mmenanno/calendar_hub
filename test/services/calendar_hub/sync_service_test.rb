@@ -87,19 +87,48 @@ module CalendarHub
         title: "Legacy",
         **standard_event_times(Date.parse("2025-09-25")),
         status: :confirmed,
+        last_synced_to_calendar: "Old Calendar",
       )
+      keep = build_ics_event(uid: "still-there", starts_at: Time.zone.parse("2025-09-26 10:00"), ends_at: Time.zone.parse("2025-09-26 11:00"))
 
-      mock_ingestion_adapter(@source, events: [])
+      mock_ingestion_adapter(@source, events: [keep])
       apple_client = mock_apple_client
-      apple_client.expects(:upsert_event).never
-      apple_client.expects(:delete_event).with(calendar_identifier: any_parameters, uid: regexp_matches(/^ch-\d+-legacy$/)).once
+      apple_client.expects(:upsert_event).once
+      # Deleted from the calendar it was last pushed to, not the source default.
+      apple_client.expects(:delete_event).with(calendar_identifier: "Old Calendar", uid: regexp_matches(/^ch-\d+-legacy$/)).once
 
       ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client).call
 
       assert_predicate(existing.reload, :cancelled?)
+      assert_nil(existing.last_synced_to_calendar)
     end
 
-    test "short-circuits on nil fetch_events (304 Not Modified) without cancelling events" do
+    test "refuses to delete everything when the feed is empty" do
+      existing = build_event(calendar_source: @source, external_id: "keep-me", last_synced_to_calendar: "personal")
+      mock_ingestion_adapter(@source, events: [])
+      apple_client = mock_apple_client
+      apple_client.expects(:delete_event).never
+
+      error = assert_raises(::CalendarHub::Ingestion::Error) do
+        ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client).call
+      end
+
+      assert_match(/Feed returned no events but 1 events/, error.message)
+      assert_predicate(existing.reload, :confirmed?)
+    end
+
+    test "force sync removes events when the feed is really empty" do
+      existing = build_event(calendar_source: @source, external_id: "gone", last_synced_to_calendar: "personal")
+      mock_ingestion_adapter(@source, events: [])
+      apple_client = mock_apple_client
+      apple_client.expects(:delete_event).once
+
+      ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client, force: true).call
+
+      assert_predicate(existing.reload, :cancelled?)
+    end
+
+    test "on 304 Not Modified pushes pending events without cancelling any" do
       # Create an existing event that should NOT be cancelled
       existing = @source.calendar_events.create!(
         external_id: "existing-event",
@@ -115,7 +144,8 @@ module CalendarHub
       # Adapter returns nil to signal "no change" (HTTP 304)
       ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns(nil)
       apple_client = mock("apple_client")
-      apple_client.expects(:upsert_event).never
+      # Never pushed yet, so it is pending even though the feed is unchanged.
+      apple_client.expects(:upsert_event).once
       apple_client.expects(:delete_event).never
 
       service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client)
@@ -138,7 +168,7 @@ module CalendarHub
       assert_match(/No ingestion adapter configured/, error.message)
     end
 
-    test "upsert_events rolls back all events when one save fails" do
+    test "one invalid event does not prevent the others from being saved" do
       good_event = build_ics_event(
         uid: "good-event",
         summary: "Good Event",
@@ -150,30 +180,18 @@ module CalendarHub
         uid: "bad-event",
         summary: "Bad Event",
         starts_at: Time.zone.parse("2025-09-24 12:00"),
-        ends_at: Time.zone.parse("2025-09-24 13:00"),
+        ends_at: Time.zone.parse("2025-09-24 11:00"), # ends before it starts
         time_zone: @source.time_zone,
       )
+      observer = ::CalendarHub::Shared::NullObserver.new
+      observer.expects(:upsert_error).with { |event, error| event.external_id == "bad-event" && error.is_a?(ActiveRecord::RecordInvalid) }
 
-      # Make save! fail for the second event
-      call_count = 0
-      CalendarEvent.any_instance.stubs(:save!).with do
-        call_count += 1
-        raise ActiveRecord::RecordInvalid.new(CalendarEvent.new) if call_count >= 2
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, observer: observer)
+      result = service.send(:upsert_events, [good_event, bad_event])
 
-        true
-      end
-
-      service = ::CalendarHub::Sync::SyncService.new(source: @source)
-
-      assert_raises(ActiveRecord::RecordInvalid) do
-        service.send(:upsert_events, [good_event, bad_event])
-      end
-
-      # Neither event should have been persisted due to transaction rollback
-      assert_nil(@source.calendar_events.find_by(external_id: "good-event"))
+      assert_equal(["good-event"], result.map(&:external_id))
+      assert_predicate(@source.calendar_events.find_by(external_id: "good-event"), :present?)
       assert_nil(@source.calendar_events.find_by(external_id: "bad-event"))
-    ensure
-      CalendarEvent.any_instance.unstub(:save!)
     end
 
     test "upsert_events persists all events when all saves succeed" do
@@ -250,6 +268,7 @@ module CalendarHub
         ends_at: Time.zone.parse("2025-09-25 10:00"),
         status: :confirmed,
         data: {},
+        last_synced_to_calendar: "personal",
       )
 
       ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns([])
@@ -257,10 +276,30 @@ module CalendarHub
       apple_client.expects(:upsert_event).never
       apple_client.expects(:delete_event).raises(StandardError, "Delete error")
 
-      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client, force: true)
       service.call
 
-      assert_predicate(existing.reload, :cancelled?)
+      # Not marked cancelled: the next sync retries the delete.
+      refute_predicate(existing.reload, :cancelled?)
+      assert_equal("personal", existing.last_synced_to_calendar)
+    end
+
+    test "retries deletes of cancelled events still present in iCloud" do
+      stranded = @source.calendar_events.create!(
+        external_id: "stranded",
+        title: "Stranded",
+        starts_at: Time.zone.parse("2025-09-25 09:00"),
+        ends_at: Time.zone.parse("2025-09-25 10:00"),
+        status: :cancelled,
+        last_synced_to_calendar: "Work",
+      )
+      ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns(nil)
+      apple_client = mock("apple_client")
+      apple_client.expects(:delete_event).with(calendar_identifier: "Work", uid: regexp_matches(/stranded$/)).once
+
+      ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client).call
+
+      assert_nil(stranded.reload.last_synced_to_calendar)
     end
 
     test "deletes sync_exempt events" do
@@ -284,18 +323,22 @@ module CalendarHub
       apple_client.expects(:delete_event).with(calendar_identifier: any_parameters, uid: regexp_matches(/^ch-\d+-exempt-event$/)).once
       apple_client.expects(:upsert_event).never
 
+      @source.calendar_events.create!(
+        external_id: "exempt-event",
+        title: "Exempt Event",
+        starts_at: Time.zone.parse("2025-09-24 10:00"),
+        ends_at: Time.zone.parse("2025-09-24 11:00"),
+        last_synced_to_calendar: "personal",
+        sync_exempt: true,
+      )
       service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client)
-
-      # Mock the event to be sync_exempt
-      CalendarEvent.any_instance.stubs(:sync_exempt?).returns(true)
 
       service.call
 
       event = @source.calendar_events.find_by(external_id: "exempt-event")
 
       assert_predicate(event, :present?)
-    ensure
-      CalendarEvent.any_instance.unstub(:sync_exempt?)
+      assert_predicate(event, :sync_exempt?)
     end
 
     test "deletes cancelled events" do
@@ -314,6 +357,13 @@ module CalendarHub
         ),
       ]
 
+      @source.calendar_events.create!(
+        external_id: "cancelled-event",
+        title: "Cancelled Event",
+        starts_at: Time.zone.parse("2025-09-24 10:00"),
+        ends_at: Time.zone.parse("2025-09-24 11:00"),
+        last_synced_to_calendar: "personal",
+      )
       ::CalendarHub::Ingestion::GenericICSAdapter.any_instance.expects(:fetch_events).returns(fetched_events)
       apple_client = mock("apple_client")
       apple_client.expects(:delete_event).with(calendar_identifier: any_parameters, uid: regexp_matches(/^ch-\d+-cancelled-event$/)).once
@@ -417,6 +467,7 @@ module CalendarHub
         ends_at: Time.zone.parse("2025-09-25 10:00"),
         status: :confirmed,
         data: {},
+        last_synced_to_calendar: "personal",
       )
 
       observer = mock("observer")
@@ -428,7 +479,7 @@ module CalendarHub
       apple_client = mock("apple_client")
       apple_client.expects(:delete_event).once
 
-      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client, observer: observer)
+      service = ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client, observer: observer, force: true)
       service.call
     end
 
@@ -526,6 +577,151 @@ module CalendarHub
 
       assert_equal("America/Toronto", event1.time_zone)
       assert_equal("America/Toronto", event2.time_zone)
+    end
+
+    test "an unchanged feed does not re-push events, bump source_updated_at or write audits" do
+      first = build_ics_event(uid: "stable", starts_at: Time.zone.parse("2025-09-24 10:00"), ends_at: Time.zone.parse("2025-09-24 11:00"), raw_properties: { "x-note" => "a" })
+      again = build_ics_event(uid: "stable", starts_at: Time.zone.parse("2025-09-24 10:00"), ends_at: Time.zone.parse("2025-09-24 11:00"), raw_properties: { "x-note" => "a" })
+      adapter = mock("adapter")
+      adapter.stubs(:fetch_events).returns([first]).then.returns([again])
+      apple_client = mock("apple_client")
+      apple_client.expects(:upsert_event).once
+
+      ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client, adapter: adapter).call
+      event = @source.calendar_events.find_by(external_id: "stable")
+      source_updated_at = event.source_updated_at
+
+      assert_no_difference(-> { CalendarEventAudit.count }) do
+        ::CalendarHub::Sync::SyncService.new(source: @source.reload, apple_client: apple_client, adapter: adapter).call
+      end
+      assert_equal(source_updated_at, event.reload.source_updated_at)
+    end
+
+    test "changed content bumps source_updated_at and is pushed again" do
+      original = build_ics_event(uid: "changing", summary: "Before", starts_at: Time.zone.parse("2025-09-24 10:00"), ends_at: Time.zone.parse("2025-09-24 11:00"))
+      changed = build_ics_event(uid: "changing", summary: "After", starts_at: Time.zone.parse("2025-09-24 10:00"), ends_at: Time.zone.parse("2025-09-24 11:00"))
+      adapter = mock("adapter")
+      adapter.stubs(:fetch_events).returns([original]).then.returns([changed])
+      apple_client = mock("apple_client")
+      apple_client.expects(:upsert_event).twice
+
+      ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client, adapter: adapter).call
+      travel(1.minute) do
+        ::CalendarHub::Sync::SyncService.new(source: @source.reload, apple_client: apple_client, adapter: adapter).call
+      end
+
+      event = @source.calendar_events.find_by(external_id: "changing")
+
+      assert_equal("After", event.title)
+      assert_operator(event.synced_at, :>=, event.source_updated_at)
+    end
+
+    test "stores data with string keys only" do
+      fetched = build_ics_event(uid: "keys", starts_at: Time.zone.parse("2025-09-24 10:00"), ends_at: Time.zone.parse("2025-09-24 11:00"), raw_properties: { "x-client" => "Jane" })
+      @source.calendar_events.create!(
+        external_id: "keys",
+        title: "Old",
+        starts_at: Time.zone.parse("2025-09-24 10:00"),
+        ends_at: Time.zone.parse("2025-09-24 11:00"),
+        data: { "uid" => "keys", "dtstart_params" => { "TZID" => "UTC" }, "provider_data" => { "a" => 1 } },
+      )
+      mock_ingestion_adapter(@source, events: [fetched])
+      apple_client = mock_apple_client
+      apple_client.stubs(:upsert_event)
+
+      ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client).call
+
+      data = @source.calendar_events.find_by(external_id: "keys").data
+
+      assert_equal({ "provider_data" => { "a" => 1 }, "x-client" => "Jane" }, data)
+    end
+
+    test "matches stored events when the feed UID has surrounding whitespace" do
+      @source.calendar_events.create!(external_id: "padded", title: "Padded", starts_at: Time.zone.parse("2025-09-24 10:00"), ends_at: Time.zone.parse("2025-09-24 11:00"))
+      fetched = build_ics_event(uid: " padded\r\n", summary: "Padded", starts_at: Time.zone.parse("2025-09-24 10:00"), ends_at: Time.zone.parse("2025-09-24 11:00"))
+      mock_ingestion_adapter(@source, events: [fetched])
+      apple_client = mock_apple_client
+      apple_client.stubs(:upsert_event)
+
+      assert_no_difference(-> { @source.calendar_events.count }) do
+        ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client).call
+      end
+    end
+
+    test "persists filter rule exclusions and keeps a manual include across syncs" do
+      FilterRule.create!(pattern: "Private", field_name: "title", match_type: "contains", active: true, calendar_source: @source)
+      fetched = build_ics_event(uid: "private-1", summary: "Private thing", starts_at: Time.zone.parse("2025-09-24 10:00"), ends_at: Time.zone.parse("2025-09-24 11:00"))
+      mock_ingestion_adapter(@source, events: [fetched])
+      apple_client = mock_apple_client
+      apple_client.stubs(:upsert_event)
+
+      ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client).call
+      event = @source.calendar_events.find_by(external_id: "private-1")
+
+      assert_predicate(event, :excluded_by_rule?)
+      assert_predicate(event, :sync_exempt?)
+
+      event.toggle_sync_exempt!
+      ::CalendarHub::Sync::SyncService.new(source: @source.reload, apple_client: apple_client).call
+
+      refute_predicate(event.reload, :sync_exempt?)
+      assert_equal("include", event.manual_sync_override)
+    end
+
+    test "keeps past occurrences of a series that is still in the feed" do
+      old_occurrence = @source.calendar_events.create!(
+        external_id: "series::20200101T100000Z",
+        title: "Series",
+        starts_at: Time.utc(2020, 1, 1, 10),
+        ends_at: Time.utc(2020, 1, 1, 11),
+        last_synced_to_calendar: "personal",
+      )
+      current = build_ics_event(uid: "series::#{1.day.from_now.utc.strftime("%Y%m%dT100000Z")}", starts_at: 1.day.from_now, ends_at: 1.day.from_now + 1.hour)
+      adapter = mock("adapter")
+      adapter.stubs(:fetch_events).returns([current])
+      adapter.stubs(:recurrence_window_start).returns(30.days.ago)
+      apple_client = mock_apple_client
+      apple_client.stubs(:upsert_event)
+      apple_client.expects(:delete_event).never
+
+      ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client, adapter: adapter).call
+
+      refute_predicate(old_occurrence.reload, :cancelled?)
+    end
+
+    test "closes the Apple client connections after the sync" do
+      mock_ingestion_adapter(@source, events: [])
+      apple_client = mock_apple_client
+      apple_client.expects(:finish).once
+
+      ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client).call
+    end
+
+    test "force sync fetches unconditionally and re-pushes unchanged events" do
+      fetched = build_ics_event(uid: "forced", starts_at: Time.zone.parse("2025-09-24 10:00"), ends_at: Time.zone.parse("2025-09-24 11:00"))
+      adapter = mock("adapter")
+      adapter.expects(:fetch_events).with(conditional: false).twice.returns([fetched])
+      apple_client = mock_apple_client
+      apple_client.expects(:upsert_event).twice
+
+      2.times { ::CalendarHub::Sync::SyncService.new(source: @source.reload, apple_client: apple_client, adapter: adapter, force: true).call }
+    end
+
+    test "uses conditional requests once the configuration is unchanged and the last sync succeeded" do
+      @source.mark_synced!(token: "t")
+      adapter = mock("adapter")
+      adapter.expects(:fetch_events).with(conditional: true).returns(nil)
+
+      ::CalendarHub::Sync::SyncService.new(source: @source.reload, apple_client: mock_apple_client, adapter: adapter).call
+    end
+
+    test "fetches unconditionally after a failed sync" do
+      @source.mark_synced!(token: "t")
+      @source.update!(consecutive_sync_failures: 2)
+      adapter = mock("adapter")
+      adapter.expects(:fetch_events).with(conditional: false).returns([])
+
+      ::CalendarHub::Sync::SyncService.new(source: @source.reload, apple_client: mock_apple_client, adapter: adapter).call
     end
 
     private
