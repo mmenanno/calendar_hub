@@ -25,6 +25,7 @@ module CalendarHub
           ends_at: event.ends_at,
           status: event.status,
           all_day: event.all_day?,
+          time_zone: event.time_zone,
           transparency: "opaque",
         }
       end

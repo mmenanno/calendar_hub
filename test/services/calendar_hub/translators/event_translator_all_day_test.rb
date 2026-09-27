@@ -10,6 +10,26 @@ module CalendarHub
         @translator = EventTranslator.new(@source)
       end
 
+      test "carries the event time zone so all-day dates are formatted locally" do
+        zone = ActiveSupport::TimeZone["Asia/Tokyo"]
+        event = CalendarEvent.create!(
+          calendar_source: @source,
+          external_id: "tokyo-all-day",
+          title: "Golden Week",
+          starts_at: zone.local(2025, 5, 5),
+          ends_at: zone.local(2025, 5, 6),
+          time_zone: "Asia/Tokyo",
+          all_day: true,
+        )
+
+        payload = @translator.call(event)
+        ics = AppleCalendar::Client.new(credentials: {}).send(:build_ics, payload.merge(uid: "x"))
+
+        assert_equal("Asia/Tokyo", payload[:time_zone])
+        assert_includes(ics, "DTSTART;VALUE=DATE:20250505")
+        assert_includes(ics, "DTEND;VALUE=DATE:20250506")
+      end
+
       test "includes all_day field for all-day event" do
         event = CalendarEvent.create!(
           calendar_source: @source,
