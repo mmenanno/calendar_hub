@@ -20,9 +20,20 @@ export default class extends BaseController {
   }
 
   submit() {
-    if (this.hasFormTarget) {
-      this.submitForm(this.formTarget)
-    }
+    this.submitForm(this.form)
+  }
+
+  // Also usable directly as a Stimulus action (e.g. `change->search#submitForm`),
+  // in which case Stimulus passes the DOM event rather than a form element.
+  submitForm(formOrEvent) {
+    const form = formOrEvent instanceof HTMLFormElement ? formOrEvent : this.form
+    this.clearTimeout()
+    super.submitForm(form)
+  }
+
+  get form() {
+    if (this.hasFormTarget) return this.formTarget
+    return this.element instanceof HTMLFormElement ? this.element : this.element.closest("form")
   }
 
   clearTimeout() {
