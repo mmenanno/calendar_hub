@@ -39,7 +39,6 @@ group :test, :ci do
   gem "webmock"
 end
 
-
 # Networking and parsing
 gem "faraday"
 gem "nokogiri"

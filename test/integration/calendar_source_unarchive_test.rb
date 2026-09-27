@@ -9,7 +9,7 @@ class CalendarSourceUnarchiveTest < ActionDispatch::IntegrationTest
     patch unarchive_calendar_source_path(archived_source),
       headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :success
+    assert_response(:success)
 
     # Should contain turbo-stream actions for:
     # 1. Removing the source card from archived section
@@ -35,7 +35,7 @@ class CalendarSourceUnarchiveTest < ActionDispatch::IntegrationTest
     patch unarchive_calendar_source_path(archived_source),
       headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :success
+    assert_response(:success)
 
     # The wrapper stays (so later archives can repopulate it) but renders nothing
     assert_match(%r{<turbo-stream action="update" target="archived-sources-section"><template>\s*</template></turbo-stream>}, response.body)
@@ -57,7 +57,7 @@ class CalendarSourceUnarchiveTest < ActionDispatch::IntegrationTest
     patch unarchive_calendar_source_path(archived_source),
       headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_response :success
+    assert_response(:success)
 
     # Should update the archived section's contents (keeping the wrapper id)
     assert_match(/turbo-stream action="update" target="archived-sources-section"/, response.body)
@@ -72,16 +72,16 @@ class CalendarSourceUnarchiveTest < ActionDispatch::IntegrationTest
   test "unarchive updates source state correctly" do
     archived_source = calendar_sources(:archived_source)
 
-    refute_predicate archived_source, :active?
-    refute_nil archived_source.deleted_at
+    refute_predicate(archived_source, :active?)
+    refute_nil(archived_source.deleted_at)
 
     patch unarchive_calendar_source_path(archived_source),
       headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
     archived_source.reload
 
-    assert_predicate archived_source, :active?
-    assert_nil archived_source.deleted_at
+    assert_predicate(archived_source, :active?)
+    assert_nil(archived_source.deleted_at)
   end
 
   test "unarchive route exists and is accessible" do
@@ -94,7 +94,7 @@ class CalendarSourceUnarchiveTest < ActionDispatch::IntegrationTest
     )
 
     # Should be accessible via path helper
-    assert_equal "/calendar_sources/#{archived_source.id}/unarchive", unarchive_calendar_source_path(archived_source)
+    assert_equal("/calendar_sources/#{archived_source.id}/unarchive", unarchive_calendar_source_path(archived_source))
   end
 
   private

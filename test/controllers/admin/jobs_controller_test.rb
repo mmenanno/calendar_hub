@@ -9,22 +9,12 @@ module Admin
       Rails.cache.clear
 
       # Clear related tables first to avoid foreign key constraints
-      if defined?(SyncEventResult)
-        SyncEventResult.delete_all
-      end
+      SyncEventResult.delete_all if defined?(SyncEventResult)
       SyncAttempt.delete_all
-      if defined?(CalendarEventAudit)
-        CalendarEventAudit.delete_all
-      end
-      if defined?(CalendarEvent)
-        CalendarEvent.delete_all
-      end
-      if defined?(EventMapping)
-        EventMapping.delete_all
-      end
-      if defined?(FilterRule)
-        FilterRule.delete_all
-      end
+      CalendarEventAudit.delete_all if defined?(CalendarEventAudit)
+      CalendarEvent.delete_all if defined?(CalendarEvent)
+      EventMapping.delete_all if defined?(EventMapping)
+      FilterRule.delete_all if defined?(FilterRule)
 
       # Now we can safely delete calendar sources
       CalendarSource.unscoped.find_each(&:soft_delete!) # Soft delete first
@@ -95,7 +85,7 @@ module Admin
 
       get admin_jobs_path
 
-      assert_response :success
+      assert_response(:success)
 
       # Verify the page loads successfully and contains expected content
       # We'll test that the controller logic executes without errors
@@ -104,20 +94,20 @@ module Admin
       # Verify sync attempts are being queried correctly
       recent_attempts = SyncAttempt.includes(:calendar_source).order(created_at: :desc).limit(20)
 
-      assert_equal 3, recent_attempts.count
-      assert_equal @recent_manual_attempt.id, recent_attempts.first.id
+      assert_equal(3, recent_attempts.count)
+      assert_equal(@recent_manual_attempt.id, recent_attempts.first.id)
 
       # Test auto-sync vs manual sync breakdown calculation
       recent_attempts_24h = SyncAttempt.includes(:calendar_source).where("sync_attempts.created_at > ?", 24.hours.ago)
       auto_sync_attempts = recent_attempts_24h.joins(:calendar_source).where(calendar_sources: { auto_sync_enabled: true }).count
       manual_sync_attempts = recent_attempts_24h.count - auto_sync_attempts
 
-      assert_equal 1, auto_sync_attempts
-      assert_equal 1, manual_sync_attempts
+      assert_equal(1, auto_sync_attempts)
+      assert_equal(1, manual_sync_attempts)
 
       # Test auto-sync source counts
-      assert_equal 1, CalendarSource.where(auto_sync_enabled: true).count
-      assert_equal 1, CalendarSource.where(auto_sync_enabled: true, active: true).count
+      assert_equal(1, CalendarSource.where(auto_sync_enabled: true).count)
+      assert_equal(1, CalendarSource.where(auto_sync_enabled: true, active: true).count)
 
       # Test metrics cache reading - verify controller handles cache properly
       # The cache might be cleared during test runs, so we just verify
@@ -132,9 +122,9 @@ module Admin
 
       get admin_jobs_path
 
-      assert_response :success
+      assert_response(:success)
       # Verify cache is empty
-      assert_nil Rails.cache.read("calendar_hub:last_sync_metrics")
+      assert_nil(Rails.cache.read("calendar_hub:last_sync_metrics"))
     end
 
     test "index handles sync_due calculation" do
@@ -144,7 +134,7 @@ module Admin
 
       get admin_jobs_path
 
-      assert_response :success
+      assert_response(:success)
       # The test passes if the controller doesn't crash when calling sync_due?
       # The mock ensures the method gets called and returns true
     end
@@ -155,14 +145,14 @@ module Admin
 
       get admin_jobs_path
 
-      assert_response :success
+      assert_response(:success)
       # Verify no sync attempts exist
-      assert_equal 0, SyncAttempt.count
+      assert_equal(0, SyncAttempt.count)
 
       # Verify recent attempts query returns empty
       recent_attempts_24h = SyncAttempt.includes(:calendar_source).where("sync_attempts.created_at > ?", 24.hours.ago)
 
-      assert_equal 0, recent_attempts_24h.count
+      assert_equal(0, recent_attempts_24h.count)
     end
 
     test "clear_metrics empties cache and redirects with HTML format" do
@@ -170,9 +160,9 @@ module Admin
 
       post clear_metrics_admin_jobs_path
 
-      assert_redirected_to admin_jobs_path
-      assert_nil Rails.cache.read("calendar_hub:last_sync_metrics")
-      assert_equal I18n.t("flashes.admin.metrics_cleared"), flash[:notice]
+      assert_redirected_to(admin_jobs_path)
+      assert_nil(Rails.cache.read("calendar_hub:last_sync_metrics"))
+      assert_equal(I18n.t("flashes.admin.metrics_cleared"), flash[:notice])
     end
 
     test "clear_metrics responds with turbo_stream format" do
@@ -180,8 +170,8 @@ module Admin
 
       post clear_metrics_admin_jobs_path, as: :turbo_stream
 
-      assert_response :success
-      assert_nil Rails.cache.read("calendar_hub:last_sync_metrics")
+      assert_response(:success)
+      assert_nil(Rails.cache.read("calendar_hub:last_sync_metrics"))
       assert_match(/turbo-stream/, response.body)
       assert_match(/toast-anchor/, response.body)
     end

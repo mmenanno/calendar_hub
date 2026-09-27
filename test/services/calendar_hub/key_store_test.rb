@@ -6,7 +6,7 @@ module CalendarHub
   class KeyStoreTest < ActiveSupport::TestCase
     def setup
       super
-      @original_path = ENV["CALENDAR_HUB_KEY_STORE_PATH"]
+      @original_path = ENV.fetch("CALENDAR_HUB_KEY_STORE_PATH", nil)
       @store_path = Rails.root.join("tmp", "key_store_test_#{SecureRandom.hex(4)}.json")
       ENV["CALENDAR_HUB_KEY_STORE_PATH"] = @store_path.to_s
       CalendarHub::KeyStore.reset!
@@ -15,9 +15,7 @@ module CalendarHub
 
     def teardown
       CalendarHub::KeyStore.reset!
-      if @store_path && File.exist?(@store_path)
-        File.delete(@store_path)
-      end
+      File.delete(@store_path) if @store_path && File.exist?(@store_path)
       if @original_path
         ENV["CALENDAR_HUB_KEY_STORE_PATH"] = @original_path
       else

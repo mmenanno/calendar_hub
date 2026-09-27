@@ -6,7 +6,7 @@ class AppSettingTest < ActiveSupport::TestCase
   def setup
     super
     AppSetting.reset_instance!
-    @original_path = ENV["CALENDAR_HUB_CREDENTIAL_KEY_PATH"]
+    @original_path = ENV.fetch("CALENDAR_HUB_CREDENTIAL_KEY_PATH", nil)
     @tmp_key_path = Rails.root.join("tmp", "test_credential_key_#{SecureRandom.hex(4)}")
     ENV["CALENDAR_HUB_CREDENTIAL_KEY_PATH"] = @tmp_key_path.to_s
     CalendarHub::CredentialEncryption.reset!

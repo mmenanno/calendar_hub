@@ -38,7 +38,7 @@ class AutoSyncSchedulerJobTest < ActiveJob::TestCase
 
     result = AutoSyncSchedulerJob.perform_now
 
-    assert_equal 0, result
+    assert_equal(0, result)
   end
 
   test "skips sources outside sync window" do
@@ -70,7 +70,7 @@ class AutoSyncSchedulerJobTest < ActiveJob::TestCase
     result = AutoSyncSchedulerJob.perform_now
 
     # Should only schedule @source2, not @source1
-    assert_equal 1, result
+    assert_equal(1, result)
   end
 
   test "optimizes scheduling by domain" do
@@ -85,7 +85,7 @@ class AutoSyncSchedulerJobTest < ActiveJob::TestCase
 
     result = AutoSyncSchedulerJob.perform_now
 
-    assert_equal 2, result
+    assert_equal(2, result)
   end
 
   test "returns count of scheduled jobs" do
@@ -94,7 +94,7 @@ class AutoSyncSchedulerJobTest < ActiveJob::TestCase
 
     result = AutoSyncSchedulerJob.perform_now
 
-    assert_equal 2, result
+    assert_equal(2, result)
   end
 
   test "schedules jobs immediately and with delay based on domain optimization" do
@@ -126,12 +126,12 @@ class AutoSyncSchedulerJobTest < ActiveJob::TestCase
 
       result = AutoSyncSchedulerJob.perform_now
 
-      assert_equal 2, result
+      assert_equal(2, result)
 
       # Verify that jobs were scheduled (this covers the domain optimization code path)
       enqueued_jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.select { |job| job["job_class"] == "SyncCalendarJob" }
 
-      assert_equal 2, enqueued_jobs.count
+      assert_equal(2, enqueued_jobs.count)
     end
   end
 end

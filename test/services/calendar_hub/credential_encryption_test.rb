@@ -6,7 +6,7 @@ module CalendarHub
   class CredentialEncryptionTest < ActiveSupport::TestCase
     def setup
       super
-      @original_path = ENV["CALENDAR_HUB_KEY_STORE_PATH"]
+      @original_path = ENV.fetch("CALENDAR_HUB_KEY_STORE_PATH", nil)
       @tmp_key_path = Rails.root.join("tmp", "key_store_test_#{SecureRandom.hex(4)}.json")
       ENV["CALENDAR_HUB_KEY_STORE_PATH"] = @tmp_key_path.to_s
       CredentialEncryption.reset!
@@ -14,9 +14,7 @@ module CalendarHub
 
     def teardown
       CredentialEncryption.reset!
-      if @tmp_key_path && File.exist?(@tmp_key_path)
-        File.delete(@tmp_key_path)
-      end
+      File.delete(@tmp_key_path) if @tmp_key_path && File.exist?(@tmp_key_path)
       if @original_path
         ENV["CALENDAR_HUB_KEY_STORE_PATH"] = @original_path
       else
@@ -504,12 +502,15 @@ module CalendarHub
 
       # The key should not have changed
       final_fingerprint = CredentialEncryption.key_fingerprint
+
       assert_equal(original_fingerprint, final_fingerprint)
 
       # Credentials should still be decryptable with the original key
       fresh_source = CalendarSource.find(source.id)
+
       assert_equal(original_ciphertext, fresh_source.read_attribute(:credentials))
       creds = fresh_source.credentials.with_indifferent_access
+
       assert_equal("user", creds[:username])
       assert_equal("pass", creds[:password])
     ensure
@@ -542,6 +543,7 @@ module CalendarHub
       CalendarSource.any_instance.stubs(:update_column).with do |_col, _val|
         call_count += 1
         raise StandardError, "DB write failure" if call_count >= 2
+
         false # don't actually stub the first call, fall through
       end
       # We need a different approach: stub update_column to fail on the second call

@@ -78,8 +78,8 @@ class FilterRulesController < ApplicationController
   rescue ArgumentError
     # Let ArgumentError bubble up for enum validation errors (used by tests)
     raise
-  rescue => e
-    Rails.logger.error("[FilterRulesController] Unexpected error during filter rule creation: #{e.message}")
+  rescue StandardError => exception
+    Rails.logger.error("[FilterRulesController] Unexpected error during filter rule creation: #{exception.message}")
     turbo_error_response(
       message: t("flashes.filter_rules.creation_failed"),
       fallback_location: filter_rules_path,

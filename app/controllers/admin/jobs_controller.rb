@@ -16,9 +16,7 @@ module Admin
       # Sync Attempt Analysis
       per_page = 20
       @recent_attempts = SyncAttempt.includes(:calendar_source).order(created_at: :desc).limit(per_page + 1)
-      if params[:before].present?
-        @recent_attempts = @recent_attempts.where("sync_attempts.created_at < ?", Time.zone.parse(params[:before]))
-      end
+      @recent_attempts = @recent_attempts.where("sync_attempts.created_at < ?", Time.zone.parse(params[:before])) if params[:before].present?
       @has_more_attempts = @recent_attempts.length > per_page
       @recent_attempts = @recent_attempts.first(per_page)
 

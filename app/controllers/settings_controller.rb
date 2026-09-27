@@ -73,9 +73,9 @@ class SettingsController < ApplicationController
       end
       format.html { redirect_to(edit_settings_path, notice: msg) }
     end
-  rescue CalendarHub::CredentialEncryption::KeyRotationError => e
+  rescue CalendarHub::CredentialEncryption::KeyRotationError => exception
     respond_to do |format|
-      error = t("flashes.settings.key_rotation_failed", error: e.message)
+      error = t("flashes.settings.key_rotation_failed", error: exception.message)
       format.turbo_stream do
         render(turbo_stream: turbo_stream.append(
           "toast-anchor",
@@ -113,8 +113,8 @@ class SettingsController < ApplicationController
       format.turbo_stream { render(turbo_stream: turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: message, variant: :success })) }
       format.html { redirect_to(edit_settings_path, notice: message) }
     end
-  rescue => e
-    error = t("flashes.settings.apple_test_failed", error: e.message)
+  rescue StandardError => exception
+    error = t("flashes.settings.apple_test_failed", error: exception.message)
     respond_to do |format|
       format.turbo_stream { render(turbo_stream: turbo_stream.append("toast-anchor", partial: "shared/toast", locals: { message: error, variant: :error })) }
       format.html { redirect_to(edit_settings_path, alert: error) }

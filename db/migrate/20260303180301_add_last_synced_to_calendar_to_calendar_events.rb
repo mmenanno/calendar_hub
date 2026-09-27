@@ -1,10 +1,12 @@
+# frozen_string_literal: true
+
 class AddLastSyncedToCalendarToCalendarEvents < ActiveRecord::Migration[8.1]
   def up
-    add_column :calendar_events, :last_synced_to_calendar, :string
+    add_column(:calendar_events, :last_synced_to_calendar, :string)
 
     # Backfill previously-synced events: they were all synced to their source's
     # default calendar (destination override was broken before this release).
-    execute <<~SQL
+    execute(<<~SQL)
       UPDATE calendar_events
       SET last_synced_to_calendar = (
         SELECT calendar_sources.calendar_identifier
@@ -16,6 +18,6 @@ class AddLastSyncedToCalendarToCalendarEvents < ActiveRecord::Migration[8.1]
   end
 
   def down
-    remove_column :calendar_events, :last_synced_to_calendar
+    remove_column(:calendar_events, :last_synced_to_calendar)
   end
 end

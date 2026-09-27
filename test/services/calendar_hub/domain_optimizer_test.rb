@@ -12,9 +12,9 @@ module CalendarHub
     end
 
     test "extracts apex domain correctly" do
-      assert_equal "example.com", ::CalendarHub::DomainOptimizer.extract_apex_domain("https://sub.example.com/path")
-      assert_equal "example.com", ::CalendarHub::DomainOptimizer.extract_apex_domain("https://example.com/path")
-      assert_equal "github.com", ::CalendarHub::DomainOptimizer.extract_apex_domain("https://api.github.com/path")
+      assert_equal("example.com", ::CalendarHub::DomainOptimizer.extract_apex_domain("https://sub.example.com/path"))
+      assert_equal("example.com", ::CalendarHub::DomainOptimizer.extract_apex_domain("https://example.com/path"))
+      assert_equal("github.com", ::CalendarHub::DomainOptimizer.extract_apex_domain("https://api.github.com/path"))
     end
 
     test "groups sources by apex domain" do
@@ -27,9 +27,9 @@ module CalendarHub
       sources = [@source1, @source2, @source3]
       groups = ::CalendarHub::DomainOptimizer.group_sources_by_domain(sources)
 
-      assert_equal 2, groups.keys.count
-      assert_equal 2, groups["example.com"].count
-      assert_equal 1, groups["different.org"].count
+      assert_equal(2, groups.keys.count)
+      assert_equal(2, groups["example.com"].count)
+      assert_equal(1, groups["different.org"].count)
     end
 
     test "handles invalid URLs gracefully" do
@@ -37,7 +37,7 @@ module CalendarHub
 
       domain = ::CalendarHub::DomainOptimizer.extract_apex_domain(@source1.ingestion_url)
 
-      assert_equal "unknown", domain
+      assert_equal("unknown", domain)
     end
 
     test "extract_apex_domain handles URI parsing errors" do
@@ -46,7 +46,7 @@ module CalendarHub
 
       domain = ::CalendarHub::DomainOptimizer.extract_apex_domain(invalid_uri)
 
-      assert_equal "unknown", domain
+      assert_equal("unknown", domain)
     end
 
     test "optimizes sync schedule with time gaps" do
@@ -57,8 +57,8 @@ module CalendarHub
 
         frozen_time = Time.current
 
-        assert_equal frozen_time, schedule[@source1.id]
-        assert_equal frozen_time + 5.minutes, schedule[@source2.id]
+        assert_equal(frozen_time, schedule[@source1.id])
+        assert_equal(frozen_time + 5.minutes, schedule[@source2.id])
       end
     end
 
@@ -70,27 +70,27 @@ module CalendarHub
 
         frozen_time = Time.current
 
-        assert_equal frozen_time, schedule[@source1.id]
-        assert_equal frozen_time + 10.minutes, schedule[@source2.id]
+        assert_equal(frozen_time, schedule[@source1.id])
+        assert_equal(frozen_time + 10.minutes, schedule[@source2.id])
       end
     end
 
     test "extract_apex_domain handles URLs without host" do
       domain = ::CalendarHub::DomainOptimizer.extract_apex_domain("file:///local/file.ics")
 
-      assert_equal "", domain
+      assert_equal("", domain)
     end
 
     test "extract_apex_domain handles single part domains" do
       domain = ::CalendarHub::DomainOptimizer.extract_apex_domain("https://localhost/calendar.ics")
 
-      assert_equal "localhost", domain
+      assert_equal("localhost", domain)
     end
 
     test "extract_apex_domain handles domains with many subdomains" do
       domain = ::CalendarHub::DomainOptimizer.extract_apex_domain("https://a.b.c.example.com/calendar.ics")
 
-      assert_equal "example.com", domain
+      assert_equal("example.com", domain)
     end
 
     test "optimize_sync_schedule handles empty sources array" do
@@ -113,9 +113,7 @@ module CalendarHub
       )
 
       # Ensure the high ID source actually has a higher ID
-      if source_high_id.id < source_low_id.id
-        source_high_id, source_low_id = source_low_id, source_high_id
-      end
+      source_high_id, source_low_id = source_low_id, source_high_id if source_high_id.id < source_low_id.id
 
       # Pass them in reverse ID order to verify sorting
       sources = [source_high_id, source_low_id]
