@@ -2,9 +2,11 @@ import BaseController from "controllers/base_controller"
 
 export default class extends BaseController {
   static targets = ["save"]
+  // Start dirty (e.g. a form re-rendered with validation errors must stay submittable)
+  static values = { dirty: Boolean }
 
   connect() {
-    this.initial = this.snapshot()
+    this.initial = this.dirtyValue ? null : this.snapshot()
     this.element.addEventListener("input", () => this.update())
     this.element.addEventListener("change", () => this.update())
     this.update()

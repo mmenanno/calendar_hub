@@ -1,0 +1,12 @@
+<%# Error summary for a model-backed form.
+    Usage: render "shared/form_errors", record: record %>
+<% if record.errors.any? %>
+  <div class="rounded-lg border border-rose-700/40 bg-rose-950/40 p-3 text-sm text-rose-200" role="alert">
+    <p class="font-semibold"><%= t("ui.forms.error_summary", count: record.errors.count) %></p>
+    <ul class="mt-1 list-disc pl-5">
+      <% record.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>

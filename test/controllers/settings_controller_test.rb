@@ -467,4 +467,55 @@ class SettingsControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to(edit_settings_path)
   end
+
+  test "failed turbo_stream save re-renders the form with field errors" do
+    patch settings_path,
+      params: { app_setting: { default_sync_frequency_minutes: "0" } },
+      headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response(:unprocessable_entity)
+    assert_match(/<turbo-stream action="replace" target="settings-form">/, response.body)
+    assert_equal(1, response.body.scan("<form").size, "must not nest a second form")
+    assert_match(/id="settings-form"/, response.body)
+    assert_match("must be greater than 0", response.body)
+    assert_match("Please review the errors below.", response.body)
+  end
+
+  test "reset with turbo_stream re-renders the form with default values" do
+    @app_setting.update!(app_host: "old.example.com", default_calendar_identifier: "Old")
+
+    post reset_settings_path, headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response(:success)
+    assert_match(/<turbo-stream action="replace" target="settings-form">/, response.body)
+    refute_match("old.example.com", response.body)
+    refute_match('value="Old"', response.body)
+    assert_match("Settings reset to defaults.", response.body)
+  end
+
+  test "test calendar falls back to the saved password when the field is blank" do
+    @app_setting.update!(default_calendar_identifier: "Work", apple_username: "saved@example.com", apple_app_password: "saved-pass")
+
+    client_mock = mock("client")
+    client_mock.expects(:send).with(:discover_calendar_url, "Work").returns("https://caldav.icloud.com/calendars/user/Work")
+    AppleCalendar::Client.expects(:new).with(
+      credentials: { username: "new@example.com", app_specific_password: "saved-pass" },
+    ).returns(client_mock)
+
+    # Mirrors auth_test_controller.js: JSON body, turbo-stream response
+    post test_calendar_settings_path,
+      params: { apple_username: "new@example.com", apple_app_password: "" }.to_json,
+      headers: { "Content-Type" => "application/json", "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response(:success)
+    assert_match("Apple Calendar reachable", response.body)
+  end
+
+  test "rotate credential key button asks for confirmation via the confirm controller" do
+    get edit_settings_path
+
+    assert_select("form[action='#{rotate_credential_key_settings_path}'][data-controller=confirm][data-confirm-message-value]")
+    assert_select("[data-confirm]", count: 0)
+    assert_select("html[lang=en]")
+  end
 end
