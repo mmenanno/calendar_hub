@@ -1,0 +1,93 @@
+<% label_class = "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" %>
+<% kind_names = @result.kinds.map { |k| t("ui.rules_transfer.kinds.#{k}").downcase }.to_sentence %>
+<% invalid_rows = @result.rows.select(&:invalid?) %>
+<% unknown_names = @result.unknown_source_names %>
+<% replaced_total = @result.kinds.sum { |k| @result.replaced_count(k) } %>
+<% to_add = @result.total(:add) %>
+<%= render layout: "rules_transfers/frame", locals: { kind: @kind, title: t("ui.rules_transfer.preview_header"), subtitle: t("ui.rules_transfer.preview_subheader") } do %>
+  <%= render "rules_transfers/errors", errors: @errors %>
+
+  <div class="grid gap-3 sm:grid-cols-2">
+    <% @result.kinds.each do |kind| %>
+      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+        <h3 class="mb-2 text-sm font-semibold text-slate-200"><%= t("ui.rules_transfer.kinds.#{kind}") %></h3>
+        <dl class="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
+          <% CalendarHub::RulesTransfer::Result::STATUSES.each do |status| %>
+            <dt class="text-slate-400"><%= t("ui.rules_transfer.counts.#{status}") %></dt>
+            <dd class="text-right font-medium <%= status == :add ? "text-emerald-300" : "text-slate-200" %>" data-count="<%= status %>-<%= kind %>"><%= @result.count(kind, status) %></dd>
+          <% end %>
+          <% if @result.replace? %>
+            <dt class="text-rose-300"><%= t("ui.rules_transfer.counts.replaced") %></dt>
+            <dd class="text-right font-medium text-rose-300" data-count="replaced-<%= kind %>"><%= @result.replaced_count(kind) %></dd>
+          <% end %>
+        </dl>
+      </div>
+    <% end %>
+  </div>
+
+  <% if invalid_rows.any? %>
+    <div class="mt-4">
+      <h3 class="mb-2 text-sm font-semibold text-slate-200"><%= t("ui.rules_transfer.invalid_rows") %></h3>
+      <ul class="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-300">
+        <% invalid_rows.each do |row| %>
+          <li>
+            <span class="font-medium text-slate-200"><%= t("ui.rules_transfer.kinds.#{row.kind}") %> · <%= t("ui.rules_transfer.row_label", number: row.index + 1) %>:</span>
+            <%= row.reasons.to_sentence %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <%= form_with url: apply_rules_import_path, class: "mt-4 grid gap-4" do |f| %>
+    <%= hidden_field_tag :token, @token, id: nil %>
+    <%= hidden_field_tag :kind, @kind, id: nil %>
+
+    <fieldset>
+      <legend class="<%= label_class %>"><%= t("ui.rules_transfer.mode_label") %></legend>
+      <div class="grid gap-1 text-sm text-slate-300">
+        <label class="inline-flex items-center gap-2">
+          <%= radio_button_tag :mode, "append", !@result.replace? %>
+          <%= t("ui.rules_transfer.mode_append") %>
+        </label>
+        <label class="inline-flex items-center gap-2">
+          <%= radio_button_tag :mode, "replace", @result.replace? %>
+          <%= t("ui.rules_transfer.mode_replace", kinds: kind_names) %>
+        </label>
+      </div>
+    </fieldset>
+
+    <% if unknown_names.any? %>
+      <div>
+        <%= label_tag :unknown_sources, t("ui.rules_transfer.unknown_label"), class: label_class %>
+        <p class="mb-2 text-xs text-amber-300"><%= t("ui.rules_transfer.unknown_hint", names: unknown_names.to_sentence) %></p>
+        <div class="select-chevron">
+          <%= select_tag :unknown_sources, options_for_select([[t("ui.rules_transfer.unknown_skip"), "skip"], [t("ui.rules_transfer.unknown_global"), "global"]], @result.unknown_sources), class: select_class %>
+        </div>
+      </div>
+    <% end %>
+
+    <% if @result.replace? %>
+      <label class="inline-flex items-start gap-2 rounded-lg border border-rose-700/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+        <%= check_box_tag :confirm_replace, "1", false, class: "mt-0.5" %>
+        <%= t("ui.rules_transfer.confirm_replace", count: replaced_total) %>
+      </label>
+    <% end %>
+
+    <% if to_add.zero? && !@result.replace? %>
+      <p class="text-sm text-slate-400"><%= t("ui.rules_transfer.nothing_to_import") %></p>
+    <% end %>
+
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <%= link_to(t("ui.rules_transfer.start_over"), new_rules_import_path(kind: @kind), class: "text-xs text-slate-400 hover:text-slate-200") %>
+      <div class="flex gap-2">
+        <%= f.button(t("ui.rules_transfer.update_preview"), type: "submit", formaction: preview_rules_import_path, class: secondary_button_class) %>
+        <% if @result.replace? %>
+          <%= f.button(t("ui.rules_transfer.apply_replace"), type: "submit", class: danger_button_class, data: { turbo_frame: "_top" }) %>
+        <% else %>
+          <%= f.button(t("ui.rules_transfer.apply", count: to_add), type: "submit", class: primary_button_class, disabled: to_add.zero?, data: { turbo_frame: "_top" }) %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

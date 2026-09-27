@@ -1,0 +1,21 @@
+<% label_class = "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" %>
+<%= render layout: "rules_transfers/frame", locals: { kind: @kind, title: t("ui.rules_transfer.import_header"), subtitle: t("ui.rules_transfer.import_subheader") } do %>
+  <%= render "rules_transfers/errors", errors: @errors %>
+  <%= form_with url: preview_rules_import_path, multipart: true, class: "grid gap-4" do |f| %>
+    <%= hidden_field_tag :kind, @kind, id: nil %>
+    <div>
+      <%= label_tag :file, t("ui.rules_transfer.file_label"), class: label_class %>
+      <%= file_field_tag :file, accept: "application/json,.json", class: "block w-full text-sm text-slate-300 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-700 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:text-slate-200 hover:file:border-slate-500" %>
+    </div>
+    <div>
+      <%= label_tag :json, t("ui.rules_transfer.paste_label"), class: label_class %>
+      <%= text_area_tag :json, (params[:json] if params[:json].is_a?(String)), rows: 6, placeholder: %({"format": "calendar_hub.rules", "version": 1, ...}), class: "#{input_class} font-mono text-xs", spellcheck: "false", autocomplete: "off" %>
+    </div>
+    <p class="text-xs text-slate-400">
+      <%= t("ui.rules_transfer.limits_hint", size: number_to_human_size(CalendarHub::RulesTransfer::Importer::MAX_BYTES), rows: number_with_delimiter(CalendarHub::RulesTransfer::Importer::MAX_ROWS)) %>
+    </p>
+    <div class="flex justify-end">
+      <%= f.submit(t("ui.rules_transfer.preview"), class: primary_button_class) %>
+    </div>
+  <% end %>
+<% end %>

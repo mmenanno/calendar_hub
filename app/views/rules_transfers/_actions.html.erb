@@ -1,0 +1,6 @@
+<% kind = kind.to_s %>
+<div class="mb-4 flex flex-wrap items-center justify-end gap-2">
+  <%= link_to(t("ui.rules_transfer.export_kind.#{kind}"), export_rules_path(only: kind), class: "#{secondary_button_class} text-xs", title: t("ui.rules_transfer.export_hint"), data: { turbo: false }) %>
+  <%= link_to(t("ui.rules_transfer.export_all"), export_rules_path, class: "#{secondary_button_class} text-xs", title: t("ui.rules_transfer.export_hint"), data: { turbo: false }) %>
+  <%= link_to(t("ui.rules_transfer.import"), new_rules_import_path(kind: kind), class: "#{secondary_button_class} text-xs", data: { turbo_frame: "modal" }) %>
+</div>
