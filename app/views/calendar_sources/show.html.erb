@@ -1,11 +1,17 @@
 <% content_for :title, @calendar_source.name %>
-<div class="min-h-screen bg-slate-950 text-slate-100">
-  <div class="mx-auto w-full max-w-3xl px-6 py-10 space-y-6">
+<% sp = CalendarSourcePresenter.new(@calendar_source, self) %>
+<%= render "shared/page_header",
+      nav_active: :sources,
+      max_width: "max-w-3xl",
+      icon: sources_icon,
+      title: @calendar_source.name,
+      subtitle: t("ui.sources.detail_subheader") do %>
+  <%= turbo_stream_from "sync_attempts_source_#{@calendar_source.id}" %>
+  <div class="space-y-6">
     <%= render "shared/breadcrumb", breadcrumbs: [[t("navigation.sources"), calendar_sources_path], [@calendar_source.name]] %>
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <h1 class="text-2xl font-semibold"><%= @calendar_source.name %></h1>
-        <% sp = CalendarSourcePresenter.new(@calendar_source, self) %>
+        <%= render "shared/status_badge", status: sp.active_label, variant: @calendar_source.active? ? :success : :default %>
         <% if sp.health_badge_visible? %>
           <span class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs <%= sp.health_badge_class %>" aria-label="<%= sp.health_badge_label %>">
             <span class="h-1.5 w-1.5 rounded-full <%= sp.health_dot_class %>"></span>
@@ -37,11 +43,11 @@
         <% if @calendar_source.auto_sync_enabled? %>
           <div>
             <dt class="font-medium text-slate-500"><%= t("ui.sources.auto_sync_frequency") %></dt>
-            <dd><%= CalendarSourcePresenter.new(@calendar_source, self).sync_frequency_text %></dd>
+            <dd><%= sp.sync_frequency_text %></dd>
           </div>
           <div>
             <dt class="font-medium text-slate-500"><%= t("ui.sources.auto_sync_status") %></dt>
-            <dd><%= CalendarSourcePresenter.new(@calendar_source, self).auto_sync_status_text %></dd>
+            <dd><%= sp.auto_sync_status_text %></dd>
           </div>
         <% else %>
           <div>
@@ -52,7 +58,13 @@
       </dl>
     </div>
 
-    <%= button_to t("common.actions.sync"), sync_calendar_source_path(@calendar_source), method: :post, class: "rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400", form: { data: { controller: "confirm", confirm_message_value: t("ui.sources.confirm.sync_now") } } %>
+    <div class="space-y-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <%= button_to t("common.actions.sync"), sync_calendar_source_path(@calendar_source), method: :post, class: "cursor-pointer rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400", form: { data: { turbo_stream: true, controller: "confirm", confirm_message_value: t("ui.sources.confirm.sync_now"), confirm_variant_value: "neutral" } } %>
+        <%= button_to t("ui.sources.force_sync"), force_sync_calendar_source_path(@calendar_source), method: :post, class: secondary_button_class, title: t("ui.sources.force_sync_tooltip"), form: { data: { turbo_stream: true, controller: "confirm", confirm_message_value: t("ui.sources.confirm.force_sync", name: @calendar_source.name), confirm_variant_value: "neutral" } } %>
+      </div>
+      <%= render "calendar_sources/sync_status", attempt: @calendar_source.latest_sync_attempt, source: @calendar_source %>
+    </div>
 
     <%# 7-Day Sync Trend (FEAT-005) %>
     <div class="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
@@ -103,6 +115,7 @@
                 <th class="px-3 py-2"><%= t("ui.sources.sync_history_cols.upserts") %></th>
                 <th class="px-3 py-2"><%= t("ui.sources.sync_history_cols.deletes") %></th>
                 <th class="px-3 py-2"><%= t("ui.sources.sync_history_cols.errors") %></th>
+                <th class="px-3 py-2"><%= t("ui.sources.sync_history_cols.message") %></th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800">
@@ -122,6 +135,16 @@
                   <td class="px-3 py-2 text-slate-300"><%= attempt.upserts %></td>
                   <td class="px-3 py-2 text-slate-300"><%= attempt.deletes %></td>
                   <td class="px-3 py-2 text-slate-300"><%= attempt.errors_count %></td>
+                  <td class="max-w-xs px-3 py-2 align-top text-xs <%= attempt.failed? ? "text-rose-300" : "text-slate-400" %>">
+                    <% if attempt.message.present? %>
+                      <details>
+                        <summary class="cursor-pointer truncate" title="<%= attempt.message %>"><%= attempt.message.truncate(60) %></summary>
+                        <p class="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] text-slate-300"><%= attempt.message %></p>
+                      </details>
+                    <% else %>
+                      <span class="text-slate-500">—</span>
+                    <% end %>
+                  </td>
                 </tr>
               <% end %>
             </tbody>
@@ -132,4 +155,4 @@
       <% end %>
     </div>
   </div>
-</div>
+<% end %>

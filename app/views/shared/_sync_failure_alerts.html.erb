@@ -1,4 +1,5 @@
 <% failing_sources = CalendarSource.preload_latest_sync_attempts(CalendarSource.failing.order(:name)) %>
+<% failing_sources = failing_sources.reject { |source| CalendarSourcePresenter.new(source, self).failure_acknowledged? } %>
 <% if failing_sources.any? %>
   <% failures_by_attempt = SyncEventResult.first_failures_by_attempt(failing_sources.filter_map { |s| s.latest_sync_attempt&.id }) %>
   <div id="sync-failure-alerts" class="mx-auto max-w-6xl px-6 pt-4 space-y-2">
@@ -7,7 +8,7 @@
       <% latest = source.latest_sync_attempt %>
       <% banner_class = failure_count >= 3 ? "border-rose-800 bg-rose-950/40 text-rose-200" : "border-yellow-700 bg-yellow-950/40 text-yellow-200" %>
       <div id="sync_failure_alert_<%= source.id %>" class="rounded-lg border px-4 py-3 text-sm flex items-start justify-between gap-3 <%= banner_class %>">
-        <div class="space-y-1">
+        <div class="min-w-0 flex-1 space-y-1 break-words">
           <div>
             <strong><%= source.name %></strong>
             <%= t("ui.sources.health.alert_message", count: failure_count) %>
@@ -15,13 +16,13 @@
           </div>
           <% if latest %>
             <% if latest.message.present? %>
-              <p class="text-xs opacity-80 font-mono truncate max-w-2xl" title="<%= latest.message %>"><%= latest.message.truncate(200) %></p>
+              <p class="text-xs opacity-80 font-mono truncate" title="<%= latest.message %>"><%= latest.message.truncate(200) %></p>
             <% end %>
             <% event_errors = failures_by_attempt.fetch(latest.id, []) %>
             <% if event_errors.any? %>
               <div class="text-xs opacity-70 space-y-0.5">
                 <% event_errors.each do |result| %>
-                  <p class="font-mono truncate max-w-2xl" title="<%= result.error_message %>"><%= result.external_id.to_s.truncate(30) %>: <%= result.error_message.to_s.truncate(150) %></p>
+                  <p class="font-mono truncate" title="<%= result.error_message %>"><%= result.external_id.to_s.truncate(30) %>: <%= result.error_message.to_s.truncate(150) %></p>
                 <% end %>
                 <% remaining = latest.errors_count.to_i - event_errors.size %>
                 <% if remaining > 0 %>
@@ -31,8 +32,8 @@
             <% end %>
           <% end %>
         </div>
-        <%= button_to acknowledge_failure_calendar_source_path(source), method: :patch, data: { turbo_stream: true }, form: { class: "shrink-0" }, class: "cursor-pointer text-current opacity-60 hover:opacity-100" do %>
-          &times;
+        <%= button_to acknowledge_failure_calendar_source_path(source), method: :patch, data: { turbo_stream: true }, form: { class: "shrink-0" }, class: "cursor-pointer rounded px-1 text-lg leading-none text-current opacity-60 hover:opacity-100", title: t("ui.sources.health.dismiss_alert", name: source.name), aria: { label: t("ui.sources.health.dismiss_alert", name: source.name) } do %>
+          <span aria-hidden="true">&times;</span>
         <% end %>
       </div>
     <% end %>

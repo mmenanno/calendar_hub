@@ -127,8 +127,9 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_entity
     assert_match "turbo-stream", response.body
-    assert_match "replace", response.body
-    assert_match "new_source_form", response.body
+    # Updates the wrapper's contents so the collapsible header survives
+    assert_match(/<turbo-stream action="update" target="new_source_form_body">/, response.body)
+    assert_match("can&#39;t be blank", response.body)
   end
 
   test "create applies credentials" do
@@ -308,8 +309,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_match "turbo-stream", response.body
     assert_match "remove", response.body
-    assert_match "replace", response.body
-    assert_match "archived-sources-section", response.body
+    assert_match(/<turbo-stream action="update" target="archived-sources-section">/, response.body)
     assert_match "toast-anchor", response.body
 
     source.reload
@@ -432,7 +432,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to calendar_events_path(source_id: source.id)
     follow_redirect!
 
-    assert_match I18n.t("flashes.calendar_sources.sync_inactive"), response.body
+    assert_match(ERB::Util.html_escape(I18n.t("flashes.calendar_sources.sync_refused.paused", name: source.name)), response.body)
   end
 
   test "sync handles inactive source with turbo stream format" do
@@ -446,6 +446,40 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :unprocessable_entity
+    assert_match(/<turbo-stream action="append" target="toast-anchor">/, response.body)
+    assert_match(ERB::Util.html_escape(I18n.t("flashes.calendar_sources.sync_refused.paused", name: source.name)), response.body)
+  end
+
+  test "sync outside the sync window explains why and suggests Force Sync" do
+    source = calendar_sources(:provider)
+    source.update!(sync_window_start_hour: 9, sync_window_end_hour: 17, time_zone: "UTC")
+    clear_enqueued_jobs
+
+    travel_to(Time.utc(2026, 1, 5, 20, 0, 0)) do
+      assert_enqueued_jobs(0) do
+        post sync_calendar_source_path(source),
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+      end
+    end
+
+    assert_response(:unprocessable_entity)
+    assert_match("Outside sync window 9:00–17:00 (UTC)", response.body)
+    assert_match("Force Sync", response.body)
+  end
+
+  test "sync success returns sync status and a toast" do
+    source = calendar_sources(:provider)
+    source.update!(sync_window_start_hour: nil, sync_window_end_hour: nil)
+    clear_enqueued_jobs
+
+    post sync_calendar_source_path(source),
+      headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response(:success)
+    assert_match(/<turbo-stream action="replace" target="sync_status_source_#{source.id}">/, response.body)
+    assert_match(/id="sync_status_source_#{source.id}"/, response.body)
+    assert_match(I18n.t("flashes.calendar_sources.sync_scheduled", count: 1), response.body)
+    assert_equal("manual", source.sync_attempts.order(:created_at).last.trigger)
   end
 
   test "sync prevents double queueing" do
@@ -461,7 +495,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to calendar_events_path(source_id: source.id)
     follow_redirect!
 
-    assert_match I18n.t("flashes.calendar_sources.sync_inactive"), response.body
+    assert_match(I18n.t("flashes.calendar_sources.sync_refused.already_running"), response.body)
   end
 
   # FORCE_SYNC ACTION TESTS
@@ -505,7 +539,7 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to calendar_events_path(source_id: source.id)
     follow_redirect!
 
-    assert_match I18n.t("flashes.calendar_sources.sync_inactive"), response.body
+    assert_match(ERB::Util.html_escape(I18n.t("flashes.calendar_sources.sync_refused.paused", name: source.name)), response.body)
   end
 
   # CHECK_DESTINATION ACTION TESTS
@@ -965,5 +999,96 @@ class CalendarSourcesControllerTest < ActionDispatch::IntegrationTest
 
     refute(json["success"])
     assert_equal("Connection failed", json["error"])
+  end
+
+  test "acknowledge_failure records an acknowledgement without resetting the failure count" do
+    source = failing_source
+
+    get calendar_sources_path
+
+    assert_select("#sync_failure_alert_#{source.id} button[aria-label]")
+
+    patch acknowledge_failure_calendar_source_path(source),
+      headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response(:success)
+    assert_match(/<turbo-stream action="remove" target="sync_failure_alert_#{source.id}">/, response.body)
+    source.reload
+
+    assert_equal(3, source.consecutive_sync_failures)
+    refute_nil(source.failure_acknowledged_at)
+  end
+
+  test "acknowledged failure banner stays hidden until a newer failure" do
+    source = failing_source
+    patch acknowledge_failure_calendar_source_path(source)
+
+    get calendar_sources_path
+
+    assert_select("#sync_failure_alert_#{source.id}", count: 0)
+    # Health badge still reflects the unresolved failures
+    assert_match(I18n.t("ui.sources.health.failures", count: 3), response.body)
+
+    travel(1.minute) do
+      source.sync_attempts.create!(status: :failed, finished_at: Time.current, message: "boom again")
+    end
+    get calendar_sources_path
+
+    assert_select("#sync_failure_alert_#{source.id}")
+  end
+
+  test "show renders nav and a sync status element the Sync button can update" do
+    source = calendar_sources(:provider)
+
+    get calendar_source_path(source)
+
+    assert_response(:success)
+    assert_select("[data-controller=mobile-nav]")
+    assert_select("nav a[href='#{calendar_sources_path}']")
+    assert_select("#sync_status_source_#{source.id}")
+    assert_select("turbo-cable-stream-source[signed-stream-name]")
+    assert_select("form[action='#{sync_calendar_source_path(source)}'][data-turbo-stream=true]")
+  end
+
+  test "show lists the error message in sync history" do
+    source = calendar_sources(:provider)
+    source.sync_attempts.create!(status: :failed, finished_at: Time.current, message: "Connection refused by upstream host")
+
+    get calendar_source_path(source)
+
+    assert_select("th", text: I18n.t("ui.sources.sync_history_cols.message"))
+    assert_select("details summary[title='Connection refused by upstream host']")
+  end
+
+  test "new and edit pages use the standard layout nav" do
+    get new_calendar_source_path
+
+    assert_select("[data-controller=mobile-nav]")
+    assert_select("label[for=calendar_source_credentials_http_basic_username]")
+    assert_select("input#calendar_source_credentials_http_basic_username")
+
+    source = calendar_sources(:provider)
+    get edit_calendar_source_path(source)
+
+    assert_select("[data-controller=mobile-nav]")
+  end
+
+  test "sync status partial uses the source id even without any attempts" do
+    source = calendar_sources(:provider)
+    source.sync_attempts.delete_all
+
+    get calendar_sources_path
+
+    assert_select("#sync_status_source_#{source.id}")
+    assert_select("#sync_status_source_unknown", count: 0)
+  end
+
+  private
+
+  def failing_source
+    source = calendar_sources(:provider)
+    source.sync_attempts.create!(status: :failed, finished_at: 1.minute.ago, message: "boom")
+    source.update!(consecutive_sync_failures: 3)
+    source
   end
 end

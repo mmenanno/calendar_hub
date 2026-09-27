@@ -60,7 +60,7 @@ class CalendarSource < ApplicationRecord
     super.presence || AppSetting.instance.default_sync_frequency_minutes
   end
 
-  def schedule_sync(force: false)
+  def schedule_sync(force: false, trigger: "manual")
     return unless syncable?
     return unless force || within_sync_window?
 
@@ -73,7 +73,7 @@ class CalendarSource < ApplicationRecord
     # Rely on the DB unique partial index (idx_unique_active_sync_attempt_per_source)
     # to prevent duplicate active attempts. If another thread already created one,
     # the insert will raise RecordNotUnique and we safely return nil.
-    attempt = SyncAttempt.create!(calendar_source: self, status: :queued)
+    attempt = SyncAttempt.create!(calendar_source: self, status: :queued, trigger: trigger)
     SyncCalendarJob.perform_later(id, attempt_id: attempt.id)
     attempt
   rescue ActiveRecord::RecordNotUnique

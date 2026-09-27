@@ -186,6 +186,23 @@ module Admin
       assert_match(/toast-anchor/, response.body)
     end
 
+    test "index labels attempts by their recorded trigger, not the source's current setting" do
+      mock_solid_queue_data
+      # Source has auto-sync on, but this attempt was started manually
+      @recent_auto_attempt.update!(trigger: "manual")
+      @recent_manual_attempt.update!(trigger: "auto")
+
+      get admin_jobs_path
+
+      assert_response(:success)
+      rows = css_select("#sync-attempts tbody tr")
+      auto_source_row = rows.find { |row| row.text.include?("Active Auto-Sync Source") && row.text.include?("Manual") }
+      manual_source_row = rows.find { |row| row.text.include?("Manual Sync Source") && row.text.include?("Auto") }
+
+      refute_nil(auto_source_row)
+      refute_nil(manual_source_row)
+    end
+
     private
 
     def mock_solid_queue_data

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_27_020100) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_27_030100) do
   create_table "app_settings", force: :cascade do |t|
     t.string "app_host"
     t.integer "app_port"
@@ -74,6 +74,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_020100) do
     t.datetime "created_at", null: false
     t.text "credentials"
     t.datetime "deleted_at"
+    t.datetime "failure_acknowledged_at"
     t.string "ics_feed_etag"
     t.string "ics_feed_last_modified"
     t.datetime "import_start_date"
@@ -266,6 +267,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_020100) do
     t.datetime "started_at"
     t.string "status", default: "queued", null: false
     t.integer "total_events", default: 0, null: false
+    t.string "trigger"
     t.datetime "updated_at", null: false
     t.integer "upserts", default: 0, null: false
     t.index ["calendar_source_id", "created_at"], name: "idx_sync_attempts_source_created"

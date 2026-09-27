@@ -3,17 +3,20 @@
     <div class="modal-card">
       <div class="mb-4 flex items-center justify-between">
         <h2 class="text-lg font-semibold"><%= t("common.actions.edit") %> <%= @calendar_source.name %></h2>
-        <button onclick="document.getElementById('modal').innerHTML=''" class="cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"><%= t("common.actions.close") %></button>
+        <button type="button" data-action="modal#close" class="cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"><%= t("common.actions.close") %></button>
       </div>
       <%= render "form", calendar_source: @calendar_source %>
     </div>
   </turbo-frame>
 <% else %>
-  <div class="min-h-screen bg-slate-950 text-slate-100">
-    <div class="mx-auto w-full max-w-3xl px-6 py-10">
-      <%= render "shared/breadcrumb", breadcrumbs: [[t("navigation.sources"), calendar_sources_path], [t("common.actions.edit")]] %>
-      <h1 class="mb-6 text-2xl font-semibold"><%= t("common.actions.edit") %> <%= @calendar_source.name %></h1>
-      <%= render "form", calendar_source: @calendar_source %>
-    </div>
-  </div>
+  <% content_for :title, "#{t("common.actions.edit")} #{@calendar_source.name}" %>
+  <%= render "shared/page_header",
+        nav_active: :sources,
+        max_width: "max-w-3xl",
+        icon: sources_icon,
+        title: "#{t("common.actions.edit")} #{@calendar_source.name}",
+        subtitle: t("ui.sources.edit_subheader") do %>
+    <%= render "shared/breadcrumb", breadcrumbs: [[t("navigation.sources"), calendar_sources_path], [@calendar_source.name, calendar_source_path(@calendar_source)], [t("common.actions.edit")]] %>
+    <%= render "form", calendar_source: @calendar_source %>
+  <% end %>
 <% end %>
