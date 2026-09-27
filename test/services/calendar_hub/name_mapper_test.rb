@@ -498,5 +498,42 @@ module CalendarHub
 
       assert_equal("Disabled Test", result3)
     end
+
+    test "memoized mappings are reset when a mapping is committed" do
+      assert_equal("Weekly Review", NameMapper.apply("Weekly Review", source: @source))
+
+      EventMapping.create!(calendar_source: @source, pattern: "Weekly", replacement: "Renamed", match_type: "contains", active: true)
+
+      assert_equal("Renamed", NameMapper.apply("Weekly Review", source: @source))
+    end
+
+    test "global mapping edits apply to every source" do
+      other = calendar_sources(:ics_feed)
+      NameMapper.apply("Global thing", source: other)
+
+      EventMapping.create!(calendar_source: nil, pattern: "Global", replacement: "Everywhere", match_type: "contains", active: true)
+
+      assert_equal("Everywhere", NameMapper.apply("Global thing", source: other))
+    end
+
+    test "instances compile regexes once with a timeout" do
+      EventMapping.create!(calendar_source: @source, pattern: "^(\\w+) call$", replacement: "Call: \\1", match_type: "regex", active: true)
+      mapper = NameMapper.for(@source)
+
+      assert_equal("Call: Team", mapper.apply("Team call"))
+      assert_in_delta(SafeRegexp::TIMEOUT, mapper.instance_variable_get(:@regexes).values.compact.first.timeout)
+    end
+
+    test "regex timeouts are treated as non-matches" do
+      mapping = EventMapping.create!(calendar_source: @source, pattern: "(a+)+$", replacement: "x", match_type: "regex", active: true)
+      mapper = NameMapper.new([mapping])
+      slow = mock("regex")
+      slow.stubs(:match?).raises(Regexp::TimeoutError)
+      slow.stubs(:source).returns(mapping.pattern)
+      mapper.instance_variable_get(:@regexes)[mapping] = slow
+      Rails.logger.expects(:warn).with(regexp_matches(/timed out/))
+
+      assert_equal("aaaa!", mapper.apply("aaaa!"))
+    end
   end
 end

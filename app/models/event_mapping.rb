@@ -19,8 +19,7 @@ class EventMapping < ApplicationRecord
   validates :replacement, presence: true, unless: -> { target_calendar_identifier.present? }
   validate :must_have_replacement_or_destination
 
-  after_destroy :clear_name_mapper_cache
-  after_save :clear_name_mapper_cache
+  after_commit :reset_name_mapper_cache
   after_commit :schedule_affected_syncs
 
   def has_destination_override?
@@ -30,29 +29,35 @@ class EventMapping < ApplicationRecord
   private
 
   def must_have_replacement_or_destination
-    if replacement.blank? && target_calendar_identifier.blank?
-      errors.add(:base, "must have a replacement or a destination calendar override")
-    end
+    return unless replacement.blank? && target_calendar_identifier.blank?
+
+    errors.add(:base, "must have a replacement or a destination calendar override")
   end
 
-  def clear_name_mapper_cache
-    cache_key = "name_mapper/active_mappings/#{calendar_source_id || "global"}"
-    Rails.cache.delete(cache_key)
+  # NameMapper memoizes mappings per request/job; drop them once a change is
+  # committed so the rest of this request sees it.
+  def reset_name_mapper_cache
+    CalendarHub::NameMapper.reset_cache!
   end
 
+  # Mapping changes affect titles/destinations of already-synced events, so
+  # re-sync affected sources through the normal scheduling path (which
+  # creates a SyncAttempt and respects the one-active-sync-per-source rule).
+  # A sync only re-pushes events whose mapped payload actually changed.
   def schedule_affected_syncs
     return if only_position_changed?
 
-    affected_sources.select(&:syncable?).each { |source| SyncCalendarJob.perform_later(source.id) }
+    affected_sources.select(&:syncable?).each { |source| source.schedule_sync(force: true, full: false) }
   end
 
+  # Includes the previous source when a mapping moved between sources.
   def affected_sources
-    if calendar_source_id
-      source = CalendarSource.find_by(id: calendar_source_id)
-      source ? [source] : []
-    else
-      CalendarSource.active.to_a
-    end
+    source_ids = [calendar_source_id]
+    source_ids << previous_changes["calendar_source_id"].first if !previously_new_record? && previous_changes.key?("calendar_source_id")
+    source_ids.uniq!
+    return CalendarSource.active.to_a if source_ids.include?(nil)
+
+    CalendarSource.where(id: source_ids).to_a
   end
 
   def only_position_changed?
