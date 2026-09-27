@@ -1,0 +1,30 @@
+<%# One page of events plus previous/next links, inside the events-list frame. %>
+<div id="calendar-events" class="space-y-4">
+  <% if events.any? %>
+    <%= render partial: "calendar_events/calendar_event", collection: events, as: :calendar_event %>
+  <% else %>
+    <div class="rounded-xl border border-dashed border-slate-800 bg-slate-900/50 p-6 text-center text-sm text-slate-400">
+      <% if selected_source %>
+        <%= t("ui.events.none_for_selected", name: selected_source.name) %>
+      <% else %>
+        <%= t("ui.events.none_connect") %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+<% if prev_page || next_page %>
+  <% page_link_class = "rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 transition hover:border-slate-500" %>
+  <nav id="events-pagination" class="mt-4 flex items-center justify-between" aria-label="<%= t("ui.events.pagination") %>">
+    <div>
+      <% if prev_page %>
+        <%= link_to t("ui.events.previous_page"), calendar_events_path(events_filter_params.merge(page: (prev_page if prev_page > 1)).compact), rel: "prev", class: page_link_class, data: { turbo_action: "advance" } %>
+      <% end %>
+    </div>
+    <span class="text-xs text-slate-500"><%= t("ui.events.page", page: page) %></span>
+    <div>
+      <% if next_page %>
+        <%= link_to t("ui.events.next_page"), calendar_events_path(events_filter_params.merge(page: next_page)), rel: "next", class: page_link_class, data: { turbo_action: "advance" } %>
+      <% end %>
+    </div>
+  </nav>
+<% end %>

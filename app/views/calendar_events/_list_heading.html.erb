@@ -1,0 +1,6 @@
+<div id="events-list-heading">
+  <h2 class="text-lg font-semibold"><%= show_past ? t("ui.events.past") : t("ui.events.upcoming") %></h2>
+  <% if selected_source %>
+    <p class="text-sm text-slate-400"><%= t("ui.events.filtered_to", name: selected_source.name) %></p>
+  <% end %>
+</div>

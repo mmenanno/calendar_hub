@@ -48,7 +48,7 @@ class CalendarEventPresenterTest < ActiveSupport::TestCase
     assert_equal(expected, presenter.ends_at_long)
   end
 
-  test "title caches mapped result" do
+  test "title memoizes mapped result" do
     event = build_event(title: "Needs Mapping")
     presenter = presenter_for(event)
 
