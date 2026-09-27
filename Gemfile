@@ -39,14 +39,13 @@ group :test, :ci do
   gem "webmock"
 end
 
-# Jobs and maintenance
-gem "activejob-uniqueness"
-gem "maintenance_tasks"
-gem "mission_control-jobs"
 
 # Networking and parsing
 gem "faraday"
 gem "nokogiri"
+
+# ActiveSupport 8.1 calls JSON.parse with a positional options hash, which json 3 rejects.
+gem "json", "< 3"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: [:windows, :jruby]

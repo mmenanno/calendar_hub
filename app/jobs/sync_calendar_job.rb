@@ -3,12 +3,12 @@
 class SyncCalendarJob < ApplicationJob
   include SyncAttemptManageable
 
-  retry_on CalendarHub::Ingestion::Error, wait: :exponentially_longer, attempts: 5
+  retry_on CalendarHub::Ingestion::Error, wait: :polynomially_longer, attempts: 5
 
   # Retry on SQLite lock errors with exponential backoff
   # These can occur when multiple jobs try to write simultaneously
-  retry_on ActiveRecord::StatementTimeout, wait: :exponentially_longer, attempts: 5
-  retry_on ActiveRecord::Deadlocked, wait: :exponentially_longer, attempts: 3
+  retry_on ActiveRecord::StatementTimeout, wait: :polynomially_longer, attempts: 5
+  retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: 3
 
   # Rescue and conditionally retry SQLite busy exceptions
   rescue_from ActiveRecord::StatementInvalid do |exception|

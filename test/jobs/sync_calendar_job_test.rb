@@ -145,4 +145,13 @@ class SyncCalendarJobTest < ActiveJob::TestCase
 
     assert_equal(1, source.reload.consecutive_sync_failures)
   end
+
+  test "re-enqueues itself when the feed fetch fails" do
+    source = calendar_sources(:provider)
+    CalendarHub::Sync::EnhancedSyncService.any_instance.stubs(:call).raises(CalendarHub::Ingestion::Error, "HTTP 503")
+
+    assert_enqueued_with(job: SyncCalendarJob) do
+      SyncCalendarJob.perform_now(source.id)
+    end
+  end
 end
