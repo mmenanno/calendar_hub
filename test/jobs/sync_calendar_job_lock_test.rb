@@ -8,13 +8,13 @@ class SyncCalendarJobLockTest < ActiveSupport::TestCase
     # Stub the service to a quick no-op to keep test fast
     CalendarHub::Sync::SyncService.any_instance.stubs(:call).returns([])
 
-    assert_difference -> { SyncAttempt.where(calendar_source: source).count }, +2 do
-      SyncCalendarJob.perform_now(source.id, use_enhanced_sync: false)
-      SyncCalendarJob.perform_now(source.id, use_enhanced_sync: false)
+    assert_difference(-> { SyncAttempt.where(calendar_source: source).count }, +2) do
+      SyncCalendarJob.perform_now(source.id)
+      SyncCalendarJob.perform_now(source.id)
     end
 
     last_two = SyncAttempt.where(calendar_source: source).order(created_at: :desc).limit(2)
 
-    assert last_two.all?(&:success?)
+    assert(last_two.all?(&:success?))
   end
 end

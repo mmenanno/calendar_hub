@@ -12,22 +12,21 @@ class SyncCalendarJob < ApplicationJob
 
   # Rescue and conditionally retry SQLite busy exceptions
   rescue_from ActiveRecord::StatementInvalid do |exception|
-    if exception.message.include?("database is locked") || exception.message.include?("BusyException")
-      # Log the retry attempt
-      logger.warn("[SyncCalendarJob] SQLite lock detected, will retry (attempt #{executions}/5)")
+    raise unless exception.message.include?("database is locked") || exception.message.include?("BusyException")
 
-      # Retry with exponential backoff for SQLite lock errors (1s, 4s, 9s, 16s, 25s)
-      if executions < 5
-        retry_job(wait: executions**2, queue: queue_name, priority: priority)
-      else
-        # Max retries exhausted, let it fail
-        logger.error("[SyncCalendarJob] Max retries exhausted for SQLite lock")
-        raise
-      end
+    # Log the retry attempt
+    logger.warn("[SyncCalendarJob] SQLite lock detected, will retry (attempt #{executions}/5)")
+
+    # Retry with exponential backoff for SQLite lock errors (1s, 4s, 9s, 16s, 25s)
+    if executions < 5
+      retry_job(wait: executions**2, queue: queue_name, priority: priority)
     else
-      # Re-raise other StatementInvalid errors
+      # Max retries exhausted, let it fail
+      logger.error("[SyncCalendarJob] Max retries exhausted for SQLite lock")
       raise
     end
+
+    # Re-raise other StatementInvalid errors
   end
 
   def perform(calendar_source_id, **options)
@@ -49,20 +48,20 @@ class SyncCalendarJob < ApplicationJob
         source.record_sync_success!
       end
     end
-  rescue ActiveRecord::StatementTimeout, ActiveRecord::Deadlocked, ActiveRecord::StatementInvalid => e
+  rescue ActiveRecord::StatementTimeout, ActiveRecord::Deadlocked, ActiveRecord::StatementInvalid => exception
     # These will be retried automatically, but update attempt if we have one
     if attempt && !attempt.finished_at
-      retry_msg = if e.is_a?(ActiveRecord::StatementInvalid) &&
-          (e.message.include?("database is locked") || e.message.include?("BusyException"))
+      retry_msg = if exception.is_a?(ActiveRecord::StatementInvalid) &&
+          (exception.message.include?("database is locked") || exception.message.include?("BusyException"))
         "SQLite lock, will retry"
       else
         "Lock timeout, will retry"
       end
-      attempt.update(message: "#{retry_msg}: #{e.message.truncate(200)}")
+      attempt.update(message: "#{retry_msg}: #{exception.message.truncate(200)}")
     end
     raise
-  rescue => e
-    attempt&.finish(status: :failed, message: e.message) unless attempt&.finished_at
+  rescue StandardError => exception
+    attempt&.finish(status: :failed, message: exception.message) unless attempt&.finished_at
     source&.record_sync_failure!
     raise
   end
@@ -70,15 +69,10 @@ class SyncCalendarJob < ApplicationJob
   private
 
   def build_sync_options(options)
-    {
-      attempt_id: options[:attempt_id],
-      use_enhanced_sync: options.fetch(:use_enhanced_sync, true),
-    }
+    { attempt_id: options[:attempt_id] }
   end
 
-  def execute_sync(source, attempt, options)
-    service_class = options[:use_enhanced_sync] ? CalendarHub::Sync::EnhancedSyncService : CalendarHub::Sync::SyncService
-    service = service_class.new(source: source, observer: attempt)
-    service.call
+  def execute_sync(source, attempt, _options)
+    CalendarHub::Sync::SyncService.new(source: source, observer: attempt).call
   end
 end

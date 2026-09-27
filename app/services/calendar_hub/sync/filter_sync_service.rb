@@ -2,13 +2,14 @@
 
 module CalendarHub
   module Sync
+    # Re-evaluates filter rules against a source's stored events and, when the
+    # effective exclusion of any event changed, schedules a sync so the change
+    # is pushed to Apple Calendar through the regular SyncService.
     class FilterSyncService
-      attr_reader :source, :apple_syncer, :apple_client
+      attr_reader :source
 
-      def initialize(source:, apple_client: AppleCalendar::Client.new)
+      def initialize(source:)
         @source = source
-        @apple_client = apple_client
-        @apple_syncer = ::CalendarHub::Shared::FilterAppleEventSyncer.new(source: source, apple_client: apple_client)
       end
 
       def sync_filter_rules
@@ -28,34 +29,10 @@ module CalendarHub
         raise
       end
 
-      def sync_event_filter_status(event)
-        return unless event&.calendar_source == source
-
-        apple_syncer.sync_event(event)
-      rescue StandardError => error
-        Rails.logger.error("[FilterSync] Failed to sync event #{event&.id}: #{error.message}")
-        raise
-      end
-
       private
 
       def trigger_apple_sync
         source.schedule_sync(force: true)
-      end
-
-      # Backward compatibility methods for tests
-      # FilterSyncService used a different UID format than the standardized one
-      def composite_uid_for(event)
-        "#{event.external_id}@#{source.id}.calendar-hub.local"
-      end
-
-      def event_url_for(event)
-        Rails.application.routes.url_helpers.calendar_event_url(
-          event,
-           **::CalendarHub::UrlOptions.for_links,
-        )
-      rescue
-        nil
       end
     end
   end

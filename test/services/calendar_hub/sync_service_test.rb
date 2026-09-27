@@ -39,9 +39,24 @@ module CalendarHub
 
       event = @source.calendar_events.find_by(external_id: "prov-999")
 
-      assert_predicate event, :present?
-      refute_nil event.reload.synced_at
-      assert_equal 32, @source.reload.sync_token.length
+      assert_predicate(event, :present?)
+      refute_nil(event.reload.synced_at)
+      assert_equal(32, @source.reload.sync_token.length)
+    end
+
+    test "broadcasts a single events refresh after sync" do
+      fetched_events = [
+        build_ics_event(uid: "refresh-1", starts_at: Time.zone.parse("2025-09-24 10:00"), ends_at: Time.zone.parse("2025-09-24 11:00")),
+        build_ics_event(uid: "refresh-2", starts_at: Time.zone.parse("2025-09-24 12:00"), ends_at: Time.zone.parse("2025-09-24 13:00")),
+      ]
+      mock_ingestion_adapter(@source, events: fetched_events)
+      apple_client = mock_apple_client
+      apple_client.stubs(:upsert_event)
+
+      Turbo::StreamsChannel.expects(:broadcast_refresh_later_to).with("calendar_events").once
+      Turbo::StreamsChannel.expects(:broadcast_replace_later_to).never
+
+      ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client).call
     end
 
     test "cancels and deletes missing events" do
@@ -60,7 +75,7 @@ module CalendarHub
 
       ::CalendarHub::Sync::SyncService.new(source: @source, apple_client: apple_client).call
 
-      assert_predicate existing.reload, :cancelled?
+      assert_predicate(existing.reload, :cancelled?)
     end
 
     test "short-circuits on nil fetch_events (304 Not Modified) without cancelling events" do
@@ -122,9 +137,8 @@ module CalendarHub
       call_count = 0
       CalendarEvent.any_instance.stubs(:save!).with do
         call_count += 1
-        if call_count >= 2
-          raise ActiveRecord::RecordInvalid.new(CalendarEvent.new)
-        end
+        raise ActiveRecord::RecordInvalid.new(CalendarEvent.new) if call_count >= 2
+
         true
       end
 
@@ -135,8 +149,8 @@ module CalendarHub
       end
 
       # Neither event should have been persisted due to transaction rollback
-      assert_nil @source.calendar_events.find_by(external_id: "good-event")
-      assert_nil @source.calendar_events.find_by(external_id: "bad-event")
+      assert_nil(@source.calendar_events.find_by(external_id: "good-event"))
+      assert_nil(@source.calendar_events.find_by(external_id: "bad-event"))
     ensure
       CalendarEvent.any_instance.unstub(:save!)
     end
@@ -162,9 +176,9 @@ module CalendarHub
       service = ::CalendarHub::Sync::SyncService.new(source: @source)
       result = service.send(:upsert_events, events)
 
-      assert_equal 2, result.size
-      assert @source.calendar_events.find_by(external_id: "event-1").present?
-      assert @source.calendar_events.find_by(external_id: "event-2").present?
+      assert_equal(2, result.size)
+      assert_predicate(@source.calendar_events.find_by(external_id: "event-1"), :present?)
+      assert_predicate(@source.calendar_events.find_by(external_id: "event-2"), :present?)
     end
 
     test "raises error when calendar identifier is blank" do
@@ -439,33 +453,7 @@ module CalendarHub
       refute_nil(@source.last_synced_at)
     end
 
-    test "event_url_for handles routing errors" do
-      service = ::CalendarHub::Sync::SyncService.new(source: @source)
-
-      # Mock the url_helpers to raise an error
-      Rails.application.routes.url_helpers.stubs(:calendar_event_url).raises(StandardError, "Routing error")
-
-      event = @source.calendar_events.create!(
-        external_id: "url-error",
-        title: "URL Error",
-        description: "",
-        location: "",
-        starts_at: Time.zone.parse("2025-09-24 10:00"),
-        ends_at: Time.zone.parse("2025-09-24 11:00"),
-        status: :confirmed,
-        data: {},
-      )
-
-      result = service.send(:event_url_for, event)
-
-      assert_nil(result)
-    ensure
-      Rails.application.routes.url_helpers.unstub(:calendar_event_url)
-    end
-
-    test "composite_uid_for generates correct format" do
-      service = ::CalendarHub::Sync::SyncService.new(source: @source)
-
+    test "composite uid format is ch-<source>-<external_id>" do
       event = @source.calendar_events.create!(
         external_id: "test-uid",
         title: "Test Event",
@@ -477,7 +465,7 @@ module CalendarHub
         data: {},
       )
 
-      result = service.send(:composite_uid_for, event)
+      result = ::CalendarHub::Shared::UidGenerator.composite_uid_for(event)
 
       assert_equal("ch-#{@source.id}-test-uid", result)
     end

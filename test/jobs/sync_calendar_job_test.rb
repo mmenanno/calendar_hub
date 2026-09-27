@@ -14,16 +14,16 @@ class SyncCalendarJobTest < ActiveJob::TestCase
     source = calendar_sources(:provider)
     attempt = SyncAttempt.create!(calendar_source: source, status: :queued)
 
-    CalendarHub::Sync::EnhancedSyncService.expects(:new).with(source: source, observer: attempt).returns(mock(call: true))
+    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: attempt).returns(mock(call: true))
 
     SyncCalendarJob.perform_now(source.id, attempt_id: attempt.id)
 
-    assert_equal "success", attempt.reload.status
+    assert_equal("success", attempt.reload.status)
   end
 
   test "raises error when attempt_id is provided but attempt not found" do
     source = calendar_sources(:provider)
-    non_existent_id = 99999
+    non_existent_id = 99_999
 
     # Should raise ActiveRecord::RecordNotFound when attempt doesn't exist
     assert_raises(ActiveRecord::RecordNotFound) do
@@ -40,7 +40,7 @@ class SyncCalendarJobTest < ActiveJob::TestCase
 
     service_mock = mock
     service_mock.expects(:call).raises(StandardError.new(error_message))
-    CalendarHub::Sync::EnhancedSyncService.expects(:new).with(source: source, observer: kind_of(SyncAttempt)).returns(service_mock)
+    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: kind_of(SyncAttempt)).returns(service_mock)
 
     # Create the job and run it manually to avoid transaction issues
     job = SyncCalendarJob.new(source.id)
@@ -60,23 +60,9 @@ class SyncCalendarJobTest < ActiveJob::TestCase
     assert_equal(error_message, attempt.message)
   end
 
-  test "uses enhanced sync service by default" do
-    source = calendar_sources(:provider)
-    CalendarHub::Sync::EnhancedSyncService.expects(:new).with(source: source, observer: kind_of(SyncAttempt)).returns(mock(call: true))
-
-    SyncCalendarJob.perform_now(source.id)
-  end
-
-  test "uses regular sync service when use_enhanced_sync is false" do
-    source = calendar_sources(:provider)
-    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: kind_of(SyncAttempt)).returns(mock(call: true))
-
-    SyncCalendarJob.perform_now(source.id, use_enhanced_sync: false)
-  end
-
   test "creates new attempt when attempt_id is not provided" do
     source = calendar_sources(:provider)
-    CalendarHub::Sync::EnhancedSyncService.expects(:new).with(source: source, observer: kind_of(SyncAttempt)).returns(mock(call: true))
+    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: kind_of(SyncAttempt)).returns(mock(call: true))
 
     # Don't pass attempt_id (defaults to nil) - should create new attempt
     SyncCalendarJob.perform_now(source.id)
@@ -94,11 +80,11 @@ class SyncCalendarJobTest < ActiveJob::TestCase
     SyncAttempt.expects(:create!).with(calendar_source: source, status: :queued)
       .raises(ActiveRecord::RecordNotUnique.new("UNIQUE constraint failed"))
 
-    CalendarHub::Sync::EnhancedSyncService.expects(:new).with(source: source, observer: existing_attempt).returns(mock(call: true))
+    CalendarHub::Sync::SyncService.expects(:new).with(source: source, observer: existing_attempt).returns(mock(call: true))
 
     SyncCalendarJob.perform_now(source.id)
 
-    assert_equal "success", existing_attempt.reload.status
+    assert_equal("success", existing_attempt.reload.status)
   end
 
   # FEAT-006: Sync failure tracking
@@ -122,7 +108,7 @@ class SyncCalendarJobTest < ActiveJob::TestCase
     service_mock = mock("service")
     service_mock.expects(:call)
 
-    CalendarHub::Sync::EnhancedSyncService.expects(:new).returns(service_mock)
+    CalendarHub::Sync::SyncService.expects(:new).returns(service_mock)
     SyncAttempt.stubs(:find_by).returns(nil)
     SyncAttempt.stubs(:create!).returns(attempt_mock)
 
@@ -137,7 +123,7 @@ class SyncCalendarJobTest < ActiveJob::TestCase
 
     service_mock = mock("service")
     service_mock.expects(:call).raises(StandardError.new("Network error"))
-    CalendarHub::Sync::EnhancedSyncService.expects(:new).returns(service_mock)
+    CalendarHub::Sync::SyncService.expects(:new).returns(service_mock)
 
     assert_raises(StandardError) do
       SyncCalendarJob.perform_now(source.id)
@@ -148,7 +134,7 @@ class SyncCalendarJobTest < ActiveJob::TestCase
 
   test "re-enqueues itself when the feed fetch fails" do
     source = calendar_sources(:provider)
-    CalendarHub::Sync::EnhancedSyncService.any_instance.stubs(:call).raises(CalendarHub::Ingestion::Error, "HTTP 503")
+    CalendarHub::Sync::SyncService.any_instance.stubs(:call).raises(CalendarHub::Ingestion::Error, "HTTP 503")
 
     assert_enqueued_with(job: SyncCalendarJob) do
       SyncCalendarJob.perform_now(source.id)
