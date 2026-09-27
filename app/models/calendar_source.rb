@@ -34,15 +34,21 @@ class CalendarSource < ApplicationRecord
       sources = sources.to_a
       return sources if sources.empty?
 
+      attempt_ids = latest_sync_attempt_ids(unscoped.where(id: sources.map(&:id)))
+      attempts = SyncAttempt.where(id: attempt_ids).index_by(&:calendar_source_id)
+
+      sources.each { |source| source.association(:latest_sync_attempt).target = attempts[source.id] }
+    end
+
+    # Ids of the latest sync attempt of each source in `sources` (sources
+    # without attempts are skipped).
+    def latest_sync_attempt_ids(sources = unscoped)
       latest_id = SyncAttempt
         .where("sync_attempts.calendar_source_id = calendar_sources.id")
         .order(created_at: :desc, id: :desc)
         .limit(1)
         .select(:id)
-      attempt_ids = unscoped.where(id: sources.map(&:id)).pluck(Arel.sql("(#{latest_id.to_sql})")).compact
-      attempts = SyncAttempt.where(id: attempt_ids).index_by(&:calendar_source_id)
-
-      sources.each { |source| source.association(:latest_sync_attempt).target = attempts[source.id] }
+      sources.pluck(Arel.sql("(#{latest_id.to_sql})")).compact
     end
   end
 
