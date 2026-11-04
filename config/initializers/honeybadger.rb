@@ -12,3 +12,17 @@ Rails.application.config.after_initialize do
     end
   end
 end
+
+# SyncCalendarJob retries transient feed connection failures (timeouts, DNS,
+# TLS) with backoff. Only report one once the retries are exhausted; a
+# failing attempt that will be retried is noise, not an actionable error.
+Rails.application.config.after_initialize do
+  Honeybadger.configure do |config|
+    config.before_notify do |notice|
+      next unless notice.exception.is_a?(CalendarHub::Ingestion::FeedConnectionError)
+      next unless notice.context[:job_class].to_s == SyncCalendarJob.name
+
+      notice.halt! if notice.context[:executions].to_i < SyncCalendarJob::MAX_ATTEMPTS
+    end
+  end
+end
