@@ -72,7 +72,7 @@ module CalendarHub
         "Syria Standard Time" => "Asia/Damascus",
         "West Bank Standard Time" => "Asia/Hebron",
         "South Africa Standard Time" => "Africa/Johannesburg",
-        "FLE Standard Time" => "Europe/Kiev",
+        "FLE Standard Time" => "Europe/Kyiv",
         "Israel Standard Time" => "Asia/Jerusalem",
         "South Sudan Standard Time" => "Africa/Juba",
         "Kaliningrad Standard Time" => "Europe/Kaliningrad",
